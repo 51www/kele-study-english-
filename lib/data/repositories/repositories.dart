@@ -139,12 +139,79 @@ class SessionRepository {
     return session;
   }
 
-  Future<void> finishSession(SessionRecord session) async {
+  /// 用户显式点「结束并复盘」才算完成。时长取会话内累计秒数，
+  /// 不用「现在 - startedAt」的墙钟差，避免续练多段后把时长算成几小时。
+  Future<void> finishSession(SessionRecord session, {required int durationSec}) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final duration = ((now - session.startedAt) / 1000).round();
     await _store.upsertSession(
-      session.copyWith(endedAt: now, durationSec: duration, status: 'completed'),
+      session.copyWith(endedAt: now, durationSec: durationSec, status: 'completed'),
     );
+  }
+
+  /// 半路退出：保留为可续练状态，不生成复盘、不写 ended_at。
+  Future<SessionRecord> pauseSession(
+    SessionRecord session, {
+    required int durationSec,
+  }) async {
+    final updated = session.copyWith(
+      durationSec: durationSec,
+      status: session.turnCount > 0 ? 'in_progress' : 'draft',
+      clearEndedAt: true,
+    );
+    await _store.upsertSession(updated);
+    return updated;
+  }
+
+  /// 重新进入对话页：清掉旧的结束时间与复盘缓存，状态回到可续练。
+  Future<SessionRecord> resumeSession(SessionRecord session) async {
+    final updated = session.copyWith(
+      status: session.turnCount > 0 ? 'in_progress' : 'draft',
+      clearEndedAt: true,
+      clearReviewJson: true,
+    );
+    await _store.upsertSession(updated);
+    return updated;
+  }
+
+  /// 一次性修复：旧版半路退出会误标 completed 且不写复盘。
+  /// 用 app_meta 标记只跑一次；只回收「已完成 + 无复盘 + 有实际回合」的会话。
+  Future<int> recoverExitedSessions() async {
+    if (await meta('resume.recovery.v1') == 'done') return 0;
+    final rows = await list();
+    var recovered = 0;
+    for (final session in rows) {
+      if (session.status != 'completed' ||
+          session.reviewJson != null ||
+          session.turnCount <= 0) {
+        continue;
+      }
+      await _store.upsertSession(
+        session.copyWith(status: 'in_progress', clearEndedAt: true),
+      );
+      recovered++;
+    }
+    await setMeta('resume.recovery.v1', 'done');
+    return recovered;
+  }
+
+  /// 一次性修正：旧版本曾把未完成会话的时长按「现在 - started_at」墙钟差写入，
+  /// 会远大于真实对话跨度。只修未完成会话，已完成的复盘数据不动。
+  Future<int> repairUnfinishedDurations() async {
+    if (await meta('resume.durationfix.v1') == 'done') return 0;
+    final rows = await list();
+    var fixed = 0;
+    for (final session in rows.where((e) => e.status != 'completed')) {
+      final items = await messages(session.id);
+      final span = items.length > 1
+          ? ((items.last.createdAt - items.first.createdAt) / 1000).round().clamp(0, 1800)
+          : 0;
+      if (session.durationSec > span + 60) {
+        await _store.upsertSession(session.copyWith(durationSec: span));
+        fixed++;
+      }
+    }
+    await setMeta('resume.durationfix.v1', 'done');
+    return fixed;
   }
 
   /// 删会话级联：消息、纠错、该会话保存的表达与音频缓存一并清掉。

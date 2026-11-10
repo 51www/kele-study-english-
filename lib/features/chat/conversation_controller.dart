@@ -97,6 +97,11 @@ class ConversationController extends ChangeNotifier {
   String? resumeText;
   String? routeNotice;
 
+  /// 续练：从已有会话重新进入时的提示，以及「最后一句没等到回复」的恢复态。
+  bool resuming = false;
+  String? resumeNotice;
+  bool needsReplyRecovery = false;
+
   final Map<String, String> _translations = {};
   final Set<String> _translating = {};
   String? _currentSpokenText;
@@ -121,6 +126,8 @@ class ConversationController extends ChangeNotifier {
   ChatAudioAsrEngine? _chatAudioAsr;
   String _asrMode = 'system';
   bool _disposed = false;
+  bool _finished = false;
+  bool _deleted = false;
   String? _missingKeyMessage;
   String _voice = 'en-US-AriaNeural';
   double _rate = 1.0;
@@ -181,17 +188,34 @@ class ConversationController extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      scenario = await scenarios.byId(session!.scenarioId ?? '');
+      final restored = session!;
+      scenario = await scenarios.byId(restored.scenarioId ?? '');
       messages = await sessions.messages(sessionId);
+      // 重新进入对话页即视为「继续」：除开场白外还有消息，就说明是接着上次聊。
+      resuming = messages.length > 1;
+      session = await sessions.resumeSession(restored);
       sessionCost = session!.costEstimate ?? 0;
       for (final message in messages) {
         if (message.textZh != null && message.textZh!.isNotEmpty) {
           _translations[message.id] = message.textZh!;
         }
       }
-      elapsedSec = session!.durationSec > 0
-          ? session!.durationSec
-          : ((DateTime.now().millisecondsSinceEpoch - session!.startedAt) / 1000).round();
+      // 时长取累计秒数；旧数据没落过盘时用「首条→末条消息」的跨度推断，
+      // 不用 started_at 到现在的墙钟差（会把几小时前开的会话算成几小时）。
+      final span = messages.length > 1
+          ? ((messages.last.createdAt - messages.first.createdAt) / 1000).round()
+          : 0;
+      elapsedSec = restored.durationSec > 0
+          ? restored.durationSec
+          : span.clamp(0, 1800);
+      if (resuming) {
+        resumeNotice = '已接上上次的对话（${session!.turnCount} 轮），接着说就行';
+      }
+      // 上次退出时最后一句用户消息可能没等到 AI 回复，交给用户显式点「重试」。
+      if (messages.isNotEmpty && messages.last.isUser) {
+        lastFailedText = messages.last.textEn;
+        needsReplyRecovery = true;
+      }
       _startTicker();
       await settings.load();
       _readSettings();
@@ -311,10 +335,20 @@ class ConversationController extends ChangeNotifier {
 
   void _startTicker() {
     _ticker?.cancel();
+    var ticks = 0;
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       elapsedSec++;
+      // 进程被杀也能保住已练时长与进度，每 15 秒落一次盘。
+      if (++ticks % 15 == 0) unawaited(_persistElapsed());
       notifyListeners();
     });
+  }
+
+  Future<void> _persistElapsed() async {
+    final current = session;
+    if (_disposed || _finished || _deleted || current == null) return;
+    session = current.copyWith(durationSec: elapsedSec);
+    await sessions.saveSession(session!);
   }
 
   Future<LlmConfig> _config() async {
@@ -551,6 +585,7 @@ class ConversationController extends ChangeNotifier {
     wantToSayText = null;
     wantToSayError = null;
     resumeText = null;
+    needsReplyRecovery = false;
     _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
     _firstTokenMs = null;
@@ -589,6 +624,7 @@ class ConversationController extends ChangeNotifier {
     error = null;
     errorKind = null;
     ttsWarning = null;
+    needsReplyRecovery = false;
     _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
     state = TurnState.thinking;
@@ -1286,21 +1322,40 @@ class ConversationController extends ChangeNotifier {
 
   // ---------------------------------------------------------------- 结束
 
+  /// 用户显式点「结束并复盘」：只有这条路径会把会话标成 completed。
   Future<SessionRecord?> endSession() async {
     final current = session;
     if (current == null) return null;
+    _finished = true;
+    _ticker?.cancel();
     await stopPlayback();
     await cancelRecording();
-    await sessions.finishSession(current);
+    await sessions.finishSession(current, durationSec: elapsedSec);
     final updated = await sessions.byId(sessionId);
     session = updated ?? current;
-    _ticker?.cancel();
     notifyListeners();
     return session;
   }
 
+  /// 半路退出 / 系统返回 / 进程切后台：保存为可续练状态，不生成复盘。
+  /// 由对话页在 pop 前与 dispose 时各调一次，靠状态位保证幂等、不会覆盖已完成会话。
+  Future<SessionRecord?> pauseSession() async {
+    final current = session;
+    if (_finished || _deleted || current == null) return current;
+    _ticker?.cancel();
+    session = await sessions.pauseSession(current, durationSec: elapsedSec);
+    return session;
+  }
+
+  void dismissResumeNotice() {
+    resumeNotice = null;
+    notifyListeners();
+  }
+
   Future<void> deleteDraft() async {
     if ((session?.turnCount ?? 0) == 0) {
+      _deleted = true;
+      _ticker?.cancel();
       await sessions.deleteSession(sessionId);
     }
   }

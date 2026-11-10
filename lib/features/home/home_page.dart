@@ -161,10 +161,19 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 10),
           _StuckCard(correction: data.lastStuck!),
         ],
-        if (data.lastSession != null) ...[
+        if (data.resumableSession != null) ...[
           const SizedBox(height: 14),
           SectionTitle(
             title: '继续上次',
+            actionLabel: '全部记录',
+            onAction: () => context.go('/history'),
+          ),
+          const SizedBox(height: 10),
+          _ResumeCard(session: data.resumableSession!, scenarios: data.scenarios),
+        ] else if (data.lastSession != null) ...[
+          const SizedBox(height: 14),
+          SectionTitle(
+            title: '最近练习',
             actionLabel: '全部记录',
             onAction: () => context.go('/history'),
           ),
@@ -540,6 +549,65 @@ class _Meta extends StatelessWidget {
         const SizedBox(width: 4),
         Text(text, style: AppText.caption),
       ],
+    );
+  }
+}
+
+/// 首页「继续上次」：只指向还能接着聊的会话，点击直接回对话页。
+class _ResumeCard extends StatelessWidget {
+  const _ResumeCard({required this.session, required this.scenarios});
+
+  final SessionRecord session;
+  final List<Scenario> scenarios;
+
+  @override
+  Widget build(BuildContext context) {
+    final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
+    return AppCard(
+      onTap: () => context.push('/chat/${session.id}'),
+      color: AppColors.primaryWash,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.mint.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.play_arrow_rounded, color: AppColors.success, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  scenario?.titleZh ?? '自由对话',
+                  style: AppText.cardTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '进行中 · ${session.turnCount} 轮 · ${formatDate(session.startedDate)}',
+                  style: AppText.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const AppTag(
+            label: '继续练习',
+            color: AppColors.primaryDeep,
+            background: AppColors.surface,
+            icon: Icons.play_arrow_rounded,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -117,6 +117,7 @@ class HomeData {
     required this.weekSessions,
     required this.targetMinutes,
     this.lastSession,
+    this.resumableSession,
     this.lastStuck,
   });
 
@@ -128,6 +129,9 @@ class HomeData {
   final int weekSessions;
   final int targetMinutes;
   final SessionRecord? lastSession;
+
+  /// 最近一次半路退出、仍可接着聊的会话（首页「继续上次」主入口）。
+  final SessionRecord? resumableSession;
 
   /// 上次复盘里第一条未被删除的纠错，用于首页「上次卡在哪」。
   final Correction? lastStuck;
@@ -186,14 +190,28 @@ final homeDataProvider = FutureProvider<HomeData>((ref) async {
     weekSessions: weekSessions,
     targetMinutes: targetMinutes,
     lastSession: sessions.isEmpty ? null : sessions.first,
+    resumableSession: sessions.where(isResumableSession).firstOrNull,
     lastStuck: lastStuck,
   );
 });
 
 String _dayKey(DateTime time) => '${time.year}-${time.month}-${time.day}';
 
+/// 半路退出留下的、还能接着聊的会话（有实际开口、未显式结束并复盘）。
+bool isResumableSession(SessionRecord session) =>
+    session.status != 'completed' && session.turnCount > 0;
+
 final recentSessionsProvider = FutureProvider<List<SessionRecord>>((ref) {
   return ref.watch(sessionRepositoryProvider).list();
+});
+
+/// 某个场景下最近的未完成会话，供场景详情页提供「继续上次」入口。
+final resumableSessionForScenarioProvider =
+    FutureProvider.family<SessionRecord?, String>((ref, scenarioId) async {
+  final sessions = await ref.watch(recentSessionsProvider.future);
+  return sessions
+      .where((e) => e.scenarioId == scenarioId && isResumableSession(e))
+      .firstOrNull;
 });
 
 final phrasesProvider = FutureProvider<List<Phrase>>((ref) {

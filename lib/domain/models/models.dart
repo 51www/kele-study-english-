@@ -122,12 +122,14 @@ class SessionRecord {
     String? ttsEngine,
     String? reviewJson,
     double? costEstimate,
+    bool clearEndedAt = false,
+    bool clearReviewJson = false,
   }) {
     return SessionRecord(
       id: id,
       scenarioId: scenarioId ?? this.scenarioId,
       startedAt: startedAt,
-      endedAt: endedAt ?? this.endedAt,
+      endedAt: clearEndedAt ? null : (endedAt ?? this.endedAt),
       durationSec: durationSec ?? this.durationSec,
       turnCount: turnCount ?? this.turnCount,
       hintCount: hintCount ?? this.hintCount,
@@ -136,7 +138,7 @@ class SessionRecord {
       status: status ?? this.status,
       modelName: modelName ?? this.modelName,
       ttsEngine: ttsEngine ?? this.ttsEngine,
-      reviewJson: reviewJson ?? this.reviewJson,
+      reviewJson: clearReviewJson ? null : (reviewJson ?? this.reviewJson),
       costEstimate: costEstimate ?? this.costEstimate,
     );
   }

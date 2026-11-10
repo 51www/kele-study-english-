@@ -93,12 +93,17 @@ class HistoryPage extends ConsumerWidget {
                       ref.invalidate(homeDataProvider);
                       ref.invalidate(phrasesProvider);
                       ref.invalidate(monthlyCostProvider);
+                      ref.invalidate(scenarioLibraryProvider);
                       if (context.mounted) showAppToast(context, '已删除该条练习');
                     },
                     child: _HistoryCard(
                       session: session,
                       scenario: scenario,
-                      onTap: () => context.push('/review/${session.id}'),
+                      onTap: () => context.push(
+                            session.status == 'completed'
+                                ? '/review/${session.id}'
+                                : '/chat/${session.id}',
+                          ),
                     ),
                   );
                 },
@@ -126,6 +131,7 @@ class _HistoryCard extends StatelessWidget {
       _ => '草稿',
     };
     final statusColor = session.status == 'completed' ? AppColors.success : AppColors.warning;
+    final resumable = session.status != 'completed' && session.turnCount > 0;
     final visual = scenarioVisual(scenario?.category);
     return AppCard(
       onTap: onTap,
@@ -173,6 +179,13 @@ class _HistoryCard extends StatelessWidget {
                   '${formatDate(session.startedDate)} · ${session.turnCount} 轮 · ${formatMinutes(session.durationSec)}',
                   style: AppText.caption,
                 ),
+                if (resumable) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '点按继续这段对话',
+                    style: AppText.caption.copyWith(color: AppColors.primaryDeep),
+                  ),
+                ],
               ],
             ),
           ),

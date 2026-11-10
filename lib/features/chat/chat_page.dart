@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -70,12 +71,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   void dispose() {
-    _controller
-      ..removeListener(_onUpdate)
-      ..dispose();
+    _controller.removeListener(_onUpdate);
+    // 系统返回键 / 侧滑手势不会走 _back()，这里兜底把会话存成可续练状态。
+    unawaited(_controller.pauseSession());
+    _controller.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _refreshSessions() {
+    ref.invalidate(homeDataProvider);
+    ref.invalidate(recentSessionsProvider);
+    ref.invalidate(monthlyCostProvider);
+    ref.invalidate(lastLatencyProvider);
+    ref.invalidate(scenarioLibraryProvider);
   }
 
   Future<void> _send() async {
@@ -134,11 +144,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     setState(() => _ending = true);
     final session = await _controller.endSession();
     if (!mounted) return;
-    ref.invalidate(homeDataProvider);
-    ref.invalidate(recentSessionsProvider);
-    ref.invalidate(monthlyCostProvider);
-    ref.invalidate(lastLatencyProvider);
-    ref.invalidate(scenarioLibraryProvider);
+    _refreshSessions();
     if (session == null) {
       context.go('/home');
       return;
@@ -154,22 +160,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final turns = _controller.session?.turnCount ?? 0;
     if (turns == 0) {
       await _controller.deleteDraft();
+      _refreshSessions();
       if (mounted) context.pop();
       return;
     }
     final ok = await showConfirmDialog(
       context,
-      title: '退出练习？',
-      message: '本次对话会保存为草稿，可以在练习记录里继续查看。',
+      title: '先存起来，下次接着聊？',
+      message: '这 $turns 轮对话会原样保留。下次可从首页「继续上次」、练习记录，或这个场景的详情页接着往下说。',
       confirmLabel: '保存并退出',
     );
     if (!ok || !mounted) return;
-    await _controller.endSession();
-    ref.invalidate(homeDataProvider);
-    ref.invalidate(recentSessionsProvider);
-    ref.invalidate(monthlyCostProvider);
-    ref.invalidate(lastLatencyProvider);
-    ref.invalidate(scenarioLibraryProvider);
+    await _controller.pauseSession();
+    _refreshSessions();
     if (mounted) context.pop();
   }
 
@@ -203,6 +206,55 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   child: Column(
                     children: [
                       Expanded(child: _buildMessages(c)),
+                      if (c.resumeNotice != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: AppCard(
+                            shadow: false,
+                            color: AppColors.primaryWash,
+                            padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.play_circle_outline_rounded,
+                                    size: 15, color: AppColors.primaryDeep),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(c.resumeNotice!, style: AppText.caption)),
+                                TextButton(
+                                  onPressed: c.dismissResumeNotice,
+                                  child: const Text('知道了'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (c.needsReplyRecovery)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: AppCard(
+                            shadow: false,
+                            color: AppColors.warning.withValues(alpha: 0.10),
+                            padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.reply_rounded, size: 15, color: AppColors.warning),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '上次这句还没等到 AI 回复，点重试接着聊',
+                                    style: AppText.caption,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: c.retry,
+                                  child: Text(
+                                    '重试',
+                                    style: AppText.caption.copyWith(color: AppColors.primaryDeep),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       if (c.offline)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),

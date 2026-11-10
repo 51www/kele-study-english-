@@ -582,16 +582,18 @@ app_meta（独立，schema 版本等）
 | id | TEXT PK | UUID |
 | scenario_id | TEXT FK | 关联场景（可为空：自由聊 P2） |
 | started_at / ended_at | INTEGER | 毫秒时间戳 |
-| duration_sec | INTEGER | 有效时长（不含暂停） |
+| duration_sec | INTEGER | 有效时长（累计在对话页里的秒数，**不含退出后的墙钟差**；每 15 秒与退出时落盘） |
 | turn_count | INTEGER | 完成的回合数 |
 | hint_count | INTEGER | 提示次数 |
 | assist_turns | INTEGER | 使用 L3/L4 的回合数 |
 | translate_count | INTEGER | 翻译查看次数 |
-| status | TEXT | `draft` / `completed` / `aborted` |
+| status | TEXT | `draft`（0 轮）/ `in_progress`（可续练）/ `completed`（仅「结束并复盘」） |
 | model_name | TEXT | 本次使用的模型（便于对比） |
 | tts_engine | TEXT | `edge` / `system`（记录降级情况） |
-| review_json | TEXT? | 复盘结构化结果 |
+| review_json | TEXT? | 复盘结构化结果；重新进入对话页续练时清空，便于结束后重新生成 |
 | cost_estimate | REAL? | 本地估算成本（可选） |
+
+> **2026-11-10 会话续练（需求 §0.2）**：`ended_at` 只在 `completed` 时有值，半路退出必须清空；`status` 的 `aborted` 从未使用，正式改为 `in_progress`。**表结构与 `schemaVersion` 不变**。`SessionRepository` 增加 `pauseSession` / `resumeSession` / `recoverExitedSessions`，`finishSession` 的时长改由 `ConversationController.elapsedSec` 传入。旧版本把半路退出误标为 `completed` 且没写 `review_json` 的会话，在 `main()` 启动时一次性回收（`app_meta: resume.recovery.v1`）；未完成会话里明显大于「首条→末条消息跨度」的 `duration_sec` 也一次性重算（`app_meta: resume.durationfix.v1`）。两者都只跑一次、不动已有 `review_json` 的已完成复盘。边界：若用户曾显式点「结束并复盘」但复盘生成失败并退出，该会话同样没有 `review_json`，会被回收为可续练；此时用户重新点「结束并复盘」即可，不会丢消息。练过次数、月度成本等派生统计仍从 `session` 聚合，不新增冗余字段。
 
 #### `message` 消息
 

@@ -476,6 +476,18 @@ Container(
 
 场景库页沿用「一屏一个主色实心 CTA」约束：本页不设 CTA；分类 Chip 与卡片不使用第二种高饱和辅助色作为大面积底色，辅助色只出现在 46 × 46 图标块内。首页「场景练习」区块保持 1 张主推大卡 + 1 张紧凑卡，右侧文字按钮改为「全部 N 个」（`SectionTitle` 的 `actionLabel`，12/600 主色），不把 26 张卡堆进首屏。
 
+#### 会话续练新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 首页「继续上次」续练卡 | 复用 `AppCard`（24 圆角、16 内边距、`AppShadows.card`），底色只用 `primaryWash`，不加描边、不加阴影层级；左 42 × 42 圆角 12 `mint` 28% 图标块 + `Icons.play_arrow_rounded` 24 `success`；中间 `AppText.cardTitle` 场景名 + `AppText.caption`「进行中 · N 轮 · 日期」两行；右 `AppTag(label: '继续练习', color: primaryDeep, background: surface, icon: play_arrow_rounded)`；整卡可点进 `/chat/:id`；不新增主色实心 CTA（首页已有「今日练习」渐变卡） |
+| 记录页续练卡 | 在既有 `_HistoryCard` 结构上改：状态标签 '进行中' 用 `warning` 10% 底 + `warning` 字；第三行追加 `AppText.caption`「点按继续这段对话」，字色 `primaryDeep`、11–13/500；卡片整卡可点进 `/chat/:id`（已完成卡仍进 `/review/:id`）；不新增按钮、不新增第二行副标题之外的元素 |
+| 场景详情续练入口 | `_StartBar` 在 `PrimaryButton` 上方增加一行 `SecondaryButton`（高 50、白底 1px `line`、字 `ink` 13–14），文案「继续上次（N 轮）」，图标 `Icons.play_arrow_rounded` 18；两按钮间距 8；有续练会话时主按钮文案改为「开始新练习」，没有时保持「开始练习」 |
+| 对话页「已接上」提示条 | 复用对话页既有提示条规格（`AppCard` + `primaryWash` 底 + 15px `primaryDeep` 图标 + `AppText.caption`），右侧一个 `TextButton`「知道了」；文案「已接上上次的对话（N 轮），接着说就行」；出现位置在离线提示条之前，不自动消失，由用户点掉 |
+| 对话页「补回复」提示条 | 同上规格但底色 `warning` 10%、图标 `Icons.reply_rounded` `warning`、右侧 `TextButton`「重试」；文案「上次这句还没等到 AI 回复，点重试接着聊」；用户点重试或发送新消息后消失；不自动发请求 |
+
+续练不引入新色值、新字号、新圆角或新阴影层级；状态色沿用 `success` / `warning` / `primaryDeep`，文字沿用 `AppText.cardTitle` / `caption` / `tag`。
+
 #### 页面头部
 
 - 左右 24，高 56–64；左返回 40 圆形；中标题 11–12/600 `inkSecondary`；右侧占位 40。

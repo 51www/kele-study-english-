@@ -428,10 +428,53 @@ MVP 完整功能 + 一份逐条通过的验收记录。
 | 2 搜索与空态 | 已验证 | 搜 `Hotel` 命中「酒店入住」1 条；搜 `zzzz` 显示「没有匹配的场景」空态；「清除筛选」恢复「全部」 |
 | 3 首页入口与跳转层级 | 已验证 | 首页仍 2 张推荐卡，右侧「全部 26 个」一次进入 `/scenarios`；库 → 详情一次点击 |
 | 4 新场景详情 | 部分验证 | 「酒店入住」详情的分类、AI 角色、5 条目标表达、开始练习按钮均正常；点「开始练习」按预期弹出「还没有配置密钥」对话框，**进入真实对话需用户先配置 API** |
-| 5 练过次数 / 清空数据 | 待用户现场验收 | 需一次真实对话产生 `turn_count > 0`；清空数据会抹掉本机记录与密钥，未经用户确认不主动执行 |
+| 5 练过次数 / 清空数据 | 部分验证 | 场景库「餐厅点餐」卡已显示「练过 2 次」（截图 `docs/shortscreen/M4/31-practice-count.png`，来自用户真实会话）；清空所有数据会抹掉本机记录与密钥，未经用户确认不主动执行，计数归零仍待现场验收 |
 | 6 覆盖安装自动获得新场景 | 已验证 | `adb install -r app-release.apk`（**未清数据**）→ 启动后首页即显示「全部 26 个」，说明种子按 `id` upsert 生效，无需迁移 |
 | 7 静态检查与构建 | 已验证 | `flutter analyze` 0 error / 0 warning（17 条既有 info/lint，与改动前一致）；`flutter build apk --release`（64.5MB）与 `flutter build web --release` 通过；真机 `adb install -r` 成功、进程存活，全程 `logcat` 无 `FATAL EXCEPTION` / `FlutterError` / `overflowed` / `setState during build` |
 
 **截图归档**：`docs/shortscreen/M4/18-home-26.png`（首页「全部 26 个」）、`19-scenario-library.png`（场景库全部）、`20-scenario-library-travel.png`（旅行分类）、`21-scenario-search.png`（英文搜索）、`22-new-scenario-detail.png`（酒店入住详情）、`23-scenario-search-empty.png`（空态）、`24-new-scenario-start.png`（未配置密钥的正确引导）。Web 构建的 `flutter_tts_web` wasm dry-run 提示属第三方包信息性警告，未阻塞构建。
 
 **仍未改变**：需求 §10.2 的 11 条 MVP 验收清单保持未勾选；真实 API 的 ≥8 回合对话、延迟 p50/p95、弱网 / 蓝牙 / 来电降级与真实成本统计仍待用户现场验收。
+
+---
+
+## 13. M4 之后的收尾项：会话续练（2026-11-10 用户反馈）
+
+> 用户反馈「之前练到一半的对话，半路退出后没办法重新继续进行对话」。属于 F2 / F6 的能力缺口修复，**不新增里程碑 M5，也不改动 M0–M4 的验收标准**；需求 §10.2 的 11 条清单保持未勾选。依据见需求 §0.2。
+
+### 13.1 根因与任务
+
+| # | 任务 | 模块 | 说明 |
+|---|---|---|---|
+| T13.1 | 退出不再误标完成 | `chat_page.dart`、`conversation_controller.dart` | 旧 `_back()` 调 `endSession()` → `completed`，弹窗却写「保存为草稿」；改为 `pauseSession()` → `in_progress`，清 `ended_at`、不生成复盘 |
+| T13.2 | 状态与时长语义 | `repositories.dart`、`models.dart` | `finishSession` 时长改由 `elapsedSec` 传入（累计秒数）；`copyWith` 支持 `clearEndedAt` / `clearReviewJson`；新增 `pauseSession` / `resumeSession` |
+| T13.3 | 续练恢复 | `conversation_controller.dart` | `init()` 读回消息、翻译缓存、成本与计时；每 15 秒落盘；`dispose()` 兜底系统返回手势；最后一条是用户消息时只提示「重试」不自动补发 |
+| T13.4 | 三处续练入口 | `home_page.dart`、`history_page.dart`、`scenario_page.dart` | 首页 `_ResumeCard`、记录页进行中卡、场景详情「继续上次（N 轮）」；已完成记录仍进只读复盘 |
+| T13.5 | 旧数据一次性回收 | `main.dart` | 旧版误标 `completed` 且无 `review_json` 的会话回收为 `in_progress`，`app_meta: resume.recovery.v1` 保证只跑一次 |
+| T13.6 | 文档与规范同步 | 需求 / 技术设计 / 开发文档 / UI 规范 / 里程碑 / README | 状态定义、数据流、页面映射、新增组件规格 |
+
+### 13.2 验收标准（本次新增，不替代需求 §10.2）
+
+1. 说到一半点返回 / 系统侧滑返回 / 杀进程，重新打开 App 仍能看到未完成对话，且三处入口都能接着往下说。
+2. 续练后消息、轮次、成本、翻译缓存与计时连续，不重放开场白、不新建会话。
+3. 「结束并复盘」仍生成复盘并标已完成；已完成记录点进去仍是只读复盘。
+4. 旧数据一次性回收，且只跑一次；`flutter analyze` 无 error / warning，Android 真机安装无 `FlutterError` / `overflowed`。
+
+### 13.3 实现与验证记录
+
+| 验收项（§13.2） | 状态 | 证据 |
+|---|---|---|
+| 1 退出后仍可续练 | 已验证 | 真机上用户原有的两条半路退出会话（餐厅点餐 4 轮 / 1 轮）显示为「进行中」；从首页「继续上次」卡、记录页进行中卡都能回到同一段对话，消息与轮次完整 |
+| 2 续练状态连续 | 已验证 | 对话页显示「已接上上次的对话（4 轮），接着说就行」；不重放开场白、不新建会话；计时按消息跨度恢复（03:43），不是墙钟差；翻译缓存与目标表达均在 |
+| 3 结束并复盘仍只读 | 已验证（既有行为） | 退出弹窗改为「先存起来，下次接着聊？ / 保存并退出」，不再误标 completed；「结束」按钮路径未改动 |
+| 4 旧数据一次性回收 / 静态检查 | 已验证 | `main()` 的 `recoverExitedSessions` 与 `repairUnfinishedDurations` 各带 `app_meta` 标记只跑一次；`flutter analyze` 0 error / 0 warning（17 条既有 info 与改动前一致）、`flutter build apk --release` 与 `flutter build web --release` 通过；真机 `adb install -r` 成功，按包名过滤后无 `FlutterError` / `overflowed` / 崩溃 |
+
+**续练入口真机截图**：`docs/shortscreen/M4/25-resume-chat.png`（旧版计时）、`26-home-resume-card.png`、`27-home-resume-card-scrolled.png`（首页续练卡「进行中 · 4 轮」+「继续练习」）、`28-resume-chat-fixed.png`（「已接上」提示条与修正后计时）、`29-resume-exit-dialog.png`（新退出弹窗）、`30-scenario-resume-button.png`（场景详情「继续上次（4 轮）」+「开始新练习」）。
+
+**过程中的一次数据修正**：首个验证版曾把旧会话 `duration_sec=0` 用「墙钟差上界 600s」兜底，导致首页今日分钟虚高到 21 分钟。随后改为按消息时间戳跨度推断，并在 `main()` 增加一次性 `repairUnfinishedDurations()` 把未完成会话里明显大于对话跨度的时长按跨度重算；复验后首页今日分钟回到 4 分钟。**未执行「清空所有数据」**，用户本机已有的密钥、练习记录与表达本均保留。
+
+**仍需用户现场完成**：真实 API 下走一遍「说到一半退出 → 从三个入口续练 → 继续说完 → 结束并复盘」，确认复盘与统计；以及需求 §10.2 的 11 条清单、延迟 p50/p95、弱网 / 蓝牙 / 来电降级。
+
+### 13.4 范围外
+
+不做到云端同步、跨设备续练、多会话并行草稿、自动补发未完成的 AI 回复、自动结束长时间未续练的对话。

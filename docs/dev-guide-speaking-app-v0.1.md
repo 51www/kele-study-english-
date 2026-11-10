@@ -217,6 +217,9 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `scenarioLibraryProvider` | app | 场景列表 + 按 `session.scenario_id` 聚合练过次数 | `ScenarioRepository`、`SessionRepository` | `ScenarioLibraryData` |
 | `ScenarioLibraryPage` | feature | 分类 Chip / 搜索 / 场景列表 / 练过标签 / 空态 | `scenarioLibraryProvider`、路由 `/scenario/:id` | 选中分类、搜索词 |
 | `ScenarioVisual` | feature | `category` → 图标 / 浅底 / 强调色；替换 `id.contains('cafe')` | `AppColors` | 无状态 |
+| `SessionRepository` | data | 建会话 / 结束 / 暂停续练 / 恢复 / 一次性回收旧数据 / 级联删除 | `LocalStore` | 无状态 |
+| `ConversationController.elapsedSec` | feature | 会话内累计秒数；每 15 秒落盘，退出与结束时写入 `duration_sec` | `SessionRepository` | 计时器 |
+| `resumableSessionForScenarioProvider` | app | 某场景下最近的未完成会话 | `recentSessionsProvider` | `SessionRecord?` |
 
 > 实现说明：复盘生成逻辑目前内联在 `features/review/review_page.dart`（含一次自动重试与 `ReviewParser` 容错解析），尚未抽出独立 `ReviewService` 类；`PromptBuilder` 位于 `services/llm/`（不是早期规划的 `services/prompt/`）。
 
@@ -253,6 +256,27 @@ features ──▶ domain/usecases ──▶ services（接口）
 | 17 | 回 Idle | Controller | 允许下一回合 |
 
 **事务边界**：第 8 步先写"用户消息 + session 计数"，第 15 步在流结束后补写"AI 消息 + 回合数"。若第 10–14 步失败，用户消息仍保留，AI 消息以 `failed` 标记补一条（便于复盘时看到"这回合没答上来"）。
+
+#### 3.1.1 会话退出与续练（2026-11-10 补，需求 §0.2）
+
+```text
+创建：ScenarioPage._start → SessionRepository.createSession
+      → status=draft，写入 seq=0 的 AI 开场白 → /chat/:id
+首个回合：sendText → status=in_progress
+计时：Controller.elapsedSec 每秒 +1，每 15 秒 upsertSession(duration_sec=elapsedSec)
+半路退出：ChatPage._back（或系统返回的 dispose 兜底）
+      → Controller.pauseSession → status=in_progress、clearEndedAt、不写复盘 → pop
+续练入口：首页 _ResumeCard / 记录页进行中卡 / ScenarioPage 的「继续上次」
+      → /chat/:id → Controller.init → resumeSession → 读回消息与 elapsedSec
+      → 若最后一条是用户消息，显示「重试」但不自动发请求
+显式结束：ChatPage._end → endSession → finishSession(durationSec=elapsedSec)
+      → status=completed + ended_at → /review/:id 生成复盘
+```
+
+- `pauseSession` 幂等：靠 `_finished` / `_deleted` 状态位保证不会覆盖已结束或已删除的会话；`dispose()` 里也要调一次，覆盖系统返回手势与直接杀进程前的退出。
+- 旧版半路退出会误标 `completed` 且无 `review_json`：`main()` 启动时 `recoverExitedSessions()` 一次性回收，用 `app_meta: resume.recovery.v1` 只跑一次；未完成会话里被墙钟差写虚高的时长由 `repairUnfinishedDurations()` 按消息跨度重算（`app_meta: resume.durationfix.v1`）。
+- 旧会话没落过 `duration_sec` 时，`init()` 用「首条→末条消息」的跨度推断计时，不用 `started_at` 到现在的墙钟差（否则几小时前开的会话会被算成几小时）。
+- **不改表结构、不写迁移、不跑 build_runner**；`SessionRecord.copyWith` 增加 `clearEndedAt` / `clearReviewJson` 才能把可空字段清回 null。
 
 ### 3.2 各层职责边界
 
@@ -423,6 +447,7 @@ dio / plugin 异常
 - 外键：`message.session_id`、`correction.session_id` 级联删除。
 - `schemaVersion = 1`；每次结构变更必须提供迁移，禁止 `destructiveMigration`。
 - 种子数据：首次启动插入 **26 个内置场景**（幂等：按 `id` upsert；见 §4.2 与里程碑 §12）。追加场景只改 `seeds.dart`，**不需要迁移**。
+- 会话续练（§3.1.1）同样**不需要迁移**：`status` 取值从 `draft/completed/aborted` 调整为 `draft/in_progress/completed`，`ended_at` 允许清空，都是既有字段的语义变化。
 
 ---
 
@@ -518,15 +543,15 @@ dio / plugin 异常
 
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
-| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`HomeFoot` |
+| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」）、`EmptyState`、`ErrorBanner` |
-| 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`StartDock` |
-| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（翻译 / 纠错标记展开）、`TranslateModePicker`、`HintSheet`（L1–L4）、`HintResultCard`、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
+| 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（翻译 / 纠错标记展开）、`TranslateModePicker`、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`HintSheet`（L1–L4）、`HintResultCard`、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
 | 模型配置（设置内区块） | `ModelProfileSheet` / `ModelProfilePage` | `AppField`×3、`FetchModelsButton`、`ConnResult`、`SaveButton` |
-| 记录列表 | `HistoryPage` | `SessionTile`、`EmptyState` |
+| 记录列表 | `HistoryPage` | `_HistoryCard`（未完成卡追加「点按继续这段对话」，跳 `/chat/:id`；已完成卡跳 `/review/:id`）、`Dismissible` 删除、`EmptyState` |
 | 记录详情 | `SessionDetailPage` | `MessageList(readOnly)`、`CorrectionList` |
 | 表达本 | `PhrasebookPage` | `PhraseTile`、`EmptyState`、`FilterChips` |
 | 技巧列表 `/tips` | `TipsPage` | 分类筛选 Chip、文章卡、`EmptyState`、`ErrorBanner` |

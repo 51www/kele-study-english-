@@ -40,6 +40,18 @@ Future<void> main() async {
   final settingsRepository = SettingsRepository(store);
   await settingsRepository.load();
 
+  // 旧版半路退出会把会话误标为「已完成」且不生成复盘，启动时一次性回收为可续练。
+  try {
+    final sessions = SessionRepository(store);
+    final recovered = await sessions.recoverExitedSessions();
+    final repaired = await sessions.repairUnfinishedDurations();
+    if (recovered > 0 || repaired > 0) {
+      AppLogger.debug('recovered=$recovered repairedDuration=$repaired sessions');
+    }
+  } catch (e) {
+    AppLogger.warn('recover unfinished sessions failed: $e');
+  }
+
   runApp(
     ProviderScope(
       overrides: [

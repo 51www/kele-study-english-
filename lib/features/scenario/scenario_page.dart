@@ -22,22 +22,33 @@ class ScenarioPage extends ConsumerStatefulWidget {
 class _ScenarioPageState extends ConsumerState<ScenarioPage> {
   bool _starting = false;
 
+  Future<bool> _ensureKey() async {
+    final profile = await ref.read(profileInfoProvider.future);
+    if (profile.hasKey) return true;
+    if (!mounted) return false;
+    final go = await showConfirmDialog(
+      context,
+      title: '还没有配置密钥',
+      message: '对话需要模型接口。先去填写接口地址与密钥吗？',
+      confirmLabel: '去配置',
+    );
+    if (go && mounted) context.push('/settings/model');
+    return false;
+  }
+
+  void _refreshSessions() {
+    ref.invalidate(homeDataProvider);
+    ref.invalidate(recentSessionsProvider);
+    ref.invalidate(scenarioLibraryProvider);
+    ref.invalidate(resumableSessionForScenarioProvider(widget.scenarioId));
+  }
+
   Future<void> _start(Scenario scenario) async {
     if (_starting) return;
-    final profile = await ref.read(profileInfoProvider.future);
-    if (!profile.hasKey) {
-      if (!mounted) return;
-      final go = await showConfirmDialog(
-        context,
-        title: '还没有配置密钥',
-        message: '对话需要模型接口。先去填写接口地址与密钥吗？',
-        confirmLabel: '去配置',
-      );
-      if (go && mounted) context.push('/settings/model');
-      return;
-    }
+    if (!await _ensureKey()) return;
     setState(() => _starting = true);
     try {
+      final profile = await ref.read(profileInfoProvider.future);
       final settings = ref.read(settingsControllerProvider);
       final session = await ref.read(sessionRepositoryProvider).createSession(
             scenario: scenario,
@@ -46,10 +57,23 @@ class _ScenarioPageState extends ConsumerState<ScenarioPage> {
           );
       if (!mounted) return;
       await context.push('/chat/${session.id}');
-      ref.invalidate(homeDataProvider);
-      ref.invalidate(recentSessionsProvider);
+      _refreshSessions();
     } catch (e) {
       if (mounted) showAppToast(context, '创建练习失败：$e', error: true);
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  /// 接着上一次没练完的对话，不新建会话、不重放开场白。
+  Future<void> _resume(SessionRecord session) async {
+    if (_starting) return;
+    if (!await _ensureKey()) return;
+    setState(() => _starting = true);
+    try {
+      if (!mounted) return;
+      await context.push('/chat/${session.id}');
+      _refreshSessions();
     } finally {
       if (mounted) setState(() => _starting = false);
     }
@@ -58,6 +82,10 @@ class _ScenarioPageState extends ConsumerState<ScenarioPage> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(scenarioProvider(widget.scenarioId));
+    final resumable = ref
+        .watch(resumableSessionForScenarioProvider(widget.scenarioId))
+        .asData
+        ?.value;
     return async.when(
       loading: () => const PageScaffold(
         title: '场景',
@@ -90,7 +118,9 @@ class _ScenarioPageState extends ConsumerState<ScenarioPage> {
           title: '场景详情',
           bottomBar: _StartBar(
             loading: _starting,
+            resumable: resumable,
             onStart: () => _start(scenario),
+            onResume: resumable == null ? null : () => _resume(resumable),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -309,10 +339,17 @@ class _Pill extends StatelessWidget {
 }
 
 class _StartBar extends StatelessWidget {
-  const _StartBar({required this.loading, required this.onStart});
+  const _StartBar({
+    required this.loading,
+    required this.onStart,
+    required this.resumable,
+    required this.onResume,
+  });
 
   final bool loading;
   final VoidCallback onStart;
+  final SessionRecord? resumable;
+  final VoidCallback? onResume;
 
   @override
   Widget build(BuildContext context) {
@@ -325,11 +362,24 @@ class _StartBar extends StatelessWidget {
           heightFactor: 1,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: PrimaryButton(
-              label: '开始练习',
-              icon: Icons.mic_rounded,
-              loading: loading,
-              onPressed: onStart,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (resumable != null) ...[
+                  SecondaryButton(
+                    label: '继续上次（${resumable!.turnCount} 轮）',
+                    icon: Icons.play_arrow_rounded,
+                    onPressed: loading ? null : onResume,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                PrimaryButton(
+                  label: resumable == null ? '开始练习' : '开始新练习',
+                  icon: Icons.mic_rounded,
+                  loading: loading,
+                  onPressed: onStart,
+                ),
+              ],
             ),
           ),
         ),
