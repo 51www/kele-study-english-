@@ -314,11 +314,14 @@ dio / plugin 异常
 
 | 旁路 | 触发 | 走哪层 | 是否进对话历史 |
 |---|---|---|---|
-| 翻译 | 点按 AI 气泡 / 常开字幕 | `TranslateMessage` → `LlmClient`（非流式、独立 prompt） | 否 |
+| 翻译 | 点按 AI / 提示气泡 / 常开字幕 | `_sideChat` → `LlmClient.chat`（非流式）→ 失败降级 `streamChat` → `PromptBuilder.cleanTranslation` | 否 |
 | 提示 L1 | 点"重听" | `AudioPlayer` / `TtsRouter` | 否 |
-| 提示 L2–L4 | 点提示项 | `RequestHint` → `LlmClient`（独立 prompt） | 否 |
+| 提示 L2–L4 | 点提示项 | `RequestHint` → `_sideChat`（`EN:` / `ZH:` 两行）→ `HintParser` | 否 |
+| 我想说 | 中文输入 | `RequestWantToSay` → `_sideChat` | 否 |
 
-旁路结果写入 `message.text_zh`（翻译）或页面内存（提示），会话结束后提示不落库（除非用户收藏）。
+旁路统一走 `_config()`，与对话**共用同一 Base URL / 模型 / 密钥**，没有独立翻译模型。`max_tokens`：翻译 512、提示与「我想说」384；`temperature=0.3`；整体超时 `Timeouts.sideRequest = 25s`。提示若未按 `EN:` / `ZH:` 两行返回，会补一次翻译旁路（最多 1 次）。非流式正文提取按 `message.content` → `reasoning_content` → `delta.content` → `choices[0].text` 兜底，仍为空则改走与主对话相同的流式路径重取一次（鉴权 / 404 / 限流不降级）。
+
+旁路结果写入 `message.text_zh`（翻译）或页面内存（提示 + `hintTextZh` 中文对照），会话结束后提示不落库（除非用户收藏）。
 
 ---
 
@@ -467,7 +470,7 @@ dio / plugin 异常
 | `practice.correctionMode` | setting | `gentle` | `gentle`；`strict` 仅占位 | 选 strict 时提示"暂未开放" |
 | `practice.translateDefault` | setting | `off` | `off`/`tap`/`always`；对话页可临时切换并写回 | 回落 `off` |
 | `cost.monthlyBudget` | setting | `50` | ¥0/20/50/100；月度累计 ≥ 预算时「我的」提示 | 回落 50 |
-| 超时表 | `core/timeouts.dart` | 见文件 | 连接 10s / 响应 25s / 首字 6s / 慢网提示 15s / 旁路 15s | 统一引用，不在业务层写死 |
+| 超时表 | `core/timeouts.dart` | 见文件 | 连接 10s / 响应 25s / 首字 6s / 慢网提示 15s / 旁路 25s（思考型模型先产出 reasoning，15s 会误判超时） | 统一引用，不在业务层写死 |
 | `practice.inputMode` | setting | `voice` | `voice`/`text` | 回落 `voice` |
 | `practice.targetMinutes` | setting | `10` | 5/10/15 | 回落 10 |
 | `data.cacheLimitMb` | setting | `80` | 20–300 | 钳制 |
@@ -546,7 +549,7 @@ dio / plugin 异常
 | 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」）、`EmptyState`、`ErrorBanner` |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
-| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（翻译 / 纠错标记展开）、`TranslateModePicker`、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`HintSheet`（L1–L4）、`HintResultCard`、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`HintSheet`（L1–L4）、`HintResultCard`（英文 + 「译」中文对照）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
@@ -612,7 +615,7 @@ dio / plugin 异常
 | 真机门槛 | 每个里程碑结束必须在一台 Android 真机跑通，不以模拟器代替 |
 | 依赖新增 | 引入新包前记录：用途、许可证、最近更新时间、替代方案 |
 | 超时 | 一律引用 `core/timeouts.dart`；新增等待时间先改表再改代码，禁止在业务层写 `Duration(seconds: x)` |
-| 旁路请求 | 提示 / 翻译 /「我想说」走 `PromptBuilder` 的独立消息数组，绝不写入主 `message` 历史，也不自动发送 |
+| 旁路请求 | 提示 / 翻译 /「我想说」走 `PromptBuilder` 的独立消息数组，复用对话的 `LlmConfig`，绝不写入主 `message` 历史，也不自动发送；译文必须校验含中文，失败保留英文并给「重试翻译」 |
 | 朗读缓存 | 内存 LRU 与落盘索引共用同一哈希键；清理入口必须同时清内存、文件与 `tts_cache` 表 |
 
 ---

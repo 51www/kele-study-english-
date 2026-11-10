@@ -46,7 +46,9 @@ class Timeouts {
   static const playerLoad = Duration(seconds: 10);
 
   /// 旁路请求（提示 / 翻译 /「我想说」）整体上限。
-  static const sideRequest = Duration(seconds: 15);
+  /// 思考型模型先产出 reasoning 再产出正文，15s 会把正常翻译误判为超时；
+  /// 与 `receive` 对齐到 25s，超时仍由统一文案提示并可重试。
+  static const sideRequest = Duration(seconds: 25);
 
   /// 可重试错误的退避序列：最多重试 2 次。
   static const List<Duration> retryBackoff = [

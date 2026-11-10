@@ -302,13 +302,47 @@ class LlmClient {
     }
   }
 
+  /// 非流式正文提取。OpenAI 兼容接口在不同供应商下会把正文放在
+  /// `message.content`（字符串或 content 数组）、`delta.content`、
+  /// `choices[0].text`；思考模型还可能在预算不足时只给
+  /// `reasoning_content`。这里依次兜底，避免误判为「模型没返回内容」。
   String _contentOf(Map<String, dynamic>? data) {
     final choices = data?['choices'];
     if (choices is! List || choices.isEmpty) return '';
-    final message = (choices.first as Map)['message'];
-    if (message is! Map) return '';
-    final content = message['content'];
-    return content is String ? content.trim() : '';
+    final first = choices.first;
+    if (first is! Map) return '';
+    var text = '';
+    final message = first['message'];
+    if (message is Map) {
+      text = _textOf(message['content']);
+      if (text.isEmpty) {
+        text = _textOf(message['reasoning_content']);
+        if (text.isNotEmpty) {
+          AppLogger.debug('chat content empty, fallback to reasoning_content');
+        }
+      }
+    }
+    if (text.isEmpty) {
+      final delta = first['delta'];
+      if (delta is Map) {
+        text = _textOf(delta['content']);
+        if (text.isEmpty) text = _textOf(delta['reasoning_content']);
+      }
+    }
+    if (text.isEmpty) text = _textOf(first['text']);
+    return text.trim();
+  }
+
+  String _textOf(Object? value) {
+    if (value is String) return value.trim();
+    if (value is List) {
+      return value.map(_textOf).where((e) => e.isNotEmpty).join('\n').trim();
+    }
+    if (value is Map) {
+      final text = value['text'] ?? value['content'];
+      return _textOf(text);
+    }
+    return '';
   }
 
   String? _finishReason(Map<String, dynamic>? data) {

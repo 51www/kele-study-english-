@@ -81,8 +81,10 @@ class ConversationController extends ChangeNotifier {
   String? translationError;
 
   /// 提示结果只放内存，不写主对话历史，也绝不自动发送。
+  /// `hintTextZh` 常规由同一次旁路请求返回；模型不按格式输出时才补一次翻译。
   int? hintLevel;
   String? hintText;
+  String? hintTextZh;
   String? hintError;
   bool hintLoading = false;
 
@@ -104,6 +106,7 @@ class ConversationController extends ChangeNotifier {
 
   final Map<String, String> _translations = {};
   final Set<String> _translating = {};
+  String? _failedTranslationId;
   String? _currentSpokenText;
   bool _inReply = false;
   bool _ttsWarned = false;
@@ -158,6 +161,7 @@ class ConversationController extends ChangeNotifier {
   bool get showTranslations => translateMode != 'off';
   String? translationOf(String messageId) => _translations[messageId];
   bool isTranslating(String messageId) => _translating.contains(messageId);
+  bool get canRetryTranslation => _failedTranslationId != null;
   bool get hasHint => hintText != null && hintText!.isNotEmpty;
   String? get synthesizedCostLabel =>
       sessionCost > 0 ? '${CostEstimator.format(sessionCost)}${costEstimated ? '（估算）' : ''}' : null;
@@ -580,6 +584,7 @@ class ConversationController extends ChangeNotifier {
     ttsWarning = null;
     translationError = null;
     hintText = null;
+    hintTextZh = null;
     hintError = null;
     hintLevel = null;
     wantToSayText = null;
@@ -948,7 +953,7 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     if (next == 'always') {
       final latest = messages.lastWhere(
-        (e) => !e.isUser && !e.isHint,
+        (e) => !e.isUser,
         orElse: () => const MessageRecord(
           id: '',
           sessionId: '',
@@ -964,7 +969,9 @@ class ConversationController extends ChangeNotifier {
     }
   }
 
-  /// 点按翻译：独立上下文，结果只写入该消息的 text_zh 缓存，不进主对话历史。
+  /// 点按翻译：与对话共用同一个 LlmConfig（地址 / 模型 / 密钥），
+  /// 只是独立上下文、默认非流式、低 temperature；非流式取不到正文时由
+  /// `_sideChat` 降级到流式。结果写入 text_zh 缓存，不进主历史。
   Future<void> translate(MessageRecord message) async {
     if (translateMode == 'off') return;
     if (_translations.containsKey(message.id) || _translating.contains(message.id)) return;
@@ -972,12 +979,15 @@ class ConversationController extends ChangeNotifier {
     if (text.isEmpty) return;
     _translating.add(message.id);
     translationError = null;
+    _failedTranslationId = null;
     notifyListeners();
     try {
-      final reply = await _sideChat(PromptBuilder.translateMessages(text), maxTokens: 160);
-      final zh = _firstLine(reply.text);
+      // 思考型模型会先把 token 花在 reasoning 上，160 太容易让正文为空。
+      final reply = await _sideChat(PromptBuilder.translateMessages(text), maxTokens: 512);
+      final zh = PromptBuilder.cleanTranslation(reply.text);
       if (zh.isEmpty) {
         translationError = '这次没拿到中文，可以再点一次翻译';
+        _failedTranslationId = message.id;
       } else {
         _translations[message.id] = zh;
         final updated = message.copyWith(textZh: zh);
@@ -992,13 +1002,33 @@ class ConversationController extends ChangeNotifier {
       }
     } on AppError catch (e) {
       translationError = e.detail ?? '翻译失败，可以重试';
+      _failedTranslationId = message.id;
     } catch (e) {
       AppLogger.warn('translate failed: $e');
       translationError = '翻译失败，可以重试';
+      _failedTranslationId = message.id;
     } finally {
       _translating.remove(message.id);
       if (!_disposed) notifyListeners();
     }
+  }
+
+  /// 翻译失败后重试同一条消息，英文原文始终保留。
+  void retryTranslation() {
+    final id = _failedTranslationId;
+    if (id == null) return;
+    for (final message in messages) {
+      if (message.id == id) {
+        unawaited(translate(message));
+        return;
+      }
+    }
+  }
+
+  void clearTranslationError() {
+    translationError = null;
+    _failedTranslationId = null;
+    if (!_disposed) notifyListeners();
   }
 
   /// L1–L4 提示阶梯。结果只在页面内存里展示，绝不写入 messages，也绝不自动发送。
@@ -1006,6 +1036,7 @@ class ConversationController extends ChangeNotifier {
     final chosen = level.clamp(1, 4);
     hintLevel = chosen;
     hintText = null;
+    hintTextZh = null;
     hintError = null;
     hintLoading = chosen != 1;
     notifyListeners();
@@ -1034,10 +1065,28 @@ class ConversationController extends ChangeNotifier {
           history: messages,
           chinese: chinese.trim(),
         ),
-        maxTokens: 160,
+        maxTokens: 384,
       );
-      final text = _firstLine(reply.text);
-      hintText = text.isEmpty ? '这次没拿到提示，可以再试一次' : text;
+      // 一次请求返回英文提示 + 中文对照；L4 直接用用户写的中文兜底。
+      final parsed = HintParser.parse(reply.text);
+      hintTextZh = parsed.zh ?? (chosen == 4 ? chinese.trim() : null);
+      if (parsed.en.isEmpty) {
+        hintText = '这次没拿到提示，可以再试一次';
+      } else {
+        hintText = parsed.en;
+        if (hintTextZh == null) {
+          // 模型没按 EN:/ZH: 两行输出时补一次翻译，保证提示有中文对照；
+          // 补翻失败也不影响英文提示本身。
+          try {
+            final zhReply =
+                await _sideChat(PromptBuilder.translateMessages(parsed.en), maxTokens: 512);
+            final zh = PromptBuilder.cleanTranslation(zhReply.text);
+            if (zh.isNotEmpty) hintTextZh = zh;
+          } catch (e) {
+            AppLogger.warn('hint zh fallback failed: $e');
+          }
+        }
+      }
       // L3 / L4 属于「有辅助」的回合，复盘里要能识别。
       await _incrementCounters(hint: 1, assist: chosen >= 3 ? 1 : 0);
     } on AppError catch (e) {
@@ -1099,7 +1148,7 @@ class ConversationController extends ChangeNotifier {
     try {
       final reply = await _sideChat(
         PromptBuilder.wantToSayMessages(scenario, clean),
-        maxTokens: 120,
+        maxTokens: 384,
       );
       final text = _firstLine(reply.text);
       wantToSayText = text.isEmpty ? null : text;
@@ -1118,6 +1167,7 @@ class ConversationController extends ChangeNotifier {
 
   void closeHint() {
     hintText = null;
+    hintTextZh = null;
     hintError = null;
     hintLevel = null;
     hintLoading = false;
@@ -1131,13 +1181,15 @@ class ConversationController extends ChangeNotifier {
   }
 
   /// 旁路请求：提示 / 翻译 /「我想说」走独立消息数组，绝不混入主历史。
-  Future<LlmReply> _sideChat(List<LlmMessage> prompt, {int maxTokens = 160}) async {
+  ///
+  /// 与对话共用 `_config()`（同一地址 / 模型 / 密钥）；默认非流式，但思考型模型
+  /// 常把非流式的 token 预算耗在 reasoning 上导致正文为空，此时降级到与对话
+  /// 相同的流式路径再取一次，避免「对话正常、翻译一直报错」。
+  Future<LlmReply> _sideChat(List<LlmMessage> prompt, {int maxTokens = 512}) async {
     final config = await _config();
     final chars = prompt.fold<int>(0, (sum, m) => sum + m.content.length);
     try {
-      final reply = await llmClient
-          .chat(config, prompt, maxTokens: maxTokens, temperature: 0.3)
-          .timeout(Timeouts.sideRequest);
+      final reply = await _sideChatOnce(config, prompt, maxTokens);
       await _accumulateCost(promptChars: chars, output: reply.text, usage: reply.usage);
       return reply;
     } on TimeoutException {
@@ -1147,6 +1199,45 @@ class ConversationController extends ChangeNotifier {
         retryable: true,
       );
     }
+  }
+
+  Future<LlmReply> _sideChatOnce(
+    LlmConfig config,
+    List<LlmMessage> prompt,
+    int maxTokens,
+  ) async {
+    final watch = Stopwatch()..start();
+    try {
+      return await llmClient
+          .chat(config, prompt, maxTokens: maxTokens, temperature: 0.3)
+          .timeout(Timeouts.sideRequest);
+    } on AppError catch (e) {
+      // 只在「服务端 / 模型没给出正文」时降级；鉴权、404、限流重试也无解。
+      if (e.kind != AppErrorKind.server) rethrow;
+      AppLogger.warn('side chat non-stream failed (${e.detail}), fallback to stream');
+    }
+    final buffer = StringBuffer();
+    await for (final delta in llmClient
+        .streamChat(config, prompt, maxTokens: maxTokens, temperature: 0.3)
+        .timeout(Timeouts.sideRequest)) {
+      buffer.write(delta);
+    }
+    final text = buffer.toString().trim();
+    if (text.isEmpty) {
+      throw const AppError(
+        kind: AppErrorKind.server,
+        detail: '模型没有返回正文内容，可以重试',
+        retryable: true,
+      );
+    }
+    watch.stop();
+    return LlmReply(
+      text: text,
+      usage: const LlmUsage(),
+      latencyMs: watch.elapsedMilliseconds,
+      usedStream: true,
+      model: config.model,
+    );
   }
 
   Future<void> _accumulateCost({

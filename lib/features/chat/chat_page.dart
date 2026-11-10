@@ -355,7 +355,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       if (c.translationError != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                          child: ErrorBanner(message: c.translationError!),
+                          child: ErrorBanner(
+                            message: c.translationError!,
+                            onRetry: c.canRetryTranslation ? c.retryTranslation : null,
+                            retryLabel: '重试翻译',
+                            onClose: c.clearTranslationError,
+                          ),
                         ),
                       if (c.hasHint || c.hintLoading || c.hintError != null)
                         Padding(
@@ -363,6 +368,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           child: HintResultCard(
                             level: c.hintLevel,
                             text: c.hintText,
+                            translation: c.hintTextZh,
                             error: c.hintError,
                             loading: c.hintLoading,
                             onClose: c.closeHint,
@@ -506,7 +512,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               showTranslation: c.showTranslations,
               translation: c.translationOf(message.id),
               translating: c.isTranslating(message.id),
-              onTranslate: c.translateMode == 'tap' && !message.isUser && !message.isHint
+              onTranslate: c.translateMode == 'tap' && !message.isUser
                   ? () => c.translate(message)
                   : null,
               corrections: byMessage[message.id] ?? const <Correction>[],
@@ -655,6 +661,8 @@ class MessageBubble extends StatelessWidget {
         : hint
             ? AppColors.warning.withValues(alpha: 0.12)
             : AppColors.surfaceTint;
+    final showTranslateButton =
+        showTranslation && onTranslate != null && translation == null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -713,19 +721,6 @@ class MessageBubble extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (showTranslation && onTranslate != null && translation == null) ...[
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: translating ? null : onTranslate,
-                      child: Text(
-                        translating ? '正在翻译…' : '点按翻译',
-                        style: AppText.caption.copyWith(
-                          color: isUser ? Colors.white.withValues(alpha: 0.85) : AppColors.primaryDeep,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
                   if (corrections.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
@@ -757,51 +752,92 @@ class MessageBubble extends StatelessWidget {
                         onDelete: onDeleteCorrection!,
                       ),
                   ],
-                  if (!isUser && onPlay != null)
+                  // 重听靠左、翻译靠右，中间留弹性空白，避免两个按钮挤在一起误触。
+                  if (!isUser && (onPlay != null || showTranslateButton))
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: 6),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Semantics(
-                            button: true,
-                            label: playing ? '停止朗读' : '播放朗读',
-                            child: GestureDetector(
-                              onTap: onPlay,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: playing
-                                      ? AppColors.primaryWash
-                                      : Colors.white.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                                  border: Border.all(color: AppColors.divider),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      playing ? Icons.stop_rounded : Icons.volume_up_rounded,
-                                      size: 13,
-                                      color: playing ? AppColors.primaryDeep : AppColors.inkMuted,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      playing ? '停止' : '重听',
-                                      style: AppText.caption.copyWith(
-                                        fontSize: 10,
+                          if (onPlay != null)
+                            Semantics(
+                              button: true,
+                              label: playing ? '停止朗读' : '播放朗读',
+                              child: GestureDetector(
+                                onTap: onPlay,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: playing
+                                        ? AppColors.primaryWash
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                    border: Border.all(color: AppColors.divider),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        playing ? Icons.stop_rounded : Icons.volume_up_rounded,
+                                        size: 13,
                                         color: playing ? AppColors.primaryDeep : AppColors.inkMuted,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        playing ? '停止' : '重听',
+                                        style: AppText.caption.copyWith(
+                                          fontSize: 10,
+                                          color: playing ? AppColors.primaryDeep : AppColors.inkMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                           if (message.latencyMs != null) ...[
                             const SizedBox(width: 8),
                             Text(
                               '${(message.latencyMs! / 1000).toStringAsFixed(1)}s',
                               style: AppText.caption.copyWith(fontSize: 9, color: AppColors.inkMuted),
+                            ),
+                          ],
+                          if (showTranslateButton) ...[
+                            const Spacer(),
+                            Semantics(
+                              button: true,
+                              label: translating ? '正在翻译' : '翻译这句话',
+                              child: GestureDetector(
+                                onTap: translating ? null : onTranslate,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: translating
+                                        ? AppColors.primaryWash
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                    border: Border.all(color: AppColors.divider),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.translate_rounded,
+                                        size: 13,
+                                        color: translating ? AppColors.primaryDeep : AppColors.inkMuted,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        translating ? '翻译中…' : '中文',
+                                        style: AppText.caption.copyWith(
+                                          fontSize: 10,
+                                          color: translating ? AppColors.primaryDeep : AppColors.inkMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ],

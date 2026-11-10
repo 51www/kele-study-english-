@@ -96,10 +96,12 @@ class HintResultCard extends StatelessWidget {
     required this.loading,
     required this.onClose,
     required this.onRetry,
+    this.translation,
   });
 
   final int? level;
   final String? text;
+  final String? translation;
   final String? error;
   final bool loading;
   final VoidCallback onClose;
@@ -157,6 +159,13 @@ class HintResultCard extends StatelessWidget {
             )
           else ...[
             Text(text!, style: AppText.body.copyWith(height: 1.5)),
+            if (translation != null && translation!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                '译 ${translation!}',
+                style: AppText.caption.copyWith(color: AppColors.inkSecondary, height: 1.5),
+              ),
+            ],
             const SizedBox(height: 6),
             Text('仅作参考，不会替你发送；请自己开口或点发送。', style: AppText.caption),
           ],

@@ -84,6 +84,7 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
   /// L2–L4 提示（L1 是重听/慢速，不请求模型）。
   ///
   /// 只用「最近一条 AI 发言 + 本轮指令」组成独立上下文，绝不复用主对话历史。
+  /// 一次请求同时返回英文提示与中文对照，避免再单独发一次翻译请求。
   static List<LlmMessage> hintMessages({
     required Scenario? scenario,
     required int level,
@@ -117,8 +118,11 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
         : 'AI just said: "${lastAi.textEn}"\n$instruction';
     return [
       LlmMessage.system(
-        'You help a learner continue an English role-play. Output ONE line only, no quotes, '
-        'no markdown, no explanation. '
+        'You help a learner continue an English role-play. '
+        'Output exactly TWO plain-text lines and nothing else:\n'
+        'EN: <the English hint only>\n'
+        'ZH: <a concise Simplified Chinese translation of that English hint only>\n'
+        'No reasoning, no markdown, no quotes, no extra lines. '
         'Scenario: ${scenario?.titleZh ?? 'daily conversation'}.',
       ),
       LlmMessage.user(prompt),
@@ -142,10 +146,27 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
     return [
       LlmMessage.system(
         'You are a translation engine. Translate the user English sentence into concise Simplified Chinese. '
-        'Output the translation only, no quotes, no explanation.',
+        'Output the Chinese translation on the FIRST line only: no reasoning, no English, '
+        'no quotes, no markdown, no explanation.',
       ),
       LlmMessage.user(text),
     ];
+  }
+
+  /// 翻译旁路结果清洗：取第一行含中文的正文，丢掉思考过程、解释与引号。
+  /// 没有中文时返回空串，由调用方给出「重试翻译」，不把英文原文当译文展示。
+  static String cleanTranslation(String raw) {
+    for (final item in raw.split('\n')) {
+      var line = item.trim().replaceAll('**', '').replaceAll('`', '');
+      line = line.replaceFirst(RegExp(r'^[-*>]\s+'), '').trim();
+      line = line.replaceFirst(RegExp(r'^\d+[.)]\s+'), '').trim();
+      line = line.replaceFirst(RegExp(r'^(译文|翻译|中文|译)\s*[:：]\s*'), '').trim();
+      if (line.length > 1 && line.startsWith('"') && line.endsWith('"')) {
+        line = line.substring(1, line.length - 1).trim();
+      }
+      if (RegExp(r'[\u4e00-\u9fff]').hasMatch(line)) return line;
+    }
+    return '';
   }
 
   static List<LlmMessage> phraseMessages(Scenario? scenario) {
@@ -237,5 +258,49 @@ class ReviewParser {
       out = out.substring(1, out.length - 1);
     }
     return out.trim();
+  }
+}
+
+/// 解析提示旁路的两行输出（EN: / ZH:）。模型没按格式返回时，
+/// 退化为「第一行英文、第二行含中文才当译文」，保证旧模型也能用。
+class HintParser {
+  HintParser._();
+
+  static ({String en, String? zh}) parse(String raw) {
+    var en = '';
+    var zh = '';
+    for (final item in raw.split('\n')) {
+      final line = _strip(item);
+      if (line.isEmpty || line == '```') continue;
+      final labeled = RegExp(r'^(EN|ZH)\s*[:：]\s*(.*)$', caseSensitive: false).firstMatch(line);
+      if (labeled != null) {
+        final value = _strip(labeled.group(2)!);
+        if (labeled.group(1)!.toUpperCase() == 'EN') {
+          en = value;
+        } else {
+          zh = value;
+        }
+        continue;
+      }
+      if (en.isEmpty) {
+        en = line;
+      } else if (zh.isEmpty && _hasChinese(line)) {
+        zh = line;
+      }
+    }
+    if (!_hasChinese(zh)) zh = '';
+    return (en: en, zh: zh.isEmpty ? null : zh);
+  }
+
+  static bool _hasChinese(String value) => RegExp(r'[\u4e00-\u9fff]').hasMatch(value);
+
+  static String _strip(String value) {
+    var out = value.trim().replaceAll('**', '').replaceAll('`', '');
+    out = out.replaceFirst(RegExp(r'^[-*>]\s+'), '').trim();
+    out = out.replaceFirst(RegExp(r'^(译文|翻译|中文|译)\s*[:：]\s*'), '').trim();
+    if (out.length > 1 && out.startsWith('"') && out.endsWith('"')) {
+      out = out.substring(1, out.length - 1).trim();
+    }
+    return out;
   }
 }
