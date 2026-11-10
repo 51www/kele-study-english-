@@ -10,7 +10,10 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
+import '../../core/logger.dart';
 import '../../domain/models/models.dart';
+import '../../services/tts/tts_engine.dart';
+import 'chat_widgets.dart';
 import 'conversation_controller.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -27,6 +30,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   bool _ending = false;
+  final Set<String> _expandedCorrections = {};
+  String? _playingCorrectionId;
 
   @override
   void initState() {
@@ -80,6 +85,43 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     await _controller.sendText(text);
   }
 
+  /// 「我想说」只把建议放进输入框，用户必须再按一次发送或麦克风。
+  void _applyWantToSay(String text) {
+    _input.text = text;
+    _input.selection = TextSelection.collapsed(offset: text.length);
+    _controller.clearWantToSay();
+    setState(() {});
+  }
+
+  Future<void> _playCorrection(Correction correction) async {
+    if (_playingCorrectionId == correction.id) {
+      await ref.read(ttsRouterProvider).stop();
+      if (mounted) setState(() => _playingCorrectionId = null);
+      return;
+    }
+    setState(() => _playingCorrectionId = correction.id);
+    try {
+      final settings = ref.read(settingsRepositoryProvider);
+      await ref.read(ttsRouterProvider).speak(
+            correction.improved,
+            voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
+            rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
+          );
+    } on TtsException catch (e) {
+      AppLogger.warn('correction replay failed: ${e.error.detail}');
+      if (mounted) showAppToast(context, '朗读暂不可用', error: true);
+    } finally {
+      if (mounted) setState(() => _playingCorrectionId = null);
+    }
+  }
+
+  Future<void> _deleteCorrection(Correction correction) async {
+    await ref.read(sessionRepositoryProvider).deleteCorrection(correction.id);
+    ref.invalidate(correctionsForSessionProvider(widget.sessionId));
+    if (mounted) setState(() => _expandedCorrections.remove(correction.messageId));
+  }
+
   Future<void> _end() async {
     if (_ending) return;
     final ok = await showConfirmDialog(
@@ -94,6 +136,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     if (!mounted) return;
     ref.invalidate(homeDataProvider);
     ref.invalidate(recentSessionsProvider);
+    ref.invalidate(monthlyCostProvider);
+    ref.invalidate(lastLatencyProvider);
     if (session == null) {
       context.go('/home');
       return;
@@ -122,6 +166,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     await _controller.endSession();
     ref.invalidate(homeDataProvider);
     ref.invalidate(recentSessionsProvider);
+    ref.invalidate(monthlyCostProvider);
+    ref.invalidate(lastLatencyProvider);
     if (mounted) context.pop();
   }
 
@@ -201,9 +247,72 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       if (c.error != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                          child: ErrorBanner(
-                            message: c.error!,
+                          child: ChatErrorBanner(
+                            error: c.error!,
+                            kind: c.errorKind,
                             onRetry: c.lastFailedText == null ? null : c.retry,
+                            onConfig: () => context.push('/settings/model'),
+                            onText: () async {
+                              if (c.inputMode != 'text') await c.toggleInputMode();
+                            },
+                          ),
+                        ),
+                      if (c.canResume)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: AppCard(
+                            shadow: false,
+                            color: AppColors.primaryWash,
+                            padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.play_circle_outline_rounded,
+                                    size: 16, color: AppColors.primaryDeep),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text('播放已暂停，不会自动续播', style: AppText.caption),
+                                ),
+                                TextButton(
+                                  onPressed: c.resumePlayback,
+                                  child: Text('继续播放',
+                                      style: AppText.caption
+                                          .copyWith(color: AppColors.primaryDeep)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (c.routeNotice != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: AppCard(
+                            shadow: false,
+                            color: AppColors.primaryWash,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.headphones_rounded, size: 15, color: AppColors.primaryDeep),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(c.routeNotice!, style: AppText.caption)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (c.translationError != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: ErrorBanner(message: c.translationError!),
+                        ),
+                      if (c.hasHint || c.hintLoading || c.hintError != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          child: HintResultCard(
+                            level: c.hintLevel,
+                            text: c.hintText,
+                            error: c.hintError,
+                            loading: c.hintLoading,
+                            onClose: c.closeHint,
+                            onRetry: () => showHintSheet(context, controller: c),
                           ),
                         ),
                       if (c.asrNotice != null)
@@ -275,6 +384,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         controller: c,
                         textController: _input,
                         onSend: _send,
+                        onHint: () => showHintSheet(context, controller: c),
+                        onWantToSay: () => showWantToSaySheet(
+                          context,
+                          controller: c,
+                          onUse: _applyWantToSay,
+                        ),
                       ),
                     ],
                   ),
@@ -299,6 +414,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       );
     }
     final streaming = c.state == TurnState.thinking && c.streamingText.trim().isNotEmpty;
+    final corrections = ref.watch(correctionsForSessionProvider(widget.sessionId)).asData?.value ??
+        const <Correction>[];
+    final byMessage = <String, List<Correction>>{};
+    for (final item in corrections.where((e) => !e.isDeleted && e.messageId.isNotEmpty)) {
+      byMessage.putIfAbsent(item.messageId, () => <Correction>[]).add(item);
+    }
     return ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
@@ -328,6 +449,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               message: message,
               playing: c.playingMessageId == message.id,
               onPlay: message.isUser ? null : () => c.playMessage(message),
+              showTranslation: c.showTranslations,
+              translation: c.translationOf(message.id),
+              translating: c.isTranslating(message.id),
+              onTranslate: c.translateMode == 'tap' && !message.isUser && !message.isHint
+                  ? () => c.translate(message)
+                  : null,
+              corrections: byMessage[message.id] ?? const <Correction>[],
+              correctionsExpanded: _expandedCorrections.contains(message.id),
+              onToggleCorrections: () {
+                setState(() {
+                  if (_expandedCorrections.contains(message.id)) {
+                    _expandedCorrections.remove(message.id);
+                  } else {
+                    _expandedCorrections.add(message.id);
+                  }
+                });
+              },
+              playingCorrectionId: _playingCorrectionId,
+              onPlayCorrection: _playCorrection,
+              onDeleteCorrection: _deleteCorrection,
             ),
           ],
         );
@@ -424,14 +565,32 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     this.showTranslation = false,
+    this.translation,
+    this.translating = false,
+    this.onTranslate,
     this.playing = false,
     this.onPlay,
+    this.corrections = const [],
+    this.correctionsExpanded = false,
+    this.onToggleCorrections,
+    this.playingCorrectionId,
+    this.onPlayCorrection,
+    this.onDeleteCorrection,
   });
 
   final MessageRecord message;
   final bool showTranslation;
+  final String? translation;
+  final bool translating;
+  final VoidCallback? onTranslate;
   final bool playing;
   final VoidCallback? onPlay;
+  final List<Correction> corrections;
+  final bool correctionsExpanded;
+  final VoidCallback? onToggleCorrections;
+  final String? playingCorrectionId;
+  final ValueChanged<Correction>? onPlayCorrection;
+  final ValueChanged<Correction>? onDeleteCorrection;
 
   @override
   Widget build(BuildContext context) {
@@ -491,14 +650,58 @@ class MessageBubble extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  if (showTranslation && message.textZh != null) ...[
+                  if (showTranslation && translation != null) ...[
                     const SizedBox(height: 6),
                     Text(
-                      message.textZh!,
+                      translation!,
                       style: AppText.caption.copyWith(
                         color: isUser ? Colors.white.withValues(alpha: 0.78) : AppColors.inkSecondary,
                       ),
                     ),
+                  ],
+                  if (showTranslation && onTranslate != null && translation == null) ...[
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: translating ? null : onTranslate,
+                      child: Text(
+                        translating ? '正在翻译…' : '点按翻译',
+                        style: AppText.caption.copyWith(
+                          color: isUser ? Colors.white.withValues(alpha: 0.85) : AppColors.primaryDeep,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (corrections.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: onToggleCorrections,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.edit_note_rounded,
+                            size: 13,
+                            color: isUser ? Colors.white : AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${corrections.length} 处可以更好 · ${correctionsExpanded ? '收起' : '点开看'}',
+                            style: AppText.caption.copyWith(
+                              fontSize: 10,
+                              color: isUser ? Colors.white.withValues(alpha: 0.85) : AppColors.inkSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (correctionsExpanded && onPlayCorrection != null && onDeleteCorrection != null)
+                      CorrectionPanel(
+                        corrections: corrections,
+                        playingId: playingCorrectionId,
+                        onPlay: onPlayCorrection!,
+                        onDelete: onDeleteCorrection!,
+                      ),
                   ],
                   if (!isUser && onPlay != null)
                     Padding(
@@ -657,11 +860,15 @@ class _TalkComposer extends StatelessWidget {
     required this.controller,
     required this.textController,
     required this.onSend,
+    required this.onHint,
+    required this.onWantToSay,
   });
 
   final ConversationController controller;
   final TextEditingController textController;
   final VoidCallback onSend;
+  final VoidCallback onHint;
+  final VoidCallback onWantToSay;
 
   @override
   Widget build(BuildContext context) {
@@ -684,6 +891,18 @@ class _TalkComposer extends StatelessWidget {
                   label: voiceMode ? '文字输入' : '语音输入',
                   onTap: c.toggleInputMode,
                 ),
+                const SizedBox(width: 6),
+                _ModeChip(
+                  icon: Icons.lightbulb_outline_rounded,
+                  label: '提示',
+                  onTap: onHint,
+                ),
+                const SizedBox(width: 6),
+                _ModeChip(
+                  icon: Icons.help_outline_rounded,
+                  label: '我想说',
+                  onTap: onWantToSay,
+                ),
                 const Spacer(),
                 if (c.state == TurnState.speaking)
                   TextButton.icon(
@@ -696,16 +915,25 @@ class _TalkComposer extends StatelessWidget {
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primaryDeep,
                       minimumSize: const Size(0, 28),
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   )
                 else
-                  Text(
-                    c.asrChecking ? '正在检测语音识别…' : c.asrProviderLabel,
-                    style: AppText.caption.copyWith(fontSize: 10, color: AppColors.inkMuted),
+                  Flexible(
+                    child: Text(
+                      c.asrChecking ? '检测识别…' : c.asrProviderLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption.copyWith(fontSize: 10, color: AppColors.inkMuted),
+                    ),
                   ),
               ],
+            ),
+            const SizedBox(height: 6),
+            TranslateModePicker(
+              mode: c.translateMode,
+              onChanged: (mode) => c.setTranslateMode(mode),
             ),
             const SizedBox(height: 6),
             if (voiceMode) _TalkZone(controller: c) else _TextRow(

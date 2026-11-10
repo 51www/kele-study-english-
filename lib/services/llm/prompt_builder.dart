@@ -79,10 +79,14 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
     ];
   }
 
+  /// L2–L4 提示（L1 是重听/慢速，不请求模型）。
+  ///
+  /// 只用「最近一条 AI 发言 + 本轮指令」组成独立上下文，绝不复用主对话历史。
   static List<LlmMessage> hintMessages({
     required Scenario? scenario,
     required int level,
     required List<MessageRecord> history,
+    String chinese = '',
   }) {
     final lastAi = history.lastWhere(
       (m) => m.role == 'assistant' && !m.isHint,
@@ -96,16 +100,39 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
       ),
     );
     final instruction = switch (level) {
-      2 => 'Give a short hint in Chinese about what the user could say next. Do not give the English answer.',
-      3 => 'Give only the first 3-5 English words the user could say next, ending with "...".',
-      _ => 'Give one complete natural English sentence the user could say next.',
+      2 => 'Give 3-5 English keywords OR one short sentence pattern the learner could use next. '
+          'Never give a complete sentence, never explain.',
+      3 => 'Give exactly ONE complete natural English sentence the learner could say next. '
+          'No alternatives, no quotes, no explanation.',
+      4 => 'Translate the learner\'s Chinese idea into exactly ONE natural English sentence '
+          'they could say out loud. Output English only.',
+      _ => 'Give exactly ONE complete natural English sentence the learner could say next. '
+          'No quotes, no explanation.',
     };
+    final prompt = level == 4
+        ? 'AI just said: "${lastAi.textEn}"\n'
+            'Learner wants to say in Chinese: "$chinese"\n$instruction'
+        : 'AI just said: "${lastAi.textEn}"\n$instruction';
     return [
       LlmMessage.system(
-        'You help a learner continue an English role-play. Output ONE line only, no quotes, no explanation. '
+        'You help a learner continue an English role-play. Output ONE line only, no quotes, '
+        'no markdown, no explanation. '
         'Scenario: ${scenario?.titleZh ?? 'daily conversation'}.',
       ),
-      LlmMessage.user('AI just said: "${lastAi.textEn}"\n$instruction'),
+      LlmMessage.user(prompt),
+    ];
+  }
+
+  /// 「我想说」：中文 → 一句可直接说的英文（同样走独立上下文）。
+  static List<LlmMessage> wantToSayMessages(Scenario? scenario, String chinese) {
+    return [
+      LlmMessage.system(
+        'You are an English speaking coach. Convert the learner\'s Chinese idea into '
+        'exactly ONE short, natural English sentence they can say out loud. '
+        'Output the English sentence only: no Chinese, no quotes, no explanation. '
+        'Scenario: ${scenario?.titleZh ?? 'daily conversation'}.',
+      ),
+      LlmMessage.user(chinese),
     ];
   }
 

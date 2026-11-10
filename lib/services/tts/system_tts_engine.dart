@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../core/errors.dart';
 import '../../core/logger.dart';
+import '../../core/timeouts.dart';
 import 'tts_engine.dart';
 
 /// 系统 TTS 兜底：直接朗读，不产生可缓存的音频文件。
@@ -57,7 +58,7 @@ class SystemTtsEngine implements TtsEngine {
       _speaking = true;
       final started = DateTime.now();
       final code = await _tts.speak(text).timeout(
-        const Duration(seconds: 30),
+        Timeouts.systemTts,
         onTimeout: () {
           AppLogger.warn('system tts completion timeout, treat as done');
           return 1;

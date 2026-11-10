@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/errors.dart';
 import '../../core/logger.dart';
+import '../../core/timeouts.dart';
 import 'llm_error_mapper.dart';
 import 'llm_models.dart';
 import 'sse_parser.dart';
@@ -29,9 +30,9 @@ class LlmClient {
   LlmClient({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 90),
-              sendTimeout: const Duration(seconds: 15),
+              connectTimeout: Timeouts.connect,
+              receiveTimeout: Timeouts.receive,
+              sendTimeout: Timeouts.send,
             ));
 
   final Dio _dio;
@@ -78,7 +79,7 @@ class LlmClient {
           if (mapped.retryable && attempt < 2 && e.type != DioExceptionType.cancel) {
             attempt++;
             AppLogger.warn('chat retry #$attempt after ${e.type}');
-            await Future<void>.delayed(Duration(milliseconds: attempt == 1 ? 1200 : 3000));
+            await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
             continue;
           }
           rethrow;
@@ -87,7 +88,7 @@ class LlmClient {
         if ((status == 429 || status >= 500) && attempt < 2) {
           attempt++;
           AppLogger.warn('chat retry #$attempt after HTTP $status');
-          await Future<void>.delayed(Duration(milliseconds: attempt == 1 ? 1200 : 3000));
+          await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
           continue;
         }
         break;
@@ -168,7 +169,7 @@ class LlmClient {
           if (mapped.retryable && attempt < 2 && e.type != DioExceptionType.cancel) {
             attempt++;
             AppLogger.warn('stream retry #$attempt after ${e.type}');
-            await Future<void>.delayed(Duration(milliseconds: attempt == 1 ? 1200 : 3000));
+            await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
             continue;
           }
           rethrow;
@@ -177,7 +178,7 @@ class LlmClient {
         if ((code == 429 || code >= 500) && attempt < 2) {
           attempt++;
           AppLogger.warn('stream retry #$attempt after HTTP $code');
-          await Future<void>.delayed(Duration(milliseconds: attempt == 1 ? 1200 : 3000));
+          await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
           continue;
         }
         break;
@@ -224,7 +225,7 @@ class LlmClient {
         config.modelsUrl,
         options: Options(
           headers: {'Authorization': 'Bearer ${config.apiKey}'},
-          receiveTimeout: const Duration(seconds: 10),
+          receiveTimeout: Timeouts.checkModels,
           validateStatus: (status) => true,
         ),
       );
@@ -257,7 +258,7 @@ class LlmClient {
           'max_tokens': 80,
           'temperature': 0,
         },
-        options: _options(config).copyWith(receiveTimeout: const Duration(seconds: 25)),
+        options: _options(config).copyWith(receiveTimeout: Timeouts.checkChat),
       );
       watch.stop();
       final status = response.statusCode ?? 0;

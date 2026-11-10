@@ -9,25 +9,23 @@ import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
 
-final cacheBytesProvider = FutureProvider<double>((ref) async {
-  final store = ref.watch(localStoreProvider);
-  final rows = await store.ttsCache();
-  return rows.fold<double>(0, (sum, e) => sum + e.bytes);
-});
-
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider);
-    final cacheAsync = ref.watch(cacheBytesProvider);
     final engine = settings[SettingsKeys.ttsEngine] ?? 'edge';
     final voice = settings[SettingsKeys.ttsVoice] ?? 'en-US-AriaNeural';
     final rate = double.tryParse(settings[SettingsKeys.ttsRate] ?? '1.0') ?? 1.0;
     final level = settings[SettingsKeys.level] ?? 'B1';
     final correction = settings[SettingsKeys.correctionMode] ?? 'gentle';
-    final translate = settings[SettingsKeys.translateDefault] == 'on';
+    final translateRaw = settings[SettingsKeys.translateDefault] ?? 'off';
+    final translateLabel = switch (translateRaw) {
+      'tap' => '点按翻译',
+      'always' || 'on' => '常开字幕',
+      _ => '关闭',
+    };
     final autoPlay = settings[SettingsKeys.ttsAutoPlay] != 'false';
     final targetMinutes = int.tryParse(settings[SettingsKeys.targetMinutes] ?? '10') ?? 10;
     final budget = int.tryParse(settings[SettingsKeys.monthlyBudget] ?? '50') ?? 50;
@@ -78,12 +76,12 @@ class SettingsPage extends ConsumerWidget {
                 SettingRow(
                   icon: Icons.speed_rounded,
                   title: '语速',
-                  value: '${rate.toStringAsFixed(1)}x',
+                  value: rate == 0.75 ? '0.75x' : '${rate.toStringAsFixed(1)}x',
                   onTap: () => _pick(
                     context,
                     title: '朗读语速',
-                    options: const ['0.8x', '1.0x', '1.2x'],
-                    current: '${rate.toStringAsFixed(1)}x',
+                    options: const ['0.75x', '0.8x', '1.0x', '1.2x'],
+                    current: rate == 0.75 ? '0.75x' : '${rate.toStringAsFixed(1)}x',
                     onPick: (value) => set(SettingsKeys.ttsRate, value.replaceAll('x', '')),
                   ),
                 ),
@@ -149,12 +147,22 @@ class SettingsPage extends ConsumerWidget {
                 const Divider(height: 1, color: AppColors.divider),
                 SettingRow(
                   icon: Icons.translate_rounded,
-                  title: '默认显示翻译',
-                  subtitle: '对话气泡默认附带中文',
-                  trailing: Switch(
-                    value: translate,
-                    activeTrackColor: AppColors.primary,
-                    onChanged: (value) => set(SettingsKeys.translateDefault, value ? 'on' : 'off'),
+                  title: '翻译默认方式',
+                  subtitle: '关闭 / 点按 / 常开双语字幕，对话页可随时切换',
+                  value: translateLabel,
+                  onTap: () => _pick(
+                    context,
+                    title: '翻译默认方式',
+                    options: const ['关闭', '点按翻译', '常开字幕'],
+                    current: translateLabel,
+                    onPick: (value) => set(
+                      SettingsKeys.translateDefault,
+                      switch (value) {
+                        '点按翻译' => 'tap',
+                        '常开字幕' => 'always',
+                        _ => 'off',
+                      },
+                    ),
                   ),
                 ),
                 const Divider(height: 1, color: AppColors.divider),
@@ -188,57 +196,14 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const SectionTitle(title: '数据'),
+          const SectionTitle(title: '数据与存储'),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            child: Column(
-              children: [
-                SettingRow(
-                  icon: Icons.sd_storage_outlined,
-                  title: '语音缓存',
-                  value: cacheAsync.when(
-                    data: (bytes) => _bytesLabel(bytes),
-                    loading: () => '计算中',
-                    error: (_, __) => '未知',
-                  ),
-                  subtitle: '清理后下次朗读会重新生成',
-                  onTap: () async {
-                    final paths = (await ref.read(localStoreProvider).ttsCache()).map((e) => e.hash).toList();
-                    await ref.read(sessionRepositoryProvider).clearCache(paths);
-                    ref.invalidate(cacheBytesProvider);
-                    if (context.mounted) showAppToast(context, '语音缓存已清理');
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.divider),
-                SettingRow(
-                  icon: Icons.delete_sweep_outlined,
-                  title: '清空练习数据',
-                  danger: true,
-                  subtitle: '删除全部对话、复盘与表达本（保留密钥与设置）',
-                  onTap: () async {
-                    final ok = await showConfirmDialog(
-                      context,
-                      title: '清空练习数据？',
-                      message: '所有对话记录、复盘和表达本都会被删除，且无法恢复。密钥与设置会保留。',
-                      confirmLabel: '确认清空',
-                      danger: true,
-                    );
-                    if (!ok) return;
-                    final repo = ref.read(sessionRepositoryProvider);
-                    final sessions = await repo.list();
-                    for (final session in sessions) {
-                      await repo.deleteSession(session.id);
-                    }
-                    final phrases = await repo.phrases();
-                    for (final phrase in phrases) {
-                      await repo.deletePhrase(phrase.id);
-                    }
-                    ref.invalidate(homeDataProvider);
-                    ref.invalidate(recentSessionsProvider);
-                    if (context.mounted) showAppToast(context, '练习数据已清空');
-                  },
-                ),
-              ],
+            child: SettingRow(
+              icon: Icons.storage_rounded,
+              title: '数据与存储',
+              subtitle: '语音缓存、清空练习数据',
+              onTap: () => context.push('/settings/data'),
             ),
           ),
           const SizedBox(height: 24),
@@ -274,12 +239,6 @@ class SettingsPage extends ConsumerWidget {
   };
 
   String _voiceLabel(String voice) => _voices[voice] ?? voice;
-
-  String _bytesLabel(double bytes) {
-    if (bytes <= 0) return '0 MB';
-    final mb = bytes / (1024 * 1024);
-    return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
-  }
 
   Future<String?> _pick(
     BuildContext context, {

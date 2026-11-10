@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/logger.dart';
+import '../../core/timeouts.dart';
 
 /// 播放 TTS 音频。
 ///
@@ -46,7 +47,7 @@ class AudioPlayerService {
     );
     try {
       final source = await _buildSource(bytes, mimeType);
-      await _player.setAudioSource(source).timeout(const Duration(seconds: 10));
+      await _player.setAudioSource(source).timeout(Timeouts.playerLoad);
       AppLogger.debug(
         'player source ready duration=${_player.duration} '
         'elapsed=${DateTime.now().difference(started).inMilliseconds}ms',

@@ -10,6 +10,7 @@ import '../../app/widgets/common.dart';
 import '../../core/errors.dart';
 import '../../core/formatters.dart';
 import '../../domain/models/models.dart';
+import '../../services/llm/cost_estimator.dart';
 import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
 import '../../services/tts/tts_engine.dart';
@@ -90,22 +91,35 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
           detail: '还没有配置模型密钥，无法生成复盘。',
         );
       }
-      final reply = await ref.read(llmClientProvider).chat(
-            LlmConfig(baseUrl: profile.baseUrl, apiKey: key, model: profile.model),
-            PromptBuilder.reviewMessages(scenario: scenario, history: _messages),
-            maxTokens: 900,
-            temperature: 0.4,
-          );
-      final result = ReviewParser.parse(reply.text);
+      final config = LlmConfig(baseUrl: profile.baseUrl, apiKey: key, model: profile.model);
+      final prompt = PromptBuilder.reviewMessages(scenario: scenario, history: _messages);
+      final client = ref.read(llmClientProvider);
+      var result = ReviewParser.parse(
+        (await client.chat(config, prompt, maxTokens: 900, temperature: 0.4)).text,
+      );
+      if (result.degraded) {
+        // 结构化输出不稳定：自动重试一次（更低温度），仍失败才给失败态。
+        result = ReviewParser.parse(
+          (await client.chat(config, prompt, maxTokens: 900, temperature: 0.2)).text,
+        );
+      }
       if (!mounted) return;
       if (result.degraded) {
-        // 模型没有按格式返回：显示失败态 + 重试，不展示半截内容。
+        // 模型两次都没有按格式返回：显示失败态 + 重试，不展示半截内容。
         setState(() {
           _generating = false;
           _error = '本次未能生成总结，模型返回格式异常，请重试一次。';
         });
         return;
       }
+      result = ReviewResult(
+        highlight: result.highlight,
+        corrections: result.corrections,
+        phrases: result.phrases,
+        nextTip: result.nextTip,
+        promptCount: session.hintCount,
+        degraded: false,
+      );
       // 纠错入库：尽量回链到原文所在的用户消息。
       final now = DateTime.now().microsecondsSinceEpoch;
       final rows = <Correction>[];
@@ -264,7 +278,13 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
       child: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null && _session == null
-              ? Center(child: Text(_error!, style: AppText.bodySecondary))
+              ? EmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: '没能打开这次复盘',
+                  message: _error!,
+                  actionLabel: '重新加载',
+                  action: _load,
+                )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   children: [
@@ -340,6 +360,12 @@ class _SummaryCard extends StatelessWidget {
               _Metric(label: '开口', value: '${session.turnCount} 轮'),
               _Metric(label: '提示', value: '${session.hintCount} 次'),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '有辅助 ${session.assistTurns} 回合 · 翻译 ${session.translateCount} 次'
+            '${session.costEstimate == null ? '' : ' · 本次 ${CostEstimator.format(session.costEstimate!)}（估算）'}',
+            style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.82)),
           ),
         ],
       ),

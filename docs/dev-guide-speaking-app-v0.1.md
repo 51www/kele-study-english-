@@ -42,8 +42,8 @@
 lib/
   main.dart                        # runApp(ProviderScope(child: App()))
   app/
-    app.dart                       # MaterialApp.router + 全局错误边界
-    router.dart                    # go_router 路由表
+    app.dart                       # MaterialApp.router + 全局错误边界 + go_router 路由表
+    providers.dart                 # Riverpod 依赖注入与派生统计
     shell.dart                     # AppShell：承载 4 个 Tab
     theme/
       app_colors.dart              # 对应 UI 规范 §3.1
@@ -66,11 +66,10 @@ lib/
       empty_state.dart
       error_banner.dart
   core/
-    result.dart                    # Result<T> / Failure
     errors.dart                    # AppError 枚举 + 分类
     logger.dart                    # 脱敏日志
     formatters.dart                # 时长、日期、百分比
-    debouncer.dart
+    timeouts.dart                  # 统一超时表（M2/T2.1，所有环节引用同一处）
   data/
     db/
       app_database.dart            # Drift 数据库 + schemaVersion + 迁移
@@ -95,10 +94,12 @@ lib/
       save_phrase.dart
   services/
     llm/
-      llm_client.dart              # 抽象
-      openai_compatible_client.dart
+      llm_client.dart              # OpenAI 兼容客户端（非流式 / 流式 / 连通性自检）
+      llm_models.dart              # LlmMessage / LlmUsage / LlmReply / LlmConfig
+      llm_error_mapper.dart        # 错误四分类
       sse_parser.dart
-      llm_error_mapper.dart
+      prompt_builder.dart          # 场景 / 复盘 / 提示 / 翻译 / 我想说 提示词
+      cost_estimator.dart         # usage 优先、字符数兜底的成本估算（M4/T4.5）
     asr/
       asr_engine.dart
       system_asr_engine.dart
@@ -111,7 +112,8 @@ lib/
       tts_router.dart
       edge_tts_engine.dart
       system_tts_engine.dart
-      tts_cache.dart
+      tts_cache.dart               # 进程内 LRU（80MB）
+      tts_disk_cache.dart         # 落盘 LRU + tts_cache 表索引（M2/T2.3）
     audio/
       audio_session_manager.dart
       audio_recorder.dart
@@ -122,15 +124,21 @@ lib/
     review/
       review_service.dart
   features/
-    home/            home_page.dart / home_controller.dart / widgets/
-    scenario/        scenario_page.dart / widgets/
-    conversation/    conversation_page.dart / conversation_controller.dart / widgets/
-    review/          review_page.dart / review_controller.dart / widgets/
-    history/         history_page.dart / session_detail_page.dart / widgets/
-    phrasebook/      phrasebook_page.dart / widgets/
-    settings/        settings_page.dart / widgets/
-    profile/         model_profile_page.dart / model_profile_controller.dart
+    home/            home_page.dart（含「上次卡在哪」与「方法 / 技巧」栏目入口）
+    scenario/        scenario_page.dart
+    chat/            chat_page.dart / conversation_controller.dart /
+                     chat_widgets.dart（HintSheet / WantToSaySheet / TranslateModePicker /
+                     HintResultCard / CorrectionPanel）/ copy.dart（错误文案）
+    review/          review_page.dart
+    history/         history_page.dart（详情复用 /review/:id）
+    phrasebook/      phrasebook_page.dart
+    settings/        settings_page.dart / model_config_page.dart / asr_config_page.dart /
+                     data_settings_page.dart（/settings/data，语音缓存与清空数据）
+    me/              me_page.dart（含成本与延迟统计）
+    tips/            tips_repository.dart（TipArticle）/ tips_page.dart / tips_detail_page.dart
 ```
+
+代码实现与早期规划的两处差异（以代码为准）：对话页目录为 `features/chat/`（不是 `conversation/`）；模型配置在 `features/settings/` 内（没有独立 `profile/` 目录）。路由表集中在 `app/app.dart`。
 
 ### 1.2 模块 ↔ 需求功能映射
 
@@ -199,6 +207,13 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `ConversationController` | feature | 回合状态机、取消、降级、计时 | 上述 service + UseCases | 状态枚举 + 消息列表 |
 | `SubmitTurn` | usecase | 识别结果 → 落库 → 请求 → 流式回调 → 落库 | `LlmClient`、`SessionRepository` | 无状态 |
 | `ReviewService` | service | 会话 → 结构化复盘（容错解析） | `LlmClient`、`PromptBuilder` | 无状态 |
+| `Timeouts` | core | 统一超时表，所有网络 / 识别 / 朗读环节引用 | — | 常量 |
+| `TtsDiskCache` | service | 朗读音频落盘 LRU + `tts_cache` 表索引 | `LocalStore`、`path_provider` | 索引 + 缓存目录 |
+| `CostEstimator` | service | `usage` 优先、字符数兜底的成本样本 | `LlmUsage` | 无状态 |
+| `ChatErrorView` | feature | 错误四分类 → 文案 + 下一步行动 | `AppErrorKind` | 无状态 |
+| `TipsRepository` | feature | 本地 JSON 文章包 → `TipArticle` 列表 | `rootBundle` | 无状态 |
+
+> 实现说明：复盘生成逻辑目前内联在 `features/review/review_page.dart`（含一次自动重试与 `ReviewParser` 容错解析），尚未抽出独立 `ReviewService` 类；`PromptBuilder` 位于 `services/llm/`（不是早期规划的 `services/prompt/`）。
 
 ### 2.3 依赖注入
 
@@ -389,7 +404,8 @@ dio / plugin 异常
 | `tts.autoPlay` | bool | `true` |
 | `practice.level` | string | `B1` |
 | `practice.correctionMode` | string | `gentle` |
-| `practice.translateDefault` | string | `off` |
+| `practice.translateDefault` | string | `off` / `tap` / `always` |
+| `cost.monthlyBudget` | string | `50` |
 | `practice.inputMode` | string | `voice` |
 | `practice.targetMinutes` | int | `10` |
 | `data.cacheLimitMb` | int | `80` |
@@ -413,11 +429,13 @@ dio / plugin 异常
 | 连接状态 | `last_check_status` | `never` | `ok`/`failed`/`never` 三态 | 首页黄条/红条 |
 | `tts.engine` | setting | `edge` | 枚举 `edge`/`system` | 非法值回落 `edge` |
 | `tts.voice` | setting | `en-US-AriaNeural` | 必须在该引擎音色表中；否则用引擎默认 | 静默回落 + 设置页提示 |
-| `tts.rate` | setting | `1.0` | 0.7–1.3，步进 0.05 | 越界钳制 |
+| `tts.rate` | setting | `1.0` | 0.7–1.3；设置页档位 0.75 / 0.8 / 1.0 / 1.2 | 越界钳制 |
 | `tts.autoPlay` | setting | `true` | bool | — |
 | `practice.level` | setting | `B1` | A2/B1/B2 | 回落 B1 |
 | `practice.correctionMode` | setting | `gentle` | `gentle`；`strict` 仅占位 | 选 strict 时提示"暂未开放" |
-| `practice.translateDefault` | setting | `off` | `off`/`tap`/`always` | 回落 `off` |
+| `practice.translateDefault` | setting | `off` | `off`/`tap`/`always`；对话页可临时切换并写回 | 回落 `off` |
+| `cost.monthlyBudget` | setting | `50` | ¥0/20/50/100；月度累计 ≥ 预算时「我的」提示 | 回落 50 |
+| 超时表 | `core/timeouts.dart` | 见文件 | 连接 10s / 响应 25s / 首字 6s / 慢网提示 15s / 旁路 15s | 统一引用，不在业务层写死 |
 | `practice.inputMode` | setting | `voice` | `voice`/`text` | 回落 `voice` |
 | `practice.targetMinutes` | setting | `10` | 5/10/15 | 回落 10 |
 | `data.cacheLimitMb` | setting | `80` | 20–300 | 钳制 |
@@ -429,6 +447,20 @@ dio / plugin 异常
 | `asr.experimental.baseUrl` | setting | `https://aiping.cn/api/v1` | `http(s)://` 开头 | 回落默认值 |
 | `asr.experimental.model` | setting | `MiMo-V2.6-Flash` | 必填 | 回落默认值 |
 | `asr_experimental_api_key` | SecureStorage | 空 | 留空复用对话密钥 | — |
+
+### 5.1 发布配置（包名与签名）
+
+| 项 | 值 | 说明 |
+|---|---|---|
+| 正式包名 | `com.kele.saylo` | `android/app/build.gradle.kts` 的 `applicationId` 与 `namespace` 一致；`MainActivity` 同步移到 `com/kele/saylo/`；**发布后不可更改** |
+| 版本 | `1.0.0+1`（`pubspec.yaml`） | `versionCode=1` / `versionName=1.0.0` |
+| 签名密钥库 | `android/keystore/saylo-release.jks` | JKS / RSA 2048 / 有效期 10000 天 / alias `saylo` / `CN=Saylo, O=Kele, C=CN` |
+| 签名配置 | `android/key.properties` | 由 `android/key.properties.example` 复制填写；含 `storePassword` / `keyPassword` / `keyAlias` / `storeFile` |
+| 签名策略 | debug 与 release 共用 `release` signingConfig | 个人自用，避免真机覆盖安装出现 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`；缺 `key.properties` 时 release 退回 debug 签名并打 Gradle 警告 |
+| 忽略规则 | 根 `.gitignore` / `android/.gitignore` | `key.properties`、`android/keystore/`、`*.jks` 等绝不提交 |
+| 证书 SHA-256 | `69:DE:37:69:EF:B9:19:42:5A:55:B3:B4:55:C3:48:7B:4A:47:19:4C:B6:63:AC:5B:A7:A8:75:4B:19:5C:C3:B8` | 用 `apksigner verify --print-certs` 核对 APK 与密钥库 |
+
+> 密钥库与 `key.properties` 必须一起离线备份；丢失后无法为已安装的 App 提供可升级的包。旧测试包 `com.kele.kele_speak` 与正式包是两个独立应用，数据不互通。
 
 **测试连接流程**（三态）
 
@@ -481,13 +513,16 @@ dio / plugin 异常
 |---|---|---|
 | 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、`CategoryChips`、`SceneRail`、`HomeFoot` |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度）、`LevelTag`、`TargetPhraseList`（可试听）、`StartDock` |
-| 对话 `chat` | `ConversationPage` | `ChatHeader`（标题/角色/结束）、`ThinProgressBar`、`MessageList`、`AiBubble`、`UserBubble`、`ComposerBar`、`HintRail`、`TalkZone`（波形+大圆按钮）、`TextComposer` |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（翻译 / 纠错标记展开）、`TranslateModePicker`、`HintSheet`（L1–L4）、`HintResultCard`、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
-| 设置 `settings` | `SettingsPage` | `SetIntro`、`SettingGroup`、`LlmConfigCard`（`AppField`+`TestConnectionRow`）、`VoicePicker`、`SpeedSlider`、`AppSwitchRow`、`SegmentedControl`、`RestoreButton` |
+| 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
+| 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
 | 模型配置（设置内区块） | `ModelProfileSheet` / `ModelProfilePage` | `AppField`×3、`FetchModelsButton`、`ConnResult`、`SaveButton` |
 | 记录列表 | `HistoryPage` | `SessionTile`、`EmptyState` |
 | 记录详情 | `SessionDetailPage` | `MessageList(readOnly)`、`CorrectionList` |
 | 表达本 | `PhrasebookPage` | `PhraseTile`、`EmptyState`、`FilterChips` |
+| 技巧列表 `/tips` | `TipsPage` | 分类筛选 Chip、文章卡、`EmptyState`、`ErrorBanner` |
+| 技巧详情 `/tips/:id` | `TipsDetailPage` | 摘要卡 + 分类标签、全文段落 / 小标题 / `[图：说明]` 占位、固定「出处」块、底部版权说明 |
 
 ### 6.4 与规范的已知差异（落地时必须处理）
 
@@ -498,6 +533,10 @@ dio / plugin 异常
 | 3 | 原型"表达本"是浮层入口 | 落地为独立页面（`PhrasebookPage`），保留浮层作为快速预览 |
 | 4 | 规范未定义底部 Sheet 是否可拖拽 | 按固定圆角容器实现，不做拖拽手势 |
 | 5 | 规范英文字体 Poppins | 若包体受限，用系统字体并保留字号/字重；不为字体阻塞 M0 |
+| 6 | 里程碑 §10 写「发现页内的栏目」，当前信息架构没有发现页 | 落地为首页（练习 Tab）内的「方法 / 技巧」栏目区块，不新增独立 Tab、不改底部导航；是否要独立发现页仍需用户确认 |
+| 7 | 里程碑 §10 写 8 条文章，`articles.json` 实际 7 条 | 以数据文件 `count=7` 为准；后续新增文章只替换 JSON，不做服务端接口 |
+| 8 | 里程碑 T2.7 端侧 Whisper | 可选项，当前不启用；识别链路为独立 ASR 接口 → 系统识别 → 实验性对话模型识别，不引入端侧推理依赖 |
+| 9 | 早期规划的记录详情页 `SessionDetailPage` | 详情复用 `/review/:id` 的只读转写与纠错展开，未新增独立页面 |
 
 ---
 
@@ -520,6 +559,7 @@ dio / plugin 异常
 | `permission_handler` | 13.0.2 | 权限 | Android 14+ 部分权限语义变化 |
 | `wakelock_plus` | 1.8.2 | 常亮 | 长时间常亮耗电；离开页面必须释放 |
 | `connectivity_plus` | 7.3.2 | 网络状态 | 只反映链路，不代表服务可达 |
+| `url_launcher` | 6.3.3（MIT，2026-11 缓存版本） | 技巧详情原文链接用系统浏览器打开 | Android 11+ 需在 Manifest 声明 VIEW / http(s) queries；替代方案是站内 WebView（未采用，避免新增依赖） |
 
 **许可证提醒**：`piper` GPL、`aeneas` AGPL、`libreTranslate` AGPL 不要引入；`edge_tts` 上游为 LGPLv3（本项目只调用远程服务，不拷贝其源码）。
 
@@ -537,6 +577,9 @@ dio / plugin 异常
 | 测试边界 | 必须有单测：`SseParser`、`LlmErrorMapper`、`PromptBuilder`、`TtsCache` 键生成、判分/统计（M3 后） |
 | 真机门槛 | 每个里程碑结束必须在一台 Android 真机跑通，不以模拟器代替 |
 | 依赖新增 | 引入新包前记录：用途、许可证、最近更新时间、替代方案 |
+| 超时 | 一律引用 `core/timeouts.dart`；新增等待时间先改表再改代码，禁止在业务层写 `Duration(seconds: x)` |
+| 旁路请求 | 提示 / 翻译 /「我想说」走 `PromptBuilder` 的独立消息数组，绝不写入主 `message` 历史，也不自动发送 |
+| 朗读缓存 | 内存 LRU 与落盘索引共用同一哈希键；清理入口必须同时清内存、文件与 `tts_cache` 表 |
 
 ---
 

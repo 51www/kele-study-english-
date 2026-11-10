@@ -24,6 +24,8 @@ class TtsCache {
   int get hits => _hits;
   int get misses => _misses;
 
+  bool contains(String key) => _entries.containsKey(key);
+
   Uint8List? get(String key) {
     final hit = _entries.remove(key);
     if (hit == null) {
@@ -48,6 +50,11 @@ class TtsCache {
       final removed = _entries.remove(oldest);
       if (removed != null) _bytes -= removed.length;
     }
+  }
+
+  void remove(String key) {
+    final removed = _entries.remove(key);
+    if (removed != null) _bytes -= removed.length;
   }
 
   void clear() {

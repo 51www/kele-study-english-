@@ -25,6 +25,13 @@ String formatDate(DateTime time) {
   return '${time.year}-${two(time.month)}-${two(time.day)}';
 }
 
+/// 朗读缓存等本地文件体积的展示格式。
+String formatBytes(double bytes) {
+  if (bytes <= 0) return '0 MB';
+  final mb = bytes / (1024 * 1024);
+  return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
+}
+
 String greetingForNow() {
   final hour = DateTime.now().hour;
   if (hour < 6) return '夜深了';

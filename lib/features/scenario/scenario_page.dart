@@ -64,13 +64,25 @@ class _ScenarioPageState extends ConsumerState<ScenarioPage> {
       ),
       error: (error, _) => PageScaffold(
         title: '场景',
-        child: Center(child: Text('加载失败：$error', style: AppText.bodySecondary)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ErrorBanner(
+            message: '场景加载失败：$error',
+            onRetry: () => ref.invalidate(scenarioProvider(widget.scenarioId)),
+          ),
+        ),
       ),
       data: (scenario) {
         if (scenario == null) {
-          return const PageScaffold(
+          return PageScaffold(
             title: '场景',
-            child: Center(child: Text('场景不存在', style: AppText.bodySecondary)),
+            child: EmptyState(
+              icon: Icons.search_off_rounded,
+              title: '没有找到这个场景',
+              message: '它可能已被删除，回首页选一个场景继续练吧。',
+              actionLabel: '回首页',
+              action: () => context.go('/home'),
+            ),
           );
         }
         return PageScaffold(

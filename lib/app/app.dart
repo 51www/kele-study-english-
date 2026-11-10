@@ -13,8 +13,11 @@ import '../features/phrasebook/phrasebook_page.dart';
 import '../features/review/review_page.dart';
 import '../features/scenario/scenario_page.dart';
 import '../features/settings/asr_config_page.dart';
+import '../features/settings/data_settings_page.dart';
 import '../features/settings/model_config_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/tips/tips_detail_page.dart';
+import '../features/tips/tips_page.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -60,6 +63,22 @@ final router = GoRouter(
       path: '/settings/asr',
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, __) => _slide(const AsrConfigPage()),
+    ),
+    GoRoute(
+      path: '/settings/data',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, __) => _slide(const DataSettingsPage()),
+    ),
+    GoRoute(
+      path: '/tips',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, __) => _slide(const TipsPage()),
+    ),
+    GoRoute(
+      path: '/tips/:id',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, state) =>
+          _slide(TipsDetailPage(articleId: state.pathParameters['id']!)),
     ),
     GoRoute(path: '/', redirect: (_, __) => '/home'),
   ],

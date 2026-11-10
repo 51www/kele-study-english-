@@ -112,7 +112,7 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final target = 10;
+    final target = data.targetMinutes;
     final progress = (data.todayMinutes / target).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,6 +120,7 @@ class _Body extends StatelessWidget {
         _GoalCard(
           minutes: data.todayMinutes,
           turns: data.todayTurns,
+          weekSessions: data.weekSessions,
           target: target,
           progress: progress.toDouble(),
         ),
@@ -149,6 +150,16 @@ class _Body extends StatelessWidget {
                   : _ScenarioCard(scenario: scenario),
             );
           }),
+        if (data.lastStuck != null) ...[
+          const SizedBox(height: 22),
+          SectionTitle(
+            title: '上次卡在哪',
+            actionLabel: '看复盘',
+            onAction: () => context.push('/review/${data.lastStuck!.sessionId}'),
+          ),
+          const SizedBox(height: 10),
+          _StuckCard(correction: data.lastStuck!),
+        ],
         if (data.lastSession != null) ...[
           const SizedBox(height: 14),
           SectionTitle(
@@ -159,6 +170,92 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 10),
           _LastSessionCard(session: data.lastSession!, scenarios: data.scenarios),
         ],
+        const SizedBox(height: 24),
+        const _TipsEntry(),
+      ],
+    );
+  }
+}
+
+class _StuckCard extends StatelessWidget {
+  const _StuckCard({required this.correction});
+
+  final Correction correction;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, size: 16, color: AppColors.warning),
+              const SizedBox(width: 6),
+              Text('上次这句可以换个说法', style: AppText.caption.copyWith(color: AppColors.inkSecondary)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            correction.original,
+            style: AppText.bodySecondary,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(correction.improved, style: AppText.body.copyWith(color: AppColors.primaryDeep)),
+          const SizedBox(height: 6),
+          Text(correction.reasonZh, style: AppText.caption),
+        ],
+      ),
+    );
+  }
+}
+
+/// 发现内容放在首页栏目区块里，不新增独立 Tab、不改底部导航。
+class _TipsEntry extends StatelessWidget {
+  const _TipsEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionTitle(title: '方法 / 技巧'),
+        const SizedBox(height: 10),
+        AppCard(
+          onTap: () => context.push('/tips'),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryWash,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.menu_book_outlined, color: AppColors.primaryDeep, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('练口语的实用方法', style: AppText.cardTitle),
+                    SizedBox(height: 3),
+                    Text(
+                      '第三方文章全文 · 保留出处与原文链接',
+                      style: AppText.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -168,12 +265,14 @@ class _GoalCard extends StatelessWidget {
   const _GoalCard({
     required this.minutes,
     required this.turns,
+    required this.weekSessions,
     required this.target,
     required this.progress,
   });
 
   final int minutes;
   final int turns;
+  final int weekSessions;
   final int target;
   final double progress;
 
@@ -236,6 +335,8 @@ class _GoalCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              _GoalMetric(label: '本周', value: '$weekSessions 次'),
+              const SizedBox(width: 16),
               _GoalMetric(label: '开口轮次', value: '$turns'),
             ],
           ),

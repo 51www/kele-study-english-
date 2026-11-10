@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart' show CancelToken;
@@ -6,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/errors.dart';
 import '../../core/logger.dart';
+import '../../core/timeouts.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/secure/key_store.dart';
 import '../../domain/models/models.dart';
@@ -16,6 +18,7 @@ import '../../services/asr/system_asr_engine.dart';
 import '../../services/audio/audio_player.dart';
 import '../../services/audio/audio_recorder.dart';
 import '../../services/audio/audio_session_manager.dart';
+import '../../services/llm/cost_estimator.dart';
 import '../../services/llm/llm_client.dart';
 import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
@@ -73,6 +76,33 @@ class ConversationController extends ChangeNotifier {
   int elapsedSec = 0;
   int recordingMs = 0;
 
+  /// 翻译三态：off（默认，不显示中文）/ tap（点气泡）/ always（常开字幕）。
+  String translateMode = 'off';
+  String? translationError;
+
+  /// 提示结果只放内存，不写主对话历史，也绝不自动发送。
+  int? hintLevel;
+  String? hintText;
+  String? hintError;
+  bool hintLoading = false;
+
+  /// 「我想说」：中文 → 一句英文建议，用户必须自己按下说话或发送。
+  String? wantToSayText;
+  String? wantToSayError;
+  bool wantToSayLoading = false;
+
+  double sessionCost = 0;
+  bool costEstimated = false;
+  AppErrorKind? errorKind;
+  String? resumeText;
+  String? routeNotice;
+
+  final Map<String, String> _translations = {};
+  final Set<String> _translating = {};
+  String? _currentSpokenText;
+  bool _inReply = false;
+  bool _ttsWarned = false;
+
   Timer? _ticker;
   Timer? _recordTicker;
   Timer? _slowTimer;
@@ -117,6 +147,13 @@ class ConversationController extends ChangeNotifier {
   bool get recording => state == TurnState.recording;
   bool get isSpeaking => state == TurnState.speaking;
   String? get partialTranscript => _partialTranscript;
+  bool get canResume => resumeText != null && resumeText!.isNotEmpty;
+  bool get showTranslations => translateMode != 'off';
+  String? translationOf(String messageId) => _translations[messageId];
+  bool isTranslating(String messageId) => _translating.contains(messageId);
+  bool get hasHint => hintText != null && hintText!.isNotEmpty;
+  String? get synthesizedCostLabel =>
+      sessionCost > 0 ? '${CostEstimator.format(sessionCost)}${costEstimated ? '（估算）' : ''}' : null;
 
   String get stateLabel {
     switch (state) {
@@ -146,6 +183,12 @@ class ConversationController extends ChangeNotifier {
       }
       scenario = await scenarios.byId(session!.scenarioId ?? '');
       messages = await sessions.messages(sessionId);
+      sessionCost = session!.costEstimate ?? 0;
+      for (final message in messages) {
+        if (message.textZh != null && message.textZh!.isNotEmpty) {
+          _translations[message.id] = message.textZh!;
+        }
+      }
       elapsedSec = session!.durationSec > 0
           ? session!.durationSec
           : ((DateTime.now().millisecondsSinceEpoch - session!.startedAt) / 1000).round();
@@ -160,7 +203,11 @@ class ConversationController extends ChangeNotifier {
       await audioSession.enterConversation();
       audioSession.onInterrupted = _handleInterrupted;
       audioSession.onDeviceDisconnected = _handleDeviceDisconnected;
+      audioSession.onDeviceChanged = _handleDeviceChanged;
       tts.resetCircuit();
+      _ttsWarned = false;
+      await tts.disk?.load();
+      tts.onPlaybackStart = _markFirstAudio;
       _listenNetwork();
       loading = false;
       notifyListeners();
@@ -181,6 +228,18 @@ class ConversationController extends ChangeNotifier {
     _rate = settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0).clamp(0.7, 1.3).toDouble();
     _autoPlay = settings.getBool(SettingsKeys.ttsAutoPlay, fallback: true);
     _preferEdge = settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system';
+    final configured = settings.getString(SettingsKeys.translateDefault, 'off');
+    translateMode = switch (configured) {
+      'tap' => 'tap',
+      'always' || 'on' => 'always',
+      _ => 'off',
+    };
+  }
+
+  /// 「松手 → 首音」：只在音频真正开始播放时打点，不含合成排队时间。
+  void _markFirstAudio() {
+    if (!_inReply || _turnStartedAt == null || _firstAudioMs != null) return;
+    _firstAudioMs = DateTime.now().difference(_turnStartedAt!).inMilliseconds;
   }
 
   Future<void> _checkAsr() async {
@@ -278,8 +337,11 @@ class ConversationController extends ChangeNotifier {
     if (state == TurnState.thinking) return;
     await stopPlayback();
     error = null;
+    errorKind = null;
     ttsWarning = null;
     asrNotice = null;
+    routeNotice = null;
+    resumeText = null;
     _partialTranscript = null;
     _recordStartedAt = DateTime.now();
     _turnStartedAt = DateTime.now();
@@ -344,6 +406,7 @@ class ConversationController extends ChangeNotifier {
     await _chatAudioAsr?.cancel();
     await recorder.cancel();
     error = appError.detail ?? '录音失败';
+    errorKind = appError.kind;
     state = TurnState.error;
     // 麦克风不可用时自动切换到文字输入，会话不中断。
     inputMode = 'text';
@@ -380,25 +443,25 @@ class ConversationController extends ChangeNotifier {
           transcript = '';
         } else {
           try {
-            transcript = await _httpAsr!.transcribe(path).timeout(const Duration(seconds: 20));
+            transcript = await _httpAsr!.transcribe(path).timeout(Timeouts.asrHttp);
           } on AsrException catch (e) {
             // 接口失败（额度/网络/格式）时，若开启了实验引擎，用同一段音频再试一次。
             final fallback = _chatAudioAsr;
             if (fallback == null) rethrow;
             asrNotice = '识别接口不可用（${e.error.detail}），已改用实验引擎重试';
             notifyListeners();
-            transcript = await fallback.transcribe(path).timeout(const Duration(seconds: 40));
+            transcript = await fallback.transcribe(path).timeout(Timeouts.asrExperimental);
             _asrMode = 'chatAudio';
           }
         }
       } else if (_usingChatAudio && _chatAudioAsr != null) {
         transcript = await _chatAudioAsr!.stop().timeout(
-          const Duration(seconds: 40),
+          Timeouts.asrExperimental,
           onTimeout: () => '',
         );
       } else if (_usingAsr) {
         transcript = await asr.stop().timeout(
-          const Duration(seconds: 9),
+          Timeouts.asrSystem,
           onTimeout: () => '',
         );
       } else {
@@ -415,6 +478,7 @@ class ConversationController extends ChangeNotifier {
       error = (_usingAsr || _usingHttpAsr || _usingChatAudio)
           ? '没听清，再说一次？'
           : '当前设备不支持语音识别，已切换到文字输入';
+      errorKind = AppErrorKind.audio;
       state = TurnState.error;
       if (!_usingAsr && !_usingHttpAsr && !_usingChatAudio) {
         inputMode = 'text';
@@ -437,6 +501,7 @@ class ConversationController extends ChangeNotifier {
                   ? _chatAudioAsr?.provider
                   : null,
       fromVoice: true,
+      asrMs: _asrMs,
     );
   }
 
@@ -466,6 +531,7 @@ class ConversationController extends ChangeNotifier {
     String text, {
     String? asrProvider,
     bool fromVoice = false,
+    int? asrMs,
   }) async {
     final clean = text.trim();
     if (clean.isEmpty) return;
@@ -476,9 +542,18 @@ class ConversationController extends ChangeNotifier {
     if (current == null || currentScenario == null) return;
 
     error = null;
+    errorKind = null;
     ttsWarning = null;
+    translationError = null;
+    hintText = null;
+    hintError = null;
+    hintLevel = null;
+    wantToSayText = null;
+    wantToSayError = null;
+    resumeText = null;
     _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
+    _firstTokenMs = null;
     final seq = messages.isEmpty ? 1 : messages.last.seq + 1;
     final userMessage = MessageRecord(
       id: 'm_${DateTime.now().microsecondsSinceEpoch}_u',
@@ -487,6 +562,7 @@ class ConversationController extends ChangeNotifier {
       role: 'user',
       textEn: clean,
       asrProvider: asrProvider,
+      latencyMs: asrMs,
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
     messages = [...messages, userMessage];
@@ -511,6 +587,7 @@ class ConversationController extends ChangeNotifier {
   Future<void> retry() async {
     if (state == TurnState.thinking) return;
     error = null;
+    errorKind = null;
     ttsWarning = null;
     _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
@@ -527,9 +604,11 @@ class ConversationController extends ChangeNotifier {
     final token = CancelToken();
     _cancelToken = token;
     _firstTokenMs = null;
+    _inReply = true;
     _startSlowTimer();
     String full = '';
     var usedStream = false;
+    LlmUsage? usage;
     try {
       final config = await _config();
       final history = PromptBuilder.chatMessages(
@@ -537,6 +616,7 @@ class ConversationController extends ChangeNotifier {
         level: settings.getString(SettingsKeys.level, 'B1'),
         history: messages,
       );
+      final promptChars = history.fold<int>(0, (sum, m) => sum + m.content.length);
 
       final streamed = await _consumeStream(config, history, watch, (delta) {
         full += delta;
@@ -554,6 +634,7 @@ class ConversationController extends ChangeNotifier {
           cancelToken: token,
         );
         full = reply.text;
+        usage = reply.usage;
         streamingText = '';
       }
       watch.stop();
@@ -574,7 +655,7 @@ class ConversationController extends ChangeNotifier {
         seq: seq,
         role: 'assistant',
         textEn: full.trim(),
-        latencyMs: _firstAudioMs ?? (usedStream ? watch.elapsedMilliseconds : null),
+        latencyMs: _firstAudioMs ?? _firstTokenMs ?? (usedStream ? watch.elapsedMilliseconds : null),
         createdAt: DateTime.now().millisecondsSinceEpoch,
       );
       messages = [...messages, assistant];
@@ -585,10 +666,25 @@ class ConversationController extends ChangeNotifier {
         await sessions.saveSession(session!);
       }
       error = null;
+      errorKind = null;
       lastFailedText = null;
       notifyListeners();
 
+      await _accumulateCost(promptChars: promptChars, output: full, usage: usage);
+      if (translateMode == 'always') unawaited(translate(assistant));
+
       await _speakQueue;
+      if (_firstAudioMs != null && assistant.latencyMs != _firstAudioMs) {
+        final updated = assistant.copyWith(latencyMs: _firstAudioMs);
+        final index = messages.indexWhere((e) => e.id == assistant.id);
+        if (index >= 0) {
+          final next = [...messages];
+          next[index] = updated;
+          messages = next;
+        }
+        await sessions.saveMessage(updated);
+      }
+      await _recordLatency();
       AppLogger.debug(
         'latency turn asr=${_asrMs ?? '-'}ms firstToken=${_firstTokenMs ?? '-'}ms '
         'firstAudio=${_firstAudioMs ?? '-'}ms total=${watch.elapsedMilliseconds}ms',
@@ -623,6 +719,7 @@ class ConversationController extends ChangeNotifier {
       );
     } finally {
       watch.stop();
+      _inReply = false;
       if (_cancelToken == token) _cancelToken = null;
     }
   }
@@ -631,7 +728,7 @@ class ConversationController extends ChangeNotifier {
   void _startSlowTimer() {
     _slowTimer?.cancel();
     slowReply = false;
-    _slowTimer = Timer(const Duration(seconds: 15), () {
+    _slowTimer = Timer(Timeouts.slowNotice, () {
       if (_disposed) return;
       if (state == TurnState.thinking && _firstTokenMs == null) {
         slowReply = true;
@@ -656,6 +753,7 @@ class ConversationController extends ChangeNotifier {
     } catch (_) {}
     streamingText = '';
     error = null;
+    errorKind = null;
     state = TurnState.idle;
     if (!_disposed) notifyListeners();
   }
@@ -677,7 +775,7 @@ class ConversationController extends ChangeNotifier {
     final streamToken = CancelToken();
     _streamToken = streamToken;
 
-    firstTimer = Timer(const Duration(seconds: 6), () async {
+    firstTimer = Timer(Timeouts.firstToken, () async {
       if (gotFirst || completer.isCompleted) return;
       AppLogger.warn('llm stream first token timeout after 6s');
       streamToken.cancel('first token timeout');
@@ -763,9 +861,7 @@ class ConversationController extends ChangeNotifier {
     final token = _ttsToken;
     _speakQueue = _speakQueue.then((_) async {
       if (_disposed || token != _ttsToken) return;
-      _firstAudioMs ??= _turnStartedAt == null
-          ? null
-          : DateTime.now().difference(_turnStartedAt!).inMilliseconds;
+      _currentSpokenText = sentence;
       if (state == TurnState.thinking) {
         state = TurnState.speaking;
         if (!_disposed) notifyListeners();
@@ -780,8 +876,12 @@ class ConversationController extends ChangeNotifier {
         );
       } on TtsException catch (e) {
         AppLogger.warn('tts failed: ${e.error.detail}');
-        ttsWarning = '朗读暂不可用，已显示文字，可点消息上的播放按钮重试';
-        if (!_disposed) notifyListeners();
+        // 整场只提示一次，避免每句都弹同一条降级提示。
+        if (!_ttsWarned) {
+          _ttsWarned = true;
+          ttsWarning = '朗读暂不可用，本场改用系统语音，只提示这一次；文字不受影响';
+          if (!_disposed) notifyListeners();
+        }
       }
     }).catchError((Object e) {
       AppLogger.warn('tts queue error: $e');
@@ -790,10 +890,285 @@ class ConversationController extends ChangeNotifier {
 
   Future<void> _failTurn(AppError e) async {
     error = e.detail ?? '回复失败，请稍后重试';
+    errorKind = e.kind;
     if (e.kind == AppErrorKind.config) _missingKeyMessage = e.detail;
     state = TurnState.error;
     streamingText = '';
     if (!_disposed) notifyListeners();
+  }
+
+  // ------------------------------------------------- 翻译 / 提示 / 我想说
+
+  /// 会话内切换翻译三态：off / tap / always，并持久化到设置。
+  Future<void> setTranslateMode(String mode) async {
+    final next = switch (mode) {
+      'tap' => 'tap',
+      'always' => 'always',
+      _ => 'off',
+    };
+    translateMode = next;
+    translationError = null;
+    await settings.set(SettingsKeys.translateDefault, next);
+    notifyListeners();
+    if (next == 'always') {
+      final latest = messages.lastWhere(
+        (e) => !e.isUser && !e.isHint,
+        orElse: () => const MessageRecord(
+          id: '',
+          sessionId: '',
+          seq: 0,
+          role: 'assistant',
+          textEn: '',
+          createdAt: 0,
+        ),
+      );
+      if (latest.id.isNotEmpty && !_translations.containsKey(latest.id)) {
+        unawaited(translate(latest));
+      }
+    }
+  }
+
+  /// 点按翻译：独立上下文，结果只写入该消息的 text_zh 缓存，不进主对话历史。
+  Future<void> translate(MessageRecord message) async {
+    if (translateMode == 'off') return;
+    if (_translations.containsKey(message.id) || _translating.contains(message.id)) return;
+    final text = message.textEn.trim();
+    if (text.isEmpty) return;
+    _translating.add(message.id);
+    translationError = null;
+    notifyListeners();
+    try {
+      final reply = await _sideChat(PromptBuilder.translateMessages(text), maxTokens: 160);
+      final zh = _firstLine(reply.text);
+      if (zh.isEmpty) {
+        translationError = '这次没拿到中文，可以再点一次翻译';
+      } else {
+        _translations[message.id] = zh;
+        final updated = message.copyWith(textZh: zh);
+        final index = messages.indexWhere((e) => e.id == message.id);
+        if (index >= 0) {
+          final next = [...messages];
+          next[index] = updated;
+          messages = next;
+        }
+        await sessions.saveMessage(updated);
+        await _incrementCounters(translate: 1);
+      }
+    } on AppError catch (e) {
+      translationError = e.detail ?? '翻译失败，可以重试';
+    } catch (e) {
+      AppLogger.warn('translate failed: $e');
+      translationError = '翻译失败，可以重试';
+    } finally {
+      _translating.remove(message.id);
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  /// L1–L4 提示阶梯。结果只在页面内存里展示，绝不写入 messages，也绝不自动发送。
+  Future<void> requestHint(int level, {String chinese = ''}) async {
+    final chosen = level.clamp(1, 4);
+    hintLevel = chosen;
+    hintText = null;
+    hintError = null;
+    hintLoading = chosen != 1;
+    notifyListeners();
+
+    if (chosen == 1) {
+      // L1 不给答案：慢速重听最近一句 AI 的话，朗读不可用时仍保留文字。
+      // 重听在后台进行，不让 TTS 合成/降级耗时卡住提示弹层的关闭。
+      hintText = '已慢速重听上一句；听清后自己开口说，AI 会等你。';
+      await _incrementCounters(hint: 1);
+      hintLoading = false;
+      if (!_disposed) notifyListeners();
+      unawaited(_replaySlow());
+      return;
+    }
+    if (chosen == 4 && chinese.trim().isEmpty) {
+      hintError = '先写一句中文想说的话，再点「中→英」';
+      hintLoading = false;
+      notifyListeners();
+      return;
+    }
+    try {
+      final reply = await _sideChat(
+        PromptBuilder.hintMessages(
+          scenario: scenario,
+          level: chosen,
+          history: messages,
+          chinese: chinese.trim(),
+        ),
+        maxTokens: 160,
+      );
+      final text = _firstLine(reply.text);
+      hintText = text.isEmpty ? '这次没拿到提示，可以再试一次' : text;
+      // L3 / L4 属于「有辅助」的回合，复盘里要能识别。
+      await _incrementCounters(hint: 1, assist: chosen >= 3 ? 1 : 0);
+    } on AppError catch (e) {
+      hintError = e.detail ?? '提示请求失败，可以重试';
+    } catch (e) {
+      AppLogger.warn('hint failed: $e');
+      hintError = '提示请求失败，可以重试';
+    } finally {
+      hintLoading = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  Future<void> _replaySlow() async {
+    final lastAi = messages.lastWhere(
+      (e) => !e.isUser && !e.isHint && e.textEn.trim().isNotEmpty,
+      orElse: () => const MessageRecord(
+        id: '',
+        sessionId: '',
+        seq: 0,
+        role: 'assistant',
+        textEn: '',
+        createdAt: 0,
+      ),
+    );
+    if (lastAi.id.isEmpty) return;
+    await stopPlayback();
+    _currentSpokenText = lastAi.textEn;
+    state = TurnState.speaking;
+    notifyListeners();
+    try {
+      await audioSession.preparePlayback();
+      await tts.speak(
+        lastAi.textEn,
+        voice: _voice,
+        rate: _rate,
+        preferEdge: _preferEdge,
+        playbackSpeed: 0.8,
+      );
+    } on TtsException catch (e) {
+      AppLogger.warn('slow replay failed: ${e.error.detail}');
+      ttsWarning = '朗读暂不可用，已保留上一句文字，可点播放按钮重试';
+    } finally {
+      if (!_disposed && state == TurnState.speaking) {
+        state = TurnState.idle;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// 「我想说」：中文 → 一句英文建议。用户要自己按下麦克风或点发送。
+  Future<void> requestWantToSay(String chinese) async {
+    final clean = chinese.trim();
+    if (clean.isEmpty) return;
+    wantToSayLoading = true;
+    wantToSayError = null;
+    wantToSayText = null;
+    notifyListeners();
+    try {
+      final reply = await _sideChat(
+        PromptBuilder.wantToSayMessages(scenario, clean),
+        maxTokens: 120,
+      );
+      final text = _firstLine(reply.text);
+      wantToSayText = text.isEmpty ? null : text;
+      if (wantToSayText == null) wantToSayError = '这次没生成建议，可以再试一次';
+      await _incrementCounters(assist: 1);
+    } on AppError catch (e) {
+      wantToSayError = e.detail ?? '生成失败，可以重试';
+    } catch (e) {
+      AppLogger.warn('want-to-say failed: $e');
+      wantToSayError = '生成失败，可以重试';
+    } finally {
+      wantToSayLoading = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  void closeHint() {
+    hintText = null;
+    hintError = null;
+    hintLevel = null;
+    hintLoading = false;
+    notifyListeners();
+  }
+
+  void clearWantToSay() {
+    wantToSayText = null;
+    wantToSayError = null;
+    notifyListeners();
+  }
+
+  /// 旁路请求：提示 / 翻译 /「我想说」走独立消息数组，绝不混入主历史。
+  Future<LlmReply> _sideChat(List<LlmMessage> prompt, {int maxTokens = 160}) async {
+    final config = await _config();
+    final chars = prompt.fold<int>(0, (sum, m) => sum + m.content.length);
+    try {
+      final reply = await llmClient
+          .chat(config, prompt, maxTokens: maxTokens, temperature: 0.3)
+          .timeout(Timeouts.sideRequest);
+      await _accumulateCost(promptChars: chars, output: reply.text, usage: reply.usage);
+      return reply;
+    } on TimeoutException {
+      throw const AppError(
+        kind: AppErrorKind.network,
+        detail: '请求超时，请检查网络后重试',
+        retryable: true,
+      );
+    }
+  }
+
+  Future<void> _accumulateCost({
+    required int promptChars,
+    required String output,
+    LlmUsage? usage,
+  }) async {
+    final sample = CostEstimator.estimate(
+      promptChars: promptChars,
+      output: output,
+      usage: usage,
+    );
+    sessionCost += sample.cny;
+    if (sample.estimated) costEstimated = true;
+    final current = session;
+    if (current != null) {
+      session = current.copyWith(costEstimate: sessionCost);
+      await sessions.saveSession(session!);
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> _incrementCounters({int hint = 0, int assist = 0, int translate = 0}) async {
+    final current = session;
+    if (current == null) return;
+    session = current.copyWith(
+      hintCount: current.hintCount + hint,
+      assistTurns: current.assistTurns + assist,
+      translateCount: current.translateCount + translate,
+    );
+    await sessions.saveSession(session!);
+  }
+
+  /// 分阶段延迟落 app_meta，供「我的」页查看最近一回合的口径。
+  Future<void> _recordLatency() async {
+    await sessions.setMeta(
+      'latency.lastTurn',
+      jsonEncode({
+        'asr': _asrMs ?? 0,
+        'firstToken': _firstTokenMs ?? 0,
+        'firstAudio': _firstAudioMs ?? 0,
+        'at': DateTime.now().millisecondsSinceEpoch,
+      }),
+    );
+  }
+
+  static String _firstLine(String raw) {
+    final lines = raw
+        .split('\n')
+        .map((e) => e.trim().replaceAll(RegExp(r'^[-*>]\s*'), ''))
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return '';
+    var out = lines.first.replaceAll('**', '').trim();
+    if (out.startsWith('"') && out.endsWith('"') && out.length > 1) {
+      out = out.substring(1, out.length - 1).trim();
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- 播放
@@ -806,6 +1181,10 @@ class ConversationController extends ChangeNotifier {
       return;
     }
     await stopPlayback();
+    _currentSpokenText = text;
+    ttsWarning = offline && !tts.hasCached(text, voice: _voice, rate: _rate)
+        ? '网络不可用：这句没有缓存，将尝试系统语音；文字仍可读'
+        : null;
     playingMessageId = message.id;
     state = TurnState.speaking;
     notifyListeners();
@@ -816,6 +1195,7 @@ class ConversationController extends ChangeNotifier {
       AppLogger.warn('replay failed: ${e.error.detail}');
       ttsWarning = '朗读暂不可用，已显示文字';
     } finally {
+      _currentSpokenText = null;
       if (!_disposed && playingMessageId == message.id) {
         playingMessageId = null;
         state = TurnState.idle;
@@ -827,6 +1207,8 @@ class ConversationController extends ChangeNotifier {
   Future<void> stopPlayback() async {
     _ttsToken++;
     playingMessageId = null;
+    resumeText = null;
+    _currentSpokenText = null;
     try {
       await tts.stop();
     } catch (_) {}
@@ -838,9 +1220,35 @@ class ConversationController extends ChangeNotifier {
 
   void _handleInterrupted() {
     if (state != TurnState.speaking) return;
+    final pending = _currentSpokenText;
     unawaited(stopPlayback());
-    ttsWarning = '播放已被系统中断，可点播放按钮继续';
+    resumeText = pending;
+    ttsWarning = '播放已被系统中断，点「继续播放」可重听，不会自动续播';
     notifyListeners();
+  }
+
+  /// 中断后由用户显式点「继续播放」才续播，避免来电结束突然出声。
+  Future<void> resumePlayback() async {
+    final text = resumeText?.trim();
+    if (text == null || text.isEmpty) return;
+    resumeText = null;
+    ttsWarning = null;
+    _currentSpokenText = text;
+    state = TurnState.speaking;
+    notifyListeners();
+    try {
+      await audioSession.preparePlayback();
+      await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
+    } on TtsException catch (e) {
+      AppLogger.warn('resume playback failed: ${e.error.detail}');
+      ttsWarning = '朗读暂不可用，已保留文字';
+    } finally {
+      _currentSpokenText = null;
+      if (!_disposed && state == TurnState.speaking) {
+        state = TurnState.idle;
+        notifyListeners();
+      }
+    }
   }
 
   /// 监听网络状态；离线时对话页显示提示条，发送失败由请求层照常报错。
@@ -862,9 +1270,17 @@ class ConversationController extends ChangeNotifier {
   }
 
   void _handleDeviceDisconnected() {
-    if (state != TurnState.speaking) return;
-    unawaited(stopPlayback());
-    ttsWarning = '音频设备已断开，播放已暂停';
+    final pending = _currentSpokenText;
+    if (state == TurnState.speaking) unawaited(stopPlayback());
+    if (pending != null) resumeText = pending;
+    ttsWarning = '音频设备已断开，播放已暂停，可点「继续播放」';
+    notifyListeners();
+  }
+
+  void _handleDeviceChanged(bool connected) {
+    routeNotice = connected
+        ? '检测到耳机/蓝牙接入，下一句会走新设备'
+        : null;
     notifyListeners();
   }
 
@@ -905,6 +1321,7 @@ class ConversationController extends ChangeNotifier {
     unawaited(_chatAudioAsr?.cancel());
     unawaited(recorder.cancel());
     unawaited(tts.stop());
+    tts.onPlaybackStart = null;
     super.dispose();
   }
 }

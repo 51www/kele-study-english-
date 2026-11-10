@@ -1,5 +1,6 @@
 import '../../domain/models/models.dart';
 import '../db/local_store.dart';
+import '../db/seeds.dart';
 
 class ScenarioRepository {
   ScenarioRepository(this._store);
@@ -7,6 +8,13 @@ class ScenarioRepository {
   final LocalStore _store;
 
   Future<List<Scenario>> all() => _store.scenarios();
+
+  /// 清空数据后重建 2 个内置场景（与首次启动种子一致，幂等）。
+  Future<void> restoreSeeds() async {
+    for (final scenario in builtinScenarios) {
+      await _store.upsertScenario(scenario);
+    }
+  }
 
   Future<Scenario?> byId(String id) async {
     final list = await _store.scenarios();
@@ -139,13 +147,22 @@ class SessionRepository {
     );
   }
 
+  /// 删会话级联：消息、纠错、该会话保存的表达与音频缓存一并清掉。
   Future<void> deleteSession(String id) async {
     await _store.deleteMessages(id);
     await _store.deleteCorrections(id);
+    final phrases = await _store.phrases();
+    for (final phrase in phrases.where((e) => e.sourceSessionId == id)) {
+      await _store.deletePhrase(phrase.id);
+    }
     await _store.deleteSession(id);
   }
 
   Future<void> clearAll() => _store.clearAll();
+
+  Future<String?> meta(String key) => _store.meta(key);
+
+  Future<void> setMeta(String key, String value) => _store.setMeta(key, value);
 
   Future<List<Correction>> corrections(String sessionId) => _store.corrections(sessionId);
 

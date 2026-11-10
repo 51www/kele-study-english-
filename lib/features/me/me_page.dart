@@ -8,6 +8,8 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
+import '../../domain/models/models.dart';
+import '../../services/llm/cost_estimator.dart';
 
 class MePage extends ConsumerWidget {
   const MePage({super.key});
@@ -16,6 +18,10 @@ class MePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final home = ref.watch(homeDataProvider).asData?.value;
     final profile = ref.watch(profileInfoProvider).asData?.value;
+    final settings = ref.watch(settingsControllerProvider);
+    final budget = int.tryParse(settings[SettingsKeys.monthlyBudget] ?? '50') ?? 50;
+    final monthly = ref.watch(monthlyCostProvider).asData?.value ?? 0;
+    final latency = ref.watch(lastLatencyProvider).asData?.value;
     return SingleChildScrollView(
       padding: shellPagePadding,
       child: Center(
@@ -95,6 +101,61 @@ class MePage extends ConsumerWidget {
                   Expanded(child: _Stat(label: '今日分钟', value: '${home?.todayMinutes ?? 0}')),
                 ],
               ),
+              const SizedBox(height: 16),
+              AppCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.payments_outlined, size: 16, color: AppColors.primaryDeep),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '本月成本（估算）',
+                            style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Text(
+                          '${CostEstimator.format(monthly)} / 预算 ¥$budget',
+                          style: AppText.bodySecondary.copyWith(color: AppColors.primaryDeep),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      child: LinearProgressIndicator(
+                        value: budget <= 0 ? 0 : (monthly / budget).clamp(0.0, 1.0).toDouble(),
+                        minHeight: 4,
+                        backgroundColor: AppColors.divider,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          budget > 0 && monthly >= budget ? AppColors.warning : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      budget > 0 && monthly >= budget
+                          ? '已达到本月提醒额度，可以在设置里调整预算或缩短对话。'
+                          : '按接口 usage 估算；缺失时按字符数估算，仅为本地参考。',
+                      style: AppText.caption.copyWith(
+                        color: budget > 0 && monthly >= budget ? AppColors.warning : null,
+                      ),
+                    ),
+                    if (latency != null && (latency['firstAudio'] ?? 0) > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '上一回合：识别 ${((latency['asr'] ?? 0) / 1000).toStringAsFixed(1)}s · '
+                        '首字 ${((latency['firstToken'] ?? 0) / 1000).toStringAsFixed(1)}s · '
+                        '首音 ${((latency['firstAudio'] ?? 0) / 1000).toStringAsFixed(1)}s',
+                        style: AppText.caption,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
               SectionTitle(title: '设置'),
               const SizedBox(height: 8),
@@ -120,7 +181,7 @@ class MePage extends ConsumerWidget {
                     SettingRow(
                       icon: Icons.storage_rounded,
                       title: '数据与存储',
-                      onTap: () => context.push('/settings'),
+                      onTap: () => context.push('/settings/data'),
                     ),
                   ],
                 ),

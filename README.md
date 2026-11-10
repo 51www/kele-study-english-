@@ -4,21 +4,25 @@
 
 ## 项目说明
 
-当前完成度（按里程碑）：
+当前完成度（按里程碑，代码侧均已落地，真机逐条验收清单见 `docs/milestones-speaking-app-v0.1.md` §11）：
 
 - **M0 已完成**：场景选择与详情、文字版对话（流式/非流式）、本地落库与重开恢复、模型配置页（接口地址 / API Key / 模型名 + 测试连接）、错误提示与日志脱敏。
 - **M1 已完成**：按住说话录音（16kHz 单声道 WAV）、语音识别三引擎（OpenAI 兼容 `/audio/transcriptions`、系统识别、用对话模型做识别的实验开关）、Edge 朗读 + 系统朗读降级、单条消息重听、连续多回合对话。
-- **M2 进行中**：请求超时 / 重试 / 取消、朗读熔断与内存缓存、离线与弱网提示、分阶段延迟日志。尚未验收。
-- **M3 未开始**：复盘页完整能力、逐句纠错、练习记录详情、表达本、首页统计、删除与清空。
-- **M4 未开始**：第二场景、四级提示、翻译三态、空态与异常态、成本估算、视觉走查。
-- **收尾项未开始**：「技巧分享」栏目（第三方文章摘要与链接）。
+- **M2 已完成（代码侧）**：统一超时表（`lib/core/timeouts.dart`）、请求重试/取消、错误四分类文案与行动、朗读熔断与系统 TTS 降级（整场只提示一次）、朗读音频内存 + 落盘 LRU 缓存（80MB，断网重听命中即播）、播放端慢速、耳机/蓝牙接入与来电中断（不自动续播，可点「继续播放」）、分阶段延迟埋点（识别 / 首字 / 首音，可在「我的」查看）。
+- **M3 已完成**：复盘页（亮点 / ≤3 条改法 / 表达 / 下次建议，容错解析 + 自动重试一次）、逐句纠错标记与展开（试听 / 删除）、练习记录与只读转写、表达本、首页「上次卡在哪」与本周次数 / 今日分钟 / 连续天数、删会话级联与清空所有数据（含密钥、缓存、设置恢复默认）。
+- **M4 已完成**：2 个内置场景、L1–L4 提示阶梯（不自动发送、不进主历史）、翻译三态与「我想说」（中→英建议不自动发送）、空态与异常态、单次/月度成本估算与超限提示、按 UI 规范 Token 的视觉走查。
+- **收尾项已完成**：「方法 / 技巧」栏目（首页区块入口，不新增 Tab），7 篇第三方文章站内全文阅读，配图以「[图：说明]」占位，保留出处与原文链接（系统浏览器打开）。
+
+> 明确未启用：**端侧 Whisper（T2.7，里程碑可选项）**。当前识别链路是「独立 ASR 接口 → 系统识别 → 实验性对话模型识别」，端侧推理留到确有离线需求时再接入；已记录在里程碑文档 §9。
+
+真机验证：已在 Android 17 真机（PKC110）安装并走通首页统计、技巧列表/详情、模型配置、对话页提示与翻译控件、清空数据回到首次启动状态等路径，截图见 `docs/shortscreen/M3/` 与 `docs/shortscreen/M4/`，逐条状态见里程碑清单 §11。需要真实 API 的 8 回合对话、延迟 p50/p95 与弱网/蓝牙降级仍待现场验收。
 
 ## 运行说明
 
 环境要求：
 
 - Flutter 3.47.x（Dart 3.13.x），Android SDK 使用 Flutter 默认版本（compileSdk 36 / minSdk 默认）。
-- Web 调试需要本机 Chrome；Android 构建需要可用的 JDK 与 Android SDK。
+- Web 调试需要本机 Chrome；Android 构建需要可用的 JDK、Android SDK 与可访问 Maven 仓库的网络。
 
 启动 Web 调试：
 
@@ -29,12 +33,33 @@ flutter run -d chrome
 flutter build web --release
 ```
 
-构建并安装 Android：
+构建并安装 Android 真机（开发调试）：
 
 ```bash
 flutter build apk --debug
 adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
+
+### 正式包名与签名
+
+- **正式包名**：`com.kele.saylo`（`applicationId` 与 `namespace` 一致，`MainActivity` 包路径同步；发布后不可更改），版本 `1.0.0+1`。
+- **签名密钥**：`android/keystore/saylo-release.jks`，alias `saylo`，RSA 2048 / 有效期 10000 天，证书 `CN=Saylo, O=Kele, C=CN`。
+- **本地配置**：`android/key.properties`（模板 `android/key.properties.example`）保存密钥库与密钥密码。它与 `android/keystore/` 均已被 `.gitignore` 忽略，**绝不提交到仓库**。
+- **签名策略**：debug 与 release 共用这把正式密钥，真机覆盖安装不会再出现签名不匹配；缺少 `key.properties` 时 release 会退回 debug 签名并打印警告，不可用于发布。
+- 证书 SHA-256 指纹：`69:DE:37:69:EF:B9:19:42:5A:55:B3:B4:55:C3:48:7B:4A:47:19:4C:B6:63:AC:5B:A7:A8:75:4B:19:5C:C3:B8`。
+
+构建正式包：
+
+```bash
+flutter build apk --release
+# 校验签名（apksigner 需要 JAVA_HOME 指向 Android Studio 自带 JBR）
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+~/Library/Android/sdk/build-tools/36.0.0/apksigner verify --print-certs \
+  build/app/outputs/flutter-apk/app-release.apk
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+> `saylo-release.jks` 与 `key.properties` 必须一起离线备份：丢失后无法再为已安装的 App 提供可升级的包。旧的测试包 `com.kele.kele_speak` 与正式包是两个独立应用，数据不互通，可自行卸载。
 
 首次启动需要到「我的」里填两类配置：
 
@@ -43,18 +68,21 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 
 不填会怎样：没有对话密钥时，对话页提示「还没有配置模型密钥」，发送不会成功，可点提示直接去配置；没有识别配置时自动用系统识别，系统识别不可用时自动切到文字输入，会话不中断；朗读始终先尝试 Edge，失败后切系统朗读。
 
-密钥保存在设备安全存储中（Android 用 Keychain/Keystore，Web 端回退到浏览器本地存储），界面上只显示尾号。
+对话页的「提示」按钮提供 L1 重听/慢速 → L2 关键词 → L3 参考回答 → L4 中→英；「我想说」把中文变成一句英文建议并填入输入框，两者都不会替你发送。翻译默认关闭，可在对话页切成「点按」或「常开字幕」，也可在设置里改默认值。
+
+密钥保存在设备安全存储中（Android 用 Keychain/Keystore，Web 端回退到浏览器本地存储），界面上只显示尾号。「清空所有数据」会把记录、表达本、密钥、缓存与设置一并清掉并恢复 2 个内置场景。
 
 ## 免责说明
 
 - 仅供个人学习使用，不构成任何教学服务。
 - 第三方 API 的密钥、费用与合规由使用者自行承担。
+- 成本为本地按 `usage`（缺失时按字符数）的估算值，不是厂商账单。
 - 朗读依赖的 Edge 在线语音属于非官方接口，可能随时失效；失效时会降级到系统朗读。
-- 「技巧分享」栏目（规划中）只提供第三方文章的摘要与原文链接，版权归原作者，不提供全文。
+- 「方法 / 技巧」只提供第三方文章全文的个人学习副本，配图不下载，保留出处与原文链接，版权归原作者。
 - 不承诺任何学习效果。
 
 ## 致谢
 
-开源项目与依赖：Flutter、flutter_riverpod、go_router、dio、drift + sqlite3_flutter_libs、flutter_secure_storage、shared_preferences、record、speech_to_text、flutter_tts、just_audio、audio_session、web_socket_channel、crypto、connectivity_plus、wakelock_plus、uuid、intl、path / path_provider。
+开源项目与依赖：Flutter、flutter_riverpod、go_router、dio、drift + sqlite3_flutter_libs、flutter_secure_storage、shared_preferences、record、speech_to_text、flutter_tts、just_audio、audio_session、web_socket_channel、crypto、connectivity_plus、wakelock_plus、url_launcher、uuid、intl、path / path_provider。
 
 第三方服务：对话接口（OpenAI 兼容协议）、语音识别接口（OpenAI 兼容 `/audio/transcriptions`）、Edge 在线朗读（非官方）、系统语音识别与系统朗读。

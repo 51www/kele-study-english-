@@ -83,13 +83,15 @@ class HistoryPage extends ConsumerWidget {
                     confirmDismiss: (_) => showConfirmDialog(
                       context,
                       title: '删除这条练习？',
-                      message: '会话、对话原文与本条纠错会一并删除，复盘内容不可恢复。',
+                      message: '会话、对话原文、本条纠错与从这次练习存下的表达会一并删除，不可恢复。',
                       confirmLabel: '删除',
                     ),
                     onDismissed: (_) async {
                       await ref.read(sessionRepositoryProvider).deleteSession(session.id);
                       ref.invalidate(recentSessionsProvider);
                       ref.invalidate(homeDataProvider);
+                      ref.invalidate(phrasesProvider);
+                      ref.invalidate(monthlyCostProvider);
                       if (context.mounted) showAppToast(context, '已删除该条练习');
                     },
                     child: _HistoryCard(

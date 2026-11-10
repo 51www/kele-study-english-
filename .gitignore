@@ -43,6 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
+
+# Android release 签名材料（密钥与密码绝不提交）
+/android/key.properties
+/android/keystore/
+*.jks
+*.p12
+*.keystore
 
 # Widget Preview related
 .widget_preview/

@@ -11,6 +11,7 @@ class AudioSessionManager {
   AudioSession? _session;
   StreamSubscription<AudioInterruptionEvent>? _interruptionSub;
   StreamSubscription<void>? _noisySub;
+  StreamSubscription<AudioDevicesChangedEvent>? _devicesSub;
   bool _configured = false;
 
   /// 播放被系统中断（来电/其他 App 占用）时回调。
@@ -18,6 +19,9 @@ class AudioSessionManager {
 
   /// 音频设备被拔出（耳机/蓝牙断开）时回调。
   void Function()? onDeviceDisconnected;
+
+  /// 耳机/蓝牙接入或移除；true 表示有新设备接入。
+  void Function(bool connected)? onDeviceChanged;
 
   bool get configured => _configured;
 
@@ -38,6 +42,22 @@ class AudioSessionManager {
         AppLogger.debug('audio device disconnected (becoming noisy)');
         onDeviceDisconnected?.call();
       });
+      try {
+        _devicesSub = session.devicesChangedEventStream.listen((event) {
+          final added = event.devicesAdded.isNotEmpty;
+          final removed = event.devicesRemoved.isNotEmpty;
+          if (!added && !removed) return;
+          AppLogger.debug(
+            'audio devices changed added=${event.devicesAdded.length} '
+            'removed=${event.devicesRemoved.length}',
+          );
+          if (added) onDeviceChanged?.call(true);
+          if (!added && removed) onDeviceDisconnected?.call();
+        });
+      } catch (e) {
+        // 部分 ROM 不提供设备变更流：静默降级，路由交给系统。
+        AppLogger.warn('audio devices stream unavailable: $e');
+      }
       _configured = true;
     } catch (e) {
       // Web / 桌面可能没有音频会话实现，降级为不做焦点管理。
@@ -49,8 +69,10 @@ class AudioSessionManager {
   Future<void> leaveConversation() async {
     await _interruptionSub?.cancel();
     await _noisySub?.cancel();
+    await _devicesSub?.cancel();
     _interruptionSub = null;
     _noisySub = null;
+    _devicesSub = null;
     try {
       await _session?.setActive(false);
     } catch (_) {

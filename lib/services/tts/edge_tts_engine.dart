@@ -8,6 +8,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../core/errors.dart';
 import '../../core/logger.dart';
+import '../../core/timeouts.dart';
 import 'edge_socket.dart';
 import 'tts_engine.dart';
 
@@ -118,7 +119,7 @@ class EdgeTtsEngine implements TtsEngine {
 
       channel.sink.add(_configMessage());
       channel.sink.add(_ssmlMessage(clean, voice, rate));
-      timeout = Timer(const Duration(seconds: 12), () {
+      timeout = Timer(Timeouts.ttsSynthesize, () {
         completeError('Edge 朗读超时');
       });
     } catch (e) {
