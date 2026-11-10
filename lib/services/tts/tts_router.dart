@@ -44,6 +44,9 @@ class TtsRouter {
   }) async {
     final clean = text.trim();
     if (clean.isEmpty || !autoPlay) return lastEngine;
+    AppLogger.debug(
+      'tts speak len=${clean.length} preferEdge=$preferEdge edgeDisabled=$_edgeDisabled voice=$voice rate=$rate',
+    );
 
     // 熔断后每 2 分钟放行一次探活，避免整场一直用系统 TTS。
     if (_edgeDisabled &&

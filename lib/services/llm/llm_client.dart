@@ -207,6 +207,10 @@ class LlmClient {
         yield delta;
       }
     } on DioException catch (e) {
+      // 调用方放弃本次流（首字超时转非流式）时会取消 token：
+      // 此时静默结束，避免把取消错误抛给已解绑的监听者（会变成未捕获异常），
+      // 同时也确保不再继续占用连接、不产生重复计费。
+      if (cancelToken?.isCancelled == true) return;
       throw mapDioError(e);
     }
   }

@@ -256,7 +256,7 @@ class SettingsPage extends ConsumerWidget {
                 SettingRow(
                   icon: Icons.description_outlined,
                   title: '开源许可',
-                  onTap: () => showLicensePage(context: context, applicationName: '开口练', applicationVersion: '0.1.0'),
+                  onTap: () => showLicensePage(context: context, applicationName: 'Saylo', applicationVersion: '0.1.0'),
                 ),
               ],
             ),

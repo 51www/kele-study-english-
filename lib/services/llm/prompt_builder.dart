@@ -184,12 +184,13 @@ class ReviewParser {
     }
 
     if (corrections.isEmpty && raw.trim().isNotEmpty) {
-      // 模型可能没有按格式返回：保留原文作为兜底提示，不硬解析 JSON。
+      // 模型可能没有按格式返回：标记 degraded，复盘页显示「未能生成总结 + 重试」。
       return ReviewResult(
-        highlight: highlight.isEmpty ? '本次复盘内容格式不完整' : highlight,
+        highlight: highlight.isEmpty ? '本次未能生成总结' : highlight,
         corrections: const [],
         phrases: phrases.take(5).toList(),
-        nextTip: nextTip.isEmpty ? '下次练习可以放慢语速，先想清楚再开口。' : nextTip,
+        nextTip: nextTip.isEmpty ? '可以重试一次，或直接继续下次练习。' : nextTip,
+        degraded: highlight.isEmpty || phrases.isEmpty,
       );
     }
 

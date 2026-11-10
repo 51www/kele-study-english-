@@ -89,6 +89,9 @@ class EdgeTtsEngine implements TtsEngine {
     try {
       final channel = connectEdgeSocket(uri);
       _channel = channel;
+      // 握手失败（如 403）会在 ready 上抛出；必须显式 await 并捕获，
+      // 否则会以未处理异常形式冒到 Zone，日志里出现 "Uncaught"。
+      await channel.ready;
       _sub = channel.stream.listen(
         (data) {
           if (data is List<int>) {

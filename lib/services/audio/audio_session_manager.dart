@@ -26,6 +26,7 @@ class AudioSessionManager {
     try {
       final session = await AudioSession.instance;
       await session.configure(AudioSessionConfiguration.speech());
+      AppLogger.debug('audio session configured (speech)');
       _session = session;
       _interruptionSub = session.interruptionEventStream.listen((event) {
         if (event.begin) {
@@ -62,9 +63,35 @@ class AudioSessionManager {
   /// 播放/录音前确保会话处于激活状态。
   Future<void> activate() async {
     try {
-      await _session?.setActive(true);
+      final ok = await _session?.setActive(true);
+      AppLogger.debug('audio session activate=$ok configured=$_configured');
     } catch (e) {
       if (!kIsWeb) AppLogger.warn('audio session activate failed: $e');
+    }
+  }
+
+  /// 朗读播放前切到媒体播放属性，避免沿用录音用的 voiceCommunication
+  /// 通道（在 Android 上会被路由到听筒/通话音量，导致外放听不到声音）。
+  Future<void> preparePlayback() async {
+    final session = _session;
+    if (session == null) return;
+    try {
+      await session.configure(AudioSessionConfiguration.music());
+      final ok = await session.setActive(true);
+      AppLogger.debug('audio session playback config, active=$ok');
+    } catch (e) {
+      if (!kIsWeb) AppLogger.warn('audio session playback config failed: $e');
+    }
+  }
+
+  /// 录音前恢复语音通信属性。
+  Future<void> prepareRecording() async {
+    final session = _session;
+    if (session == null) return;
+    try {
+      await session.configure(AudioSessionConfiguration.speech());
+    } catch (e) {
+      if (!kIsWeb) AppLogger.warn('audio session record config failed: $e');
     }
   }
 }

@@ -21,10 +21,13 @@ class SystemTtsEngine implements TtsEngine {
   Future<void> _ensureReady() async {
     if (_ready) return;
     try {
-      await _tts.setLanguage('en-US');
+      final lang = await _tts.setLanguage('en-US');
+      final available = await _tts.isLanguageAvailable('en-US');
       await _tts.setSpeechRate(0.5);
       await _tts.setPitch(1.0);
+      await _tts.setVolume(1.0);
       await _tts.awaitSpeakCompletion(true);
+      AppLogger.debug('system tts init setLanguage=$lang available=$available');
       _ready = true;
     } catch (e) {
       AppLogger.warn('system tts init failed: $e');
@@ -52,13 +55,24 @@ class SystemTtsEngine implements TtsEngine {
       final mapped = (0.5 * rate).clamp(0.2, 1.0).toDouble();
       await _tts.setSpeechRate(mapped);
       _speaking = true;
-      await _tts.speak(text).timeout(
+      final started = DateTime.now();
+      final code = await _tts.speak(text).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           AppLogger.warn('system tts completion timeout, treat as done');
           return 1;
         },
       );
+      AppLogger.debug(
+        'system tts speak code=$code elapsed=${DateTime.now().difference(started).inMilliseconds}ms len=${text.length}',
+      );
+      // speak 返回非 1 说明引擎没有真正入队发声（如 ROM 自带 TTS 不支持
+      // 当前语言），必须抛错让 TtsRouter 报告失败，避免 UI 播放态但无声。
+      if (code is num && code != 1) {
+        throw TtsException(
+          AppError(kind: AppErrorKind.audio, detail: '系统朗读未启动（code=$code）'),
+        );
+      }
       return const TtsResult(engine: 'system', spoken: true);
     } catch (e) {
       throw TtsException(

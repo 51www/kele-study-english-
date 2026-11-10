@@ -77,6 +77,7 @@ class ConversationController extends ChangeNotifier {
   Timer? _recordTicker;
   Timer? _slowTimer;
   CancelToken? _cancelToken;
+  CancelToken? _streamToken;
   StreamSubscription<List<ConnectivityResult>>? _netSub;
   DateTime? _recordStartedAt;
   DateTime? _turnStartedAt;
@@ -298,6 +299,7 @@ class ConversationController extends ChangeNotifier {
     });
 
     try {
+      await audioSession.prepareRecording();
       await audioSession.activate();
       _usingHttpAsr = false;
       _usingAsr = false;
@@ -475,7 +477,7 @@ class ConversationController extends ChangeNotifier {
 
     error = null;
     ttsWarning = null;
-    _turnStartedAt ??= DateTime.now();
+    _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
     final seq = messages.isEmpty ? 1 : messages.last.seq + 1;
     final userMessage = MessageRecord(
@@ -536,7 +538,7 @@ class ConversationController extends ChangeNotifier {
         history: messages,
       );
 
-      final streamed = await _consumeStream(config, history, watch, token, (delta) {
+      final streamed = await _consumeStream(config, history, watch, (delta) {
         full += delta;
         streamingText = full;
         notifyListeners();
@@ -591,7 +593,9 @@ class ConversationController extends ChangeNotifier {
         'latency turn asr=${_asrMs ?? '-'}ms firstToken=${_firstTokenMs ?? '-'}ms '
         'firstAudio=${_firstAudioMs ?? '-'}ms total=${watch.elapsedMilliseconds}ms',
       );
-      if (!_disposed && state == TurnState.thinking) {
+      if (!_disposed &&
+          (state == TurnState.thinking ||
+              (state == TurnState.speaking && playingMessageId == null))) {
         state = TurnState.idle;
         notifyListeners();
       }
@@ -640,6 +644,8 @@ class ConversationController extends ChangeNotifier {
   /// 取消当前等待中的回复。
   Future<void> cancelReply() async {
     if (state != TurnState.thinking) return;
+    _streamToken?.cancel('user canceled');
+    _streamToken = null;
     _cancelToken?.cancel('user canceled');
     _cancelToken = null;
     _slowTimer?.cancel();
@@ -659,7 +665,6 @@ class ConversationController extends ChangeNotifier {
     LlmConfig config,
     List<LlmMessage> history,
     Stopwatch watch,
-    CancelToken cancelToken,
     void Function(String delta) onDelta,
   ) async {
     final completer = Completer<bool>();
@@ -667,17 +672,22 @@ class ConversationController extends ChangeNotifier {
     Timer? firstTimer;
     var gotFirst = false;
     final buffer = StringBuffer();
+    // 流式请求单独持有一个 CancelToken：首字超时降级时取消它，
+    // 让旧请求真正中止（不影响后续非流式请求共用的 cancelToken）。
+    final streamToken = CancelToken();
+    _streamToken = streamToken;
 
     firstTimer = Timer(const Duration(seconds: 6), () async {
       if (gotFirst || completer.isCompleted) return;
       AppLogger.warn('llm stream first token timeout after 6s');
+      streamToken.cancel('first token timeout');
       await sub?.cancel();
       if (!completer.isCompleted) completer.complete(false);
     });
 
     try {
       sub = llmClient
-          .streamChat(config, history, maxTokens: 700, cancelToken: cancelToken)
+          .streamChat(config, history, maxTokens: 700, cancelToken: streamToken)
           .listen(
             (delta) {
               if (delta.isEmpty) return;
@@ -718,6 +728,7 @@ class ConversationController extends ChangeNotifier {
     } finally {
       firstTimer.cancel();
       await sub?.cancel();
+      if (_streamToken == streamToken) _streamToken = null;
     }
   }
 
@@ -760,6 +771,7 @@ class ConversationController extends ChangeNotifier {
         if (!_disposed) notifyListeners();
       }
       try {
+        await audioSession.preparePlayback();
         await tts.speak(
           sentence,
           voice: _voice,
@@ -798,7 +810,7 @@ class ConversationController extends ChangeNotifier {
     state = TurnState.speaking;
     notifyListeners();
     try {
-      await audioSession.activate();
+      await audioSession.preparePlayback();
       await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
     } on TtsException catch (e) {
       AppLogger.warn('replay failed: ${e.error.detail}');

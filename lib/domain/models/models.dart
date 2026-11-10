@@ -542,6 +542,7 @@ class ReviewResult {
     required this.phrases,
     required this.nextTip,
     this.promptCount = 0,
+    this.degraded = false,
   });
 
   final String highlight;
@@ -550,12 +551,16 @@ class ReviewResult {
   final String nextTip;
   final int promptCount;
 
+  /// 模型没有按约定格式返回时的兜底标记；复盘页据此显示「重试」。
+  final bool degraded;
+
   Map<String, Object?> toJson() => {
         'highlight': highlight,
         'corrections': corrections.map((e) => e.toJson()).toList(),
         'phrases': phrases,
         'nextTip': nextTip,
         'promptCount': promptCount,
+        if (degraded) 'degraded': true,
       };
 
   String encode() => jsonEncode(toJson());
@@ -568,6 +573,7 @@ class ReviewResult {
         phrases: ((json['phrases'] as List?) ?? const []).map((e) => e.toString()).toList(),
         nextTip: (json['nextTip'] ?? '') as String,
         promptCount: (json['promptCount'] as num?)?.toInt() ?? 0,
+        degraded: json['degraded'] == true,
       );
 
   static ReviewResult? tryDecode(String? raw) {

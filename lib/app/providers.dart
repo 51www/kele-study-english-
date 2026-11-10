@@ -152,6 +152,15 @@ final recentSessionsProvider = FutureProvider<List<SessionRecord>>((ref) {
   return ref.watch(sessionRepositoryProvider).list();
 });
 
+final phrasesProvider = FutureProvider<List<Phrase>>((ref) {
+  return ref.watch(sessionRepositoryProvider).phrases();
+});
+
+final correctionsForSessionProvider =
+    FutureProvider.family<List<Correction>, String>((ref, sessionId) {
+  return ref.watch(sessionRepositoryProvider).corrections(sessionId);
+});
+
 final scenarioProvider = FutureProvider.family<Scenario?, String>((ref, id) {
   return ref.watch(scenarioRepositoryProvider).byId(id);
 });

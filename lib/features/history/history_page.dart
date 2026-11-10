@@ -68,10 +68,35 @@ class HistoryPage extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final session = sessions[index];
                   final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
-                  return _HistoryCard(
-                    session: session,
-                    scenario: scenario,
-                    onTap: () => context.push('/review/${session.id}'),
+                  return Dismissible(
+                    key: ValueKey(session.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                    ),
+                    confirmDismiss: (_) => showConfirmDialog(
+                      context,
+                      title: '删除这条练习？',
+                      message: '会话、对话原文与本条纠错会一并删除，复盘内容不可恢复。',
+                      confirmLabel: '删除',
+                    ),
+                    onDismissed: (_) async {
+                      await ref.read(sessionRepositoryProvider).deleteSession(session.id);
+                      ref.invalidate(recentSessionsProvider);
+                      ref.invalidate(homeDataProvider);
+                      if (context.mounted) showAppToast(context, '已删除该条练习');
+                    },
+                    child: _HistoryCard(
+                      session: session,
+                      scenario: scenario,
+                      onTap: () => context.push('/review/${session.id}'),
+                    ),
                   );
                 },
               );

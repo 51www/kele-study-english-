@@ -132,11 +132,11 @@ class MePage extends ConsumerWidget {
                   children: [
                     SettingRow(
                       icon: Icons.info_outline_rounded,
-                      title: '关于开口练',
+                      title: '关于 Saylo',
                       value: 'v0.1.0',
                       onTap: () => showAppSheet(
                         context: context,
-                        title: '关于开口练',
+                        title: '关于 Saylo',
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
                           child: Column(

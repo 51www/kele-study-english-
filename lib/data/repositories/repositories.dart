@@ -155,6 +155,12 @@ class SessionRepository {
     }
   }
 
+  /// 重新生成复盘时整体替换该会话的纠错记录。
+  Future<void> replaceCorrections(String sessionId, List<Correction> items) async {
+    await _store.deleteCorrections(sessionId);
+    await saveCorrections(items);
+  }
+
   Future<void> deleteCorrection(String id) => _store.deleteCorrection(id);
 
   Future<List<Phrase>> phrases() => _store.phrases();

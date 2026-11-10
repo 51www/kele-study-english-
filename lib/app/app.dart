@@ -91,7 +91,7 @@ class KeleApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(settingsControllerProvider);
     return MaterialApp.router(
-      title: '开口练',
+      title: 'Saylo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
