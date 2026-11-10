@@ -1,0 +1,940 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-11-10",
+  "project": "kele-study-english",
+  "module": "tips-share",
+  "count": 30,
+  "notes": "只整理已有文章，不含原创内容；正文不转载，仅要点提炼并保留原文链接。date_confidence: high=已打开页面确认, medium=搜索结果标注, unknown=页面无日期或无法确认。",
+  "categories": [
+    "AI对话练习",
+    "B站/视频",
+    "听力精听",
+    "口语输出",
+    "学习方法",
+    "工具"
+  ],
+  "items": [
+    {
+      "id": "T01",
+      "title": "别乱报英语班！把豆包AI当成免费外教，3个月口语提升保姆级攻略",
+      "author": "AI研究与应用",
+      "platform": "今日头条",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "http://m.toutiao.com/group/7643783390524719668/",
+      "category": "AI对话练习",
+      "summary": "把豆包语音模式当外教，按12周分三段：破冰对话、场景角色扮演、发音拆解。给出「专属英语私教」中文指令，要求简单词汇并中文纠错。",
+      "steps": [
+        "开豆包语音模式（右下角耳机）",
+        "粘贴私教指令，约定用简单词汇并中文纠错",
+        "第5–8周换成星巴克店员或面试官，每场5回合",
+        "第9–12周让豆包逐字拆连读弱读并做影子跟读"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "claimed",
+        "rewrite_or_promo": "suspected_traffic",
+        "note": "3个月见效无数据，结尾引导打卡"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T02",
+      "title": "豆包3个神级提示词，让我的英语口语突飞猛进（附完整Prompt）",
+      "author": "AI实战派老陈",
+      "platform": "今日头条",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "http://m.toutiao.com/group/7670535187298353704/",
+      "category": "AI对话练习",
+      "summary": "三条全英文Prompt：扮母语朋友短句闲聊并逐句纠错、施压式角色扮演练即兴反应、按流利度与自然度打分并改写，按Day1–7叠加使用。",
+      "steps": [
+        "复制Prompt让豆包扮朋友，只用短句聊天",
+        "设酒店前台「刁难」场景练即兴反应",
+        "要求按流利度、自然度打分并指出不自然用词",
+        "截图好表达，次日复用"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "claimed",
+        "rewrite_or_promo": "suspected_ai_generated",
+        "note": "有前后表达对比，但7天判若两人说法夸张"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T03",
+      "title": "DeepSeek学英语，不用背单词，30天流利对话",
+      "author": "离科",
+      "platform": "今日头条",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "http://m.toutiao.com/group/7686780810556441132/",
+      "category": "AI对话练习",
+      "summary": "主张背「句子块」而非单词，四阶段各给中文指令模板：生存口语、情绪表达、观点追问、自由聊。",
+      "steps": [
+        "第1–7天每天一个场景，让DeepSeek演店员",
+        "第8–14天一句中文要三种英文：正式、随意、带情绪",
+        "第15–21天就话题连追三轮Why",
+        "第22–30天随机话题，每5轮总结3个错误并给替换清单"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "reported",
+        "rewrite_or_promo": "unknown",
+        "note": "案例为转述朋友，无凭证，标题夸张"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T04",
+      "title": "DeepSeek黑科技学外语（2026亲测·口语陪练指令直接复制）",
+      "author": "苹野智财",
+      "platform": "今日头条",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "http://m.toutiao.com/group/7643491833259115059/",
+      "category": "AI对话练习",
+      "summary": "六条中文模板：口语陪练、精读笔记、毒舌批改、分级改写、雅思模考、母语化润色，各配案例；与口语强相关的是前两条与雅思模考。",
+      "steps": [
+        "选角色（店员、HR、旅友），每3轮反馈一个错误",
+        "雅思模板给Part2题卡、1分钟准备、2分钟作答、四维打分",
+        "批改模板要求标错、给地道说法和百分制评分"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "claimed",
+        "rewrite_or_promo": "suspected_content_farm",
+        "note": "称亲测但无过程，其余玩法偏读写"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T05",
+      "title": "AI全天候免费英语口语搭子，十大陪练实用方法连提示词在此",
+      "author": "赫小鱼的妈妈",
+      "platform": "小花生",
+      "published_at": "2026-06-16",
+      "date_confidence": "medium",
+      "url": "https://www.xiaohuasheng.cn/blog?id=4f4b7008321052ee",
+      "category": "AI对话练习",
+      "summary": "对比四五款工具后选豆包（孩子发音识别约九成半），给出10种亲子陪练玩法与中文提示词模板。",
+      "steps": [
+        "选现成「英语搭子」智能体并开朗读",
+        "首次交代年龄与水平",
+        "按模板练讲故事、单词接龙、主题聊天、角色扮演",
+        "错误不打断，让AI用正确句式复述",
+        "固定同一智能体保留记忆"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "有工具对比与带娃实践细节，效果为主观感受"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T06",
+      "title": "《数位时代》文藻翻译系主任推荐！5步骤让AI当你的英语口说家教",
+      "author": "韦惟珊（采访文藻外语大学翻译系主任王慧娟）",
+      "platform": "文藻外语大学官网（转载《数位时代》）",
+      "published_at": "2026-04-16",
+      "date_confidence": "high",
+      "url": "https://a001.wzu.edu.tw/article/527609",
+      "category": "AI对话练习",
+      "summary": "对比Gemini、ChatGPT、豆包三家语音入口，给5个可复制提示词：看嘴型纠音、商务对话、口译、面试、歌词朗读；提醒AI是「夸夸队」，纠错不如真人。",
+      "steps": [
+        "点各家语音入口：Gemini Live、ChatGPT耳机、豆包电话",
+        "开摄像头让AI看口型纠音",
+        "粘贴面试官提示词，每题四维反馈并示范答案",
+        "口译从1句递增到3句后重译",
+        "每次结束复盘转写稿"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "expert",
+        "rewrite_or_promo": "none",
+        "note": "媒体采访加高校转载，可信度高；用词偏台湾"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T07",
+      "title": "练口语没人陪？六招用AI当陪练，随时开口",
+      "author": "口语街（SpeakStreet）",
+      "platform": "kouyujie.cn",
+      "published_at": "2026-09-30",
+      "date_confidence": "medium",
+      "url": "https://m.kouyujie.cn/news/5292.html",
+      "category": "AI对话练习",
+      "summary": "六招方法论：立人设场景、预设纠错规则、由易到难、对话后复盘、把AI当表达搜索引擎、固定频率加录音；另附三个误区。",
+      "steps": [
+        "开口前指定角色与难度",
+        "约定先接话、再标错、最后给地道说法",
+        "每轮后问最该改的三个错",
+        "卡壳时索取三个版本说法",
+        "每周3–4次、每次10分钟并录音对比"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_promo",
+        "note": "机构号，疑似引流"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T08",
+      "title": "AI辅助英语学习技巧与提示词",
+      "author": "混沌公主Chaos",
+      "platform": "新浪新闻（转微博）",
+      "published_at": "2026-08-29",
+      "date_confidence": "medium",
+      "url": "https://sina.cn/news/detail/5337168494985905.html",
+      "category": "AI对话练习",
+      "summary": "五条英文Prompt：对练并逐条纠错、按词汇量背词、拍照描述场景、自然口语听力、词根词族；作者另给出「AI交互性被高估」的判断。",
+      "steps": [
+        "粘贴口语Prompt，要求先自然回应再指出不自然处",
+        "拍照说Describe the spatial layout练场景描述",
+        "用contractions与fillers指令练听力",
+        "先自言自语再让AI精确化表达"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": false,
+        "has_examples": true,
+        "author_experience": "claimed",
+        "rewrite_or_promo": "none",
+        "note": "Prompt精炼，但缺少系统步骤"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T09",
+      "title": "用ChatGPT语音聊天功能学习英语，每天都像在「炸裂式」进步！",
+      "author": "前端小趴蔡",
+      "platform": "掘金",
+      "published_at": "2024-10-29",
+      "date_confidence": "medium",
+      "url": "https://juejin.cn/post/7430850248841183232",
+      "category": "AI对话练习",
+      "summary": "五个用法：情景对话、即时纠错、学俚语、即问生词、固定句型多轮复用，每点配对话片段。",
+      "steps": [
+        "设定场景让ChatGPT演店员或同事",
+        "对话中要求随时纠正",
+        "主动问更自然的说法",
+        "遇生词立刻追问释义与例句",
+        "固定句型多轮复用"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "发布时间早于目标区间，ChatGPT语音已多次改版"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T10",
+      "title": "智能体创建——你的专属英语练习搭子",
+      "author": "阿里云云工开物",
+      "platform": "阿里云开发者社区",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://developer.aliyun.com/adc/university/311001620070",
+      "category": "AI对话练习",
+      "summary": "在百炼用Qwen-Plus搭一个可音频交互的陪练智能体，内置雅思模考与情景对话两套技能，对话后1–9分评分。",
+      "steps": [
+        "领代金券并实名认证",
+        "新建智能体并选Qwen-Plus",
+        "粘贴人设与技能指令：选话题、1分钟准备、评分反馈",
+        "配语音后发布，扫码在手机测试",
+        "按token计费"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "none",
+        "note": "官方实验手册，步骤最细；需账号且可能产生费用"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T11",
+      "title": "英语听力口语三步训练法——从「听得见」到「听得懂」，再到「说得出」",
+      "author": "周末大肥仔",
+      "platform": "B站专栏",
+      "published_at": "2026-06-14",
+      "date_confidence": "medium",
+      "url": "https://m.bilibili.com/opus/1213638598330417191",
+      "category": "B站/视频",
+      "summary": "每个片段30–60秒：先无字幕盲听记盲区，再开英文字幕对声音与拼写，最后开双语字幕校准语义；三步不可颠倒。",
+      "steps": [
+        "选一段能懂六七成的片段",
+        "关字幕盲听并标盲区",
+        "开英文字幕核对连读弱读与搭配",
+        "开双语字幕确认文化与语气",
+        "有余力加0.5秒延迟影子跟读"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_ai_generated",
+        "note": "所引研究未核实"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T12",
+      "title": "如何利用TED学英语？",
+      "author": "王佳欣（新东方口译学习中心）",
+      "platform": "新东方网",
+      "published_at": "2018-07-17",
+      "date_confidence": "medium",
+      "url": "http://sh.xdf.cn/yyganhuo/201807/8428456.html",
+      "category": "听力精听",
+      "summary": "选5分钟演讲，按主题连看3天形成知识体系；首听关字幕，能懂六七成才继续；先猜后看翻译，再模仿输出。",
+      "steps": [
+        "定一个主题选3篇",
+        "关字幕听并归纳关键词",
+        "实在不懂再看翻译并纠错",
+        "摘金句模仿语调",
+        "用「小花」自问自答造句"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "teacher",
+        "rewrite_or_promo": "none",
+        "note": "2018年文章，平台操作已过时"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T13",
+      "title": "经验分享｜看美剧学英语，到底要不要看字幕？",
+      "author": "欧文（绝学社）",
+      "platform": "绝学社",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://www.zhufubang.com/subtitles/",
+      "category": "B站/视频",
+      "summary": "反对一上来关字幕：一刷双语保兴趣，二刷英字精听做笔记，三刷无字幕验收；给出70%与90%的量化门槛及1:4:1时间分配。",
+      "steps": [
+        "抽3–5个2分钟片段测能否懂70%",
+        "一刷双语字幕",
+        "二刷英文字幕，字幕延迟2秒并记台词",
+        "三刷关字幕自测90%",
+        "6个月一部，按1:4:1分配时间"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "有真实试错与量化标准，反鸡汤；未标日期，疑旧文重发"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T14",
+      "title": "BBC英语学习在新加坡怎么用？从PSLE到职场的高效听力提升指南",
+      "author": "李老师",
+      "platform": "iWorld Learning",
+      "published_at": "2026-08-06",
+      "date_confidence": "medium",
+      "url": "https://www.iworldlearning.com/new/bbc-english-learning-singapore-guide.html",
+      "category": "听力精听",
+      "summary": "拆解6 Minute English、The English We Speak、News Review、Pronunciation、English at Work五个栏目的难度与用途，按人群给周计划。",
+      "steps": [
+        "按水平选主栏目",
+        "工作日每天15分钟盲听、核对、跟读",
+        "周三加一期习语栏目",
+        "周末做输出：写作或自述",
+        "每4–6周复测"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_promo",
+        "note": "栏目说明准确，但系课程引流"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T15",
+      "title": "利用BBC 6 Minute English高效备考雅思听力与口语",
+      "author": "青岛新东方前途出国（未署名）",
+      "platform": "新东方前途出国",
+      "published_at": "2024-11-06",
+      "date_confidence": "medium",
+      "url": "https://qiantum.xdf.cn/qingdao/mglh_xjslh_ksgl/5458003.shtml",
+      "category": "听力精听",
+      "summary": "6分钟一集、语速适中且带文稿；精听三遍加语料分类与逐句跟读，每天1期。",
+      "steps": [
+        "不暂停听一遍抓大意",
+        "第二遍回倒退听卡点",
+        "第三遍看文稿，可降0.75倍速",
+        "摘生词短语按话题归类",
+        "逐句跟读模仿"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": false,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_seo",
+        "note": "步骤简略，无署名，机构SEO文"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T16",
+      "title": "【听力】不同听力水平的人如何有效精听？",
+      "author": "知乎@芊芊（诺丁汉大学中英笔译硕士）",
+      "platform": "扇贝",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://web.shanbay.com/web/ask/answers/luwza",
+      "category": "听力精听",
+      "summary": "按「能听到什么」分四阶段；初级用1.2倍速负重精听，中级补连读弱读，高级练复述与影子跟读。",
+      "steps": [
+        "选生词不超过5个的材料",
+        "调1.2倍速逐句听5遍",
+        "仍不懂再看原文并查音标",
+        "大声读生词后回听3–5遍",
+        "降回1倍速验收"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "有雅思听力6到9的亲身经历，逐句示范错误听感"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T17",
+      "title": "按水平分级的最佳英语听力播客推荐",
+      "author": "Tutoro Team",
+      "platform": "Tutoro 博客",
+      "published_at": "2026-09-23",
+      "date_confidence": "medium",
+      "url": "https://tutoro.pro/zh/blog/yingyu-tingli-boke-tuijian",
+      "category": "听力精听",
+      "summary": "选略高于当前水平、理解率约80%的播客；每集听两遍，第一遍听意思，第二遍听语言，再接口语输出。",
+      "steps": [
+        "做水平自测选1–2档",
+        "第一遍不暂停不记笔记",
+        "第二遍暂停记短语并查例句",
+        "用新表达自述30–60秒",
+        "固定同一档连听两周"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_promo",
+        "note": "产品博客，清单占比高"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T18",
+      "title": "把新闻播客变成随身听力课，四步练出英语口语耳感",
+      "author": "未署名（口语街 SpeakStreet）",
+      "platform": "kouyujie.cn",
+      "published_at": "2026-10-15",
+      "date_confidence": "medium",
+      "url": "https://m.kouyujie.cn/news/5330.html",
+      "category": "听力精听",
+      "summary": "新闻练抓重点、播客练跟长段；四步为盲听抓主干、看稿标音变、倍速回听、跟读加转述，并列出三个误区。",
+      "steps": [
+        "选慢速新闻或兴趣播客",
+        "盲听只抓谁、何事、结论",
+        "看稿标弱读连读",
+        "难句0.8倍速再1.2倍速",
+        "合稿用自己的话转述"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_batch",
+        "note": "未署名，疑机构批量内容"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T19",
+      "title": "影子跟读怎么练才有效？2026年四步实操法，三周跟上原速播客",
+      "author": "admin（ListenLeap）",
+      "platform": "ListenLeap 博客",
+      "published_at": "2026-08-27",
+      "date_confidence": "medium",
+      "url": "https://blog.listenleap.com/archives/yingzi-gengdu-zenme-lian-sibu-shicaofa?lang=zh-CN",
+      "category": "口语输出",
+      "summary": "跟读不等于朗读：先盲听2–3遍，再逐句跟读抓连读、弱读、语调，最后同步跟读并录音对比。",
+      "steps": [
+        "选盲听能懂六成、1–3分钟的素材",
+        "盲听标卡点",
+        "逐句跟2–3遍",
+        "同步跟读全程不暂停并录音",
+        "按三周计划逐步换更难片段"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_ai_generated",
+        "note": "产品功能植入明显"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T20",
+      "title": "NO.008 如何有效练习英语口语（3）——自言自语",
+      "author": "未核实",
+      "platform": "知乎专栏",
+      "published_at": "2020-04-14",
+      "date_confidence": "medium",
+      "url": "https://zhuanlan.zhihu.com/p/130488597",
+      "category": "口语输出",
+      "summary": "定主题、拆小话题、每天一题先查表达再开口并录音、回听挑错记笔记；作者自述大学时在校园路上自练。",
+      "steps": [
+        "选近期想懂的主题",
+        "拆成可操作的小话题",
+        "每天一题先输入再自由说",
+        "全程录音",
+        "回听记录错误与改进"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": false,
+        "author_experience": "verified",
+        "rewrite_or_promo": "unknown",
+        "note": "示例偏少，账号属性未核实；2020年文章"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T21",
+      "title": "英语学习干货丨「影子跟读」方法详解，听口同练",
+      "author": "未核实（专栏自称小编）",
+      "platform": "知乎专栏",
+      "published_at": "2023-11-11",
+      "date_confidence": "medium",
+      "url": "https://zhuanlan.zhihu.com/p/666258925",
+      "category": "口语输出",
+      "summary": "分有稿与无稿、逐句与同步四型，给七步流程与素材标准（生词约20%），列1、5、10、30次预期变化。",
+      "steps": [
+        "听2遍并查词",
+        "精听长难句",
+        "有稿逐句跟读",
+        "有稿同步跟读，延迟1–2词",
+        "转无稿逐句再到同步，录音对比"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_institution",
+        "note": "N次见效缺依据，疑机构号"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T22",
+      "title": "跟读法（Shadowing）：练习怎么「说」英文",
+      "author": "台大外语教学暨资源中心",
+      "platform": "台大 FLTC 电子报",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://fltc.fltc.ntu.edu.tw/web/e_paper/e_paper_in.jsp?lang=tw&cp_id=CP1777513069817&cp_code=reach",
+      "category": "口语输出",
+      "summary": "说明跟读练的是整句语调韵律，按难度推荐三个跟读频道，强调录音自纠。",
+      "steps": [
+        "选带留白的跟读音频",
+        "整段听一遍",
+        "近同步开口模仿节奏",
+        "录音回听找不自然处",
+        "重录"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": false,
+        "author_experience": "none",
+        "rewrite_or_promo": "none",
+        "note": "校方科普，无带货，可信度较高"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T23",
+      "title": "EP51「影子跟读法」的正确打开方式，英语口语训练合理避坑",
+      "author": "乔治 / 英语冰美式",
+      "platform": "小宇宙（播客）",
+      "published_at": "2025-07",
+      "date_confidence": "medium",
+      "url": "https://www.xiaoyuzhoufm.com/episode/687ed12da9dec925007b603b",
+      "category": "口语输出",
+      "summary": "错误跟读会固化发音错误、制造虚假流利感；给四步安全法：理解拆解、慢速攻克、韵律模仿、录音检验，并介绍默读与局部跟读等降阶玩法。",
+      "steps": [
+        "先拆句理解",
+        "0.7倍速逐句攻克",
+        "只模仿重音节奏",
+        "录音与原声比对",
+        "每次只改一个音"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "teacher",
+        "rewrite_or_promo": "unknown",
+        "note": "细节需听音频，主播是否带课未核实"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T24",
+      "title": "给自己100天学习英语口语",
+      "author": "懒猫（manateelazycat）",
+      "platform": "个人博客",
+      "published_at": "2025-12-08",
+      "date_confidence": "high",
+      "url": "https://manateelazycat.github.io/2025/12/08/study-spoken-english/",
+      "category": "口语输出",
+      "summary": "用《和莎莫的500天》跑100LS：无字幕、中文字幕、英文字幕抄生词、逐句跟读，逐遍记录卡点；记录到第6遍，含连读弱读真实体感。",
+      "steps": [
+        "无字幕看一遍",
+        "开中文字幕确认剧情",
+        "开英文字幕抄生词查义",
+        "逐词读准再整句跟读",
+        "盲听不懂再开字幕并复述"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "正在练，连载中，无最终结论"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T25",
+      "title": "让孩子把英语用起来",
+      "author": "楼夷",
+      "platform": "光明网·文摘报（书摘）",
+      "published_at": "2026-01-03",
+      "date_confidence": "medium",
+      "url": "https://epaper.gmw.cn/wzb/html/2026-01/03/nw.D110000wzb_20260103_3-07.htm",
+      "category": "学习方法",
+      "summary": "讲i+1与最佳输入四条件：可理解、有吸引力、语言丰富、量足够；课堂不够，靠课外大量接触；附作者十年带娃经验。",
+      "steps": [
+        "选略高于现有水平但能懂大意的材料",
+        "只选真正着迷的内容",
+        "保证词汇句型多样",
+        "把量做在课外"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": false,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "偏理念，无逐日步骤；正规书摘"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T26",
+      "title": "【读者分享】英语阅读：量的坚持带来质的飞跃",
+      "author": "外研社读者（未署名）",
+      "platform": "外研社·英语学习",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "http://rays.fltrp.com/network/2839/website/cn/default/info.aspx?id=31984",
+      "category": "学习方法",
+      "summary": "从书虫六级起步，大半年读40多本约100万字；睡前读，通勤时在脑中用英文复述情节，发现能直接用英文思考。",
+      "steps": [
+        "先试原版测难度，退到分级读物",
+        "按级别成套读，挑喜欢的故事",
+        "固定睡前读",
+        "读后在脑内复述情节并加细节"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "minor_promo",
+        "note": "有量化阅读量；文末有购书链接"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T27",
+      "title": "从「会背」到「会用」，这些app和方法帮我学好英语",
+      "author": "珪璋（少数派）",
+      "platform": "36氪转载",
+      "published_at": "2023-04-19",
+      "date_confidence": "medium",
+      "url": "https://m.36kr.com/p/2221775830713217",
+      "category": "工具",
+      "summary": "WordFlow三步Collect、Review、Produce：词典跨平台收生词导csv，入Anki复习，另建「不会说」反向卡，写作后用润色工具回填。",
+      "steps": [
+        "用可导csv的词典随手收词句",
+        "导Anki按曲线复习",
+        "建反向卡记「想说说不出」",
+        "写作输出",
+        "对照润色改写回填"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": true,
+        "author_experience": "verified",
+        "rewrite_or_promo": "none",
+        "note": "作者自认口语未解决，非卖课；2023年工具版本可能已变"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T28",
+      "title": "英语学习方法（8周口语训练计划）",
+      "author": "Zeffon（站点整理，注明源自知乎高赞回答）",
+      "platform": "english.zeffon.cn",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://english.zeffon.cn/",
+      "category": "学习方法",
+      "summary": "8周排期：纠音、语音标记跟读牛津160句、词汇句型想法造句、《老友记》10分钟片段精读跟读、复盘背诵、实战找人聊。",
+      "steps": [
+        "每天2–4词并造句",
+        "10分钟剧集当1小时逐句读到脱口而出",
+        "第4周起去字幕回看并记卡点",
+        "每周复盘旧词句",
+        "最后找母语者实战"
+      ],
+      "has_template": true,
+      "quality": {
+        "clear_steps": true,
+        "has_examples": false,
+        "author_experience": "none",
+        "rewrite_or_promo": "unknown",
+        "note": "转载未标授权，版权存疑，仅保留标题与链接"
+      },
+      "copyright": {
+        "mode": "title_link_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T29",
+      "title": "自学英语省钱攻略｜不用买高价课，低成本稳步提分",
+      "author": "未核实",
+      "platform": "什么值得买",
+      "published_at": null,
+      "date_confidence": "unknown",
+      "url": "https://post.m.smzdm.com/p/anvmq7v7/",
+      "category": "工具",
+      "summary": "面向学生党与打工人的低成本方案：跟读音频模仿语调、自己录音对比、用免费工具做文本朗读；建议先做到敢开口再考虑付费陪练。",
+      "steps": [
+        "每天固定40分钟",
+        "跟读音频模仿语调",
+        "录音对比",
+        "用免费TTS做朗读练习",
+        "基础扎实后再评估付费课"
+      ],
+      "has_template": null,
+      "quality": {
+        "clear_steps": false,
+        "has_examples": false,
+        "author_experience": "unknown",
+        "rewrite_or_promo": "suspected_promo",
+        "note": "疑似带货文，需人工复核"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    },
+    {
+      "id": "T30",
+      "title": "如何使用AI合成的自己的声音来帮助自己提升英语口语",
+      "author": "Luna（简言，转载）",
+      "platform": "语言服务资源网",
+      "published_at": "2023-12-06",
+      "date_confidence": "medium",
+      "url": "https://linguaresources.com/?p=23285",
+      "category": "工具",
+      "summary": "ChatGPT写地道口语文本，ElevenLabs克隆自己音色合成标准音，再拿「自己的声音」做影子跟读；依据语音趋同与输入假说。",
+      "steps": [
+        "让ChatGPT按场景写口语文本",
+        "用自己音色合成音频",
+        "对照文本听一遍",
+        "影子跟读录音",
+        "与原音频比对修正"
+      ],
+      "has_template": false,
+      "quality": {
+        "clear_steps": false,
+        "has_examples": true,
+        "author_experience": "none",
+        "rewrite_or_promo": "suspected_promo",
+        "note": "文字步骤偏简，站内有课程广告；2023年工具价格需复核"
+      },
+      "copyright": {
+        "mode": "summary_only",
+        "full_text_allowed": false
+      },
+      "status": "candidate"
+    }
+  ]
+}

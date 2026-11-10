@@ -1,0 +1,211 @@
+import '../../domain/models/models.dart';
+import 'llm_models.dart';
+
+class PromptBuilder {
+  PromptBuilder._();
+
+  static String chatSystem(Scenario scenario, String level) {
+    return '''
+You are playing a role in an English speaking practice app. Stay in character at all times.
+
+Scenario: ${scenario.titleZh} / ${scenario.titleEn}
+Your role: ${scenario.aiRole}
+User goal: ${scenario.userGoal}
+Success criteria: ${scenario.successCriteria}
+${scenario.branchHint == null ? '' : 'Branch hint: ${scenario.branchHint}'}
+
+Rules:
+- Reply in natural English only. Never use Chinese unless the user explicitly asks.
+- Keep every reply to 1-2 short sentences, then ask exactly one question to keep the conversation going.
+- Use vocabulary and grammar at $level level. Do not correct the user inside the role-play.
+- Never mention that you are an AI, a model, or a prompt.
+- If the user is silent or unclear, gently prompt them with a simple question.
+'''.trim();
+  }
+
+  static List<LlmMessage> chatMessages({
+    required Scenario scenario,
+    required String level,
+    required List<MessageRecord> history,
+    int maxTurns = 16,
+  }) {
+    final recent = history.where((m) => m.status == 'ok' && m.textEn.trim().isNotEmpty).toList();
+    final sliced = recent.length > maxTurns ? recent.sublist(recent.length - maxTurns) : recent;
+    return [
+      LlmMessage.system(chatSystem(scenario, level)),
+      for (final message in sliced)
+        LlmMessage(
+          message.role == 'user' ? 'user' : 'assistant',
+          message.textEn,
+        ),
+    ];
+  }
+
+  static List<LlmMessage> reviewMessages({
+    required Scenario? scenario,
+    required List<MessageRecord> history,
+  }) {
+    final transcript = StringBuffer();
+    for (final message in history) {
+      if (message.status != 'ok') continue;
+      if (message.isHint) continue;
+      transcript.writeln('${message.role == 'user' ? 'User' : 'AI'}: ${message.textEn}');
+    }
+    return [
+      LlmMessage.system(
+        'You are a strict but encouraging English speaking coach. '
+        'Analyse the learner transcript and reply in Chinese with the exact format below. '
+        'Do not use markdown, do not add extra sections.',
+      ),
+      LlmMessage.user('''
+Scenario: ${scenario?.titleZh ?? '自由对话'}
+Learner level: ${scenario?.level ?? 'B1'}
+
+Transcript:
+$transcript
+
+Reply exactly in this format:
+亮点: <one sentence in Chinese>
+纠错:
+1. <original sentence> || <improved sentence> || <reason in Chinese, max 25 words>
+2. ...
+表达:
+- <one natural English phrase from or for this scenario>
+- <another phrase>
+下次: <one actionable tip in Chinese>
+
+Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes, still give 1 improvement.
+'''),
+    ];
+  }
+
+  static List<LlmMessage> hintMessages({
+    required Scenario? scenario,
+    required int level,
+    required List<MessageRecord> history,
+  }) {
+    final lastAi = history.lastWhere(
+      (m) => m.role == 'assistant' && !m.isHint,
+      orElse: () => const MessageRecord(
+        id: 'empty',
+        sessionId: '',
+        seq: 0,
+        role: 'assistant',
+        textEn: '',
+        createdAt: 0,
+      ),
+    );
+    final instruction = switch (level) {
+      2 => 'Give a short hint in Chinese about what the user could say next. Do not give the English answer.',
+      3 => 'Give only the first 3-5 English words the user could say next, ending with "...".',
+      _ => 'Give one complete natural English sentence the user could say next.',
+    };
+    return [
+      LlmMessage.system(
+        'You help a learner continue an English role-play. Output ONE line only, no quotes, no explanation. '
+        'Scenario: ${scenario?.titleZh ?? 'daily conversation'}.',
+      ),
+      LlmMessage.user('AI just said: "${lastAi.textEn}"\n$instruction'),
+    ];
+  }
+
+  static List<LlmMessage> translateMessages(String text) {
+    return [
+      LlmMessage.system(
+        'You are a translation engine. Translate the user English sentence into concise Simplified Chinese. '
+        'Output the translation only, no quotes, no explanation.',
+      ),
+      LlmMessage.user(text),
+    ];
+  }
+
+  static List<LlmMessage> phraseMessages(Scenario? scenario) {
+    return [
+      LlmMessage.system(
+        'You are an English coach. Output exactly one natural, useful English sentence for this scenario. '
+        'No Chinese, no quotes, no explanation.',
+      ),
+      LlmMessage.user('Scenario: ${scenario?.titleZh ?? 'daily conversation'}'),
+    ];
+  }
+}
+
+class ReviewParser {
+  ReviewParser._();
+
+  static ReviewResult parse(String raw) {
+    final lines = raw.split('\n').map((e) => e.trim()).toList();
+    var highlight = '';
+    var nextTip = '';
+    final corrections = <ReviewCorrection>[];
+    final phrases = <String>[];
+    var section = '';
+
+    for (final line in lines) {
+      if (line.isEmpty) continue;
+      final normalized = line.replaceAll('**', '').replaceAll('：', ':');
+      if (normalized.startsWith('亮点')) {
+        highlight = normalized.split(':').skip(1).join(':').trim();
+        section = 'highlight';
+        continue;
+      }
+      if (normalized.startsWith('纠错')) {
+        section = 'corrections';
+        continue;
+      }
+      if (normalized.startsWith('表达')) {
+        section = 'phrases';
+        continue;
+      }
+      if (normalized.startsWith('下次')) {
+        nextTip = normalized.split(':').skip(1).join(':').trim();
+        section = 'tip';
+        continue;
+      }
+
+      if (section == 'corrections') {
+        final cleaned = normalized.replaceFirst(RegExp(r'^\d+[\.\)、]\s*'), '');
+        final parts = cleaned.split('||');
+        if (parts.length >= 3) {
+          corrections.add(ReviewCorrection(
+            original: _strip(parts[0]),
+            improved: _strip(parts[1]),
+            reasonZh: _strip(parts.sublist(2).join('||')),
+          ));
+        }
+      } else if (section == 'phrases') {
+        final cleaned = normalized.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim();
+        if (cleaned.isNotEmpty) phrases.add(cleaned);
+      } else if (section == 'highlight') {
+        highlight = '$highlight $normalized'.trim();
+      } else if (section == 'tip') {
+        nextTip = '$nextTip $normalized'.trim();
+      }
+    }
+
+    if (corrections.isEmpty && raw.trim().isNotEmpty) {
+      // 模型可能没有按格式返回：保留原文作为兜底提示，不硬解析 JSON。
+      return ReviewResult(
+        highlight: highlight.isEmpty ? '本次复盘内容格式不完整' : highlight,
+        corrections: const [],
+        phrases: phrases.take(5).toList(),
+        nextTip: nextTip.isEmpty ? '下次练习可以放慢语速，先想清楚再开口。' : nextTip,
+      );
+    }
+
+    return ReviewResult(
+      highlight: highlight.isEmpty ? '你完成了这次练习，继续保持。' : highlight,
+      corrections: corrections.take(4).toList(),
+      phrases: phrases.take(5).toList(),
+      nextTip: nextTip.isEmpty ? '下次练习试着多用今天学到的表达。' : nextTip,
+    );
+  }
+
+  static String _strip(String value) {
+    var out = value.trim();
+    if (out.startsWith('"') && out.endsWith('"') && out.length > 1) {
+      out = out.substring(1, out.length - 1);
+    }
+    return out.trim();
+  }
+}
