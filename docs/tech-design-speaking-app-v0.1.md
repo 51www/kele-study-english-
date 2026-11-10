@@ -559,6 +559,7 @@ app_meta（独立，schema 版本等）
 |---|---|---|
 | id | TEXT PK | 稳定 ID（如 `cafe_order`） |
 | title_zh / title_en | TEXT | 显示名 |
+| category | TEXT | 分类：日常 / 工作 / 旅行 / 社交 / 健康 / 观点（场景库 Chip 与图标用） |
 | level | TEXT | A2 / B1 / B2 |
 | ai_role | TEXT | AI 扮演的角色（英文描述，进 prompt） |
 | user_goal | TEXT | 用户要达成的目标 |
@@ -571,6 +572,8 @@ app_meta（独立，schema 版本等）
 | sort_order | INTEGER | 首页排序 |
 
 > 场景内容用 JSON 字段而不是拆表：场景数量少、结构会变，拆表收益低。
+
+> **2026-11-10 场景库扩容（需求 §0.1）**：内置场景由 2 个扩到 26 个（新增 24 个）。**表结构、`schemaVersion`、`LocalStore` 接口与 SQL 全部不变**：种子按 `id` 幂等 upsert，老设备覆盖安装后下次启动自动获得新场景，不需要迁移。`category` 由场景库 Chip 与分类图标映射消费；`target_phrases` 追加进 `chatSystem` 作为自然引导（不列出、不测验、不强制）；「练过次数」由 `session.scenario_id` 在 `scenarioLibraryProvider` 中派生聚合，不新增冗余字段。新增 `/scenarios` 全屏页（`ScenarioLibraryPage`），首页只保留 2 张推荐卡 +「全部 26 个」入口。详见 `docs/research-practice-scenarios-2026-11.md`。
 
 #### `session` 会话
 
@@ -1048,6 +1051,8 @@ app_meta（独立，schema 版本等）
 - 需求文档 10.2 的 MVP 验收清单全部通过。
 - 两个场景各完整跑 3 次，无阻塞性问题。
 - 所有"失败路径"都能在 15s 内给用户一个明确下一步。
+
+> 2026-11-10 补充：本节「两个场景各跑 3 次」是 M4 当时的验收口径，保持原样不改写；后续场景库扩容到 26 个属于 M4 之后的收尾项（里程碑 §12），不改变 M0–M4 的验收标准。
 
 ---
 

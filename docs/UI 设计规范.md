@@ -462,6 +462,20 @@ Container(
 
 新增组件一律只用既有 Token（主色 / primaryWash / surfaceTint / warning / line / divider）与 4/8 网格间距，不引入新色值、新字号或新阴影层级。
 
+#### 场景库新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 场景库头部 | 复用 `PageScaffold`（32 圆角白面板），标题「场景库」；面板内首行一行 `AppText.caption` 说明「共 N 个场景」，下方 12 间距接搜索框；不新增彩色 Hero、不新增主色实心按钮 |
+| 搜索行 | 复用 `AppTextField`（高 48、圆角 12、白底 1px `line`、左 18 放大镜），`prefixIcon: Icons.search_rounded`，占位 11–13/400 `inkMuted`；左右页边距 24；不加右侧筛选圆形按钮（分类 Chip 已承担筛选） |
+| 分类 Chip 组 | 横向单行可滚动，高 28、pill 圆角、左右 12、间距 8；未选中白底 + 1px `line` + `inkSecondary` 11/500；选中 `primaryTint` 底 + 1px `primary` + `primaryDeep` 11/600；Chip 组上下间距 12 / 16；Chip 文案取场景数据的 `category`，首项固定「全部」 |
+| 场景库列表卡 | 复用 `AppCard`（24 圆角、16 内边距、`AppShadows.card`），卡间距 12；左 46 × 46 圆角 14 图标块（分类浅底 + 24 分类图标），中间标题 `AppText.cardTitle` 一行省略、英文副标题 `AppText.caption` 一行省略、第三行元信息 `AppText.caption`（分类 · 级别 · 回合），右 `Icons.chevron_right_rounded` 20 `inkMuted`；整卡可点，跳场景详情 |
+| 练过标签 | `AppTag`（10/600、`primaryWash` 底 + `primaryDeep` 字）放在标题行右侧，文案「练过 N 次」；只在该场景计数 > 0 时出现，不与级别标签同时超过 2 个 |
+| 分类图标块 | 只用 Material 线性图标 + 既有辅助色浅底（`primaryWash` / `primaryTint` / `mint` 28% / `warning` 10% / `pink` 10% / `yellow` 20%）；强调色只用 `primaryDeep` / `orange` / `success` / `warning`；图标 24，不用 3D 插画的替代色块，不引入新色值 |
+| 空态 | 复用 `EmptyState`（88 圆形 `primaryWash` + 38 图标 + H2 标题 + `bodySecondary` 说明），用于筛选/搜索无结果；文案说明如何清除筛选 |
+
+场景库页沿用「一屏一个主色实心 CTA」约束：本页不设 CTA；分类 Chip 与卡片不使用第二种高饱和辅助色作为大面积底色，辅助色只出现在 46 × 46 图标块内。首页「场景练习」区块保持 1 张主推大卡 + 1 张紧凑卡，右侧文字按钮改为「全部 N 个」（`SectionTitle` 的 `actionLabel`，12/600 主色），不把 26 张卡堆进首屏。
+
 #### 页面头部
 
 - 左右 24，高 56–64；左返回 40 圆形；中标题 11–12/600 `inkSecondary`；右侧占位 40。

@@ -10,6 +10,7 @@ import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
 import '../../domain/models/models.dart';
+import '../scenario/scenario_visual.dart';
 
 class HistoryPage extends ConsumerWidget {
   const HistoryPage({super.key});
@@ -125,6 +126,7 @@ class _HistoryCard extends StatelessWidget {
       _ => '草稿',
     };
     final statusColor = session.status == 'completed' ? AppColors.success : AppColors.warning;
+    final visual = scenarioVisual(scenario?.category);
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -134,16 +136,10 @@ class _HistoryCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primaryWash,
+              color: visual.tint,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(
-              (session.scenarioId ?? '').contains('cafe')
-                  ? Icons.local_cafe_rounded
-                  : Icons.groups_2_rounded,
-              color: AppColors.primaryDeep,
-              size: 22,
-            ),
+            child: Icon(visual.icon, color: visual.accent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(

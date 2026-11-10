@@ -125,7 +125,8 @@ lib/
       review_service.dart
   features/
     home/            home_page.dart（含「上次卡在哪」与「方法 / 技巧」栏目入口）
-    scenario/        scenario_page.dart
+    scenario/        scenario_page.dart / scenario_library_page.dart（/scenarios：分类 Chip、
+                     搜索、练过次数）/ scenario_visual.dart（分类 → 图标/浅底/强调色）
     chat/            chat_page.dart / conversation_controller.dart /
                      chat_widgets.dart（HintSheet / WantToSaySheet / TranslateModePicker /
                      HintResultCard / CorrectionPanel）/ copy.dart（错误文案）
@@ -145,7 +146,7 @@ lib/
 | 需求功能 | 主要模块 | 次要模块 | 里程碑 |
 |---|---|---|---|
 | F0 模型配置与自检 | `features/profile`、`features/settings` | `llm`、`data/secure`、`llm_profile` 表 | M0 |
-| F1 场景库 | `features/scenario`、`features/home` | `scenario` 表、`ScenarioRepository` | M0 / M4 |
+| F1 场景库 | `features/scenario`（`scenario_page` / `scenario_library_page` / `scenario_visual`）、`features/home` | `scenario` 表、`ScenarioRepository`、`scenarioLibraryProvider`、路由 `/scenarios` | M0 / M4 / 收尾项 §12 |
 | F2 语音对话回合 | `features/conversation` | `audio`、`asr`、`llm`、`tts` | M1 / M2 |
 | F3 翻译开关 | `features/conversation` | `usecases/translate_message`、`llm` | M4（状态骨架 M1 起） |
 | F4 分级提示 | `features/conversation` | `usecases/request_hint`、`prompt` | M4 |
@@ -212,6 +213,10 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `CostEstimator` | service | `usage` 优先、字符数兜底的成本样本 | `LlmUsage` | 无状态 |
 | `ChatErrorView` | feature | 错误四分类 → 文案 + 下一步行动 | `AppErrorKind` | 无状态 |
 | `TipsRepository` | feature | 本地 JSON 文章包 → `TipArticle` 列表 | `rootBundle` | 无状态 |
+| `ScenarioRepository` | data | 场景列表 / 按 id 查询 / 清空后重建种子 | `LocalStore`、`builtinScenarios` | 无状态 |
+| `scenarioLibraryProvider` | app | 场景列表 + 按 `session.scenario_id` 聚合练过次数 | `ScenarioRepository`、`SessionRepository` | `ScenarioLibraryData` |
+| `ScenarioLibraryPage` | feature | 分类 Chip / 搜索 / 场景列表 / 练过标签 / 空态 | `scenarioLibraryProvider`、路由 `/scenario/:id` | 选中分类、搜索词 |
+| `ScenarioVisual` | feature | `category` → 图标 / 浅底 / 强调色；替换 `id.contains('cafe')` | `AppColors` | 无状态 |
 
 > 实现说明：复盘生成逻辑目前内联在 `features/review/review_page.dart`（含一次自动重试与 `ReviewParser` 容错解析），尚未抽出独立 `ReviewService` 类；`PromptBuilder` 位于 `services/llm/`（不是早期规划的 `services/prompt/`）。
 
@@ -315,19 +320,21 @@ dio / plugin 异常
 
 | 字段 | 类型 | 可空 | 说明 |
 |---|---|---|---|
-| id | TEXT PK | 否 | `cafe_order` / `meeting_clarify` |
+| id | TEXT PK | 否 | `cafe_order` / `meeting_clarify` / `airport_checkin` …（26 个稳定 ID） |
 | title_zh / title_en | TEXT | 否 | 显示名 |
-| category | TEXT | 否 | 日常/工作/旅行/社交（首页 Chip 用） |
+| category | TEXT | 否 | 日常/工作/旅行/社交/健康/观点（场景库 Chip 与 `scenario_visual.dart` 图标映射用） |
 | level | TEXT | 否 | A2/B1/B2 |
 | ai_role | TEXT | 否 | 英文角色描述，进 prompt |
 | user_goal | TEXT | 否 | 用户目标 |
 | opening_line | TEXT | 否 | AI 开场白 |
-| target_phrases | TEXT(JSON) | 否 | 5 条目标表达 |
-| expected_turns | INTEGER | 否 | 8–12 |
+| target_phrases | TEXT(JSON) | 否 | 5 条目标表达；详情页展示，并追加进 `chatSystem` 自然引导 |
+| expected_turns | INTEGER | 否 | 8–12；派生「约 5 分钟 / 约 10 分钟」文案，不控制会话结束 |
 | success_criteria | TEXT | 否 | 进 prompt |
 | branch_hint | TEXT | 是 | 1–2 个意外分支 |
 | is_builtin | INTEGER | 否 | 1/0 |
-| sort_order | INTEGER | 否 | 首页排序 |
+| sort_order | INTEGER | 否 | 场景库与首页排序（0–25） |
+
+> 场景库扩容（2026-11-10）只往 `seeds.dart` 追加 `Scenario` 常量，**不改表、不改字段、不需要 build_runner 或迁移**；启动按 `id` 幂等 upsert（SQLite `INSERT OR REPLACE`，Web 按 id 覆盖）。练过次数不落表，由 `scenarioLibraryProvider` 从 `session.scenario_id` 聚合。
 
 **session**
 
@@ -415,7 +422,7 @@ dio / plugin 异常
 - 索引：`message(session_id, seq)` 唯一；`session(started_at)`；`phrase(created_at)`；`tts_cache(last_used_at)`。
 - 外键：`message.session_id`、`correction.session_id` 级联删除。
 - `schemaVersion = 1`；每次结构变更必须提供迁移，禁止 `destructiveMigration`。
-- 种子数据：首次启动插入 2 个内置场景（幂等：按 `id` upsert）。
+- 种子数据：首次启动插入 **26 个内置场景**（幂等：按 `id` upsert；见 §4.2 与里程碑 §12）。追加场景只改 `seeds.dart`，**不需要迁移**。
 
 ---
 
@@ -511,8 +518,9 @@ dio / plugin 异常
 
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
-| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、`CategoryChips`、`SceneRail`、`HomeFoot` |
-| 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度）、`LevelTag`、`TargetPhraseList`（可试听）、`StartDock` |
+| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`HomeFoot` |
+| 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」）、`EmptyState`、`ErrorBanner` |
+| 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`StartDock` |
 | 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（翻译 / 纠错标记展开）、`TranslateModePicker`、`HintSheet`（L1–L4）、`HintResultCard`、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
@@ -537,6 +545,7 @@ dio / plugin 异常
 | 7 | 里程碑 §10 写 8 条文章，`articles.json` 实际 7 条 | 以数据文件 `count=7` 为准；后续新增文章只替换 JSON，不做服务端接口 |
 | 8 | 里程碑 T2.7 端侧 Whisper | 可选项，当前不启用；识别链路为独立 ASR 接口 → 系统识别 → 实验性对话模型识别，不引入端侧推理依赖 |
 | 9 | 早期规划的记录详情页 `SessionDetailPage` | 详情复用 `/review/:id` 的只读转写与纠错展开，未新增独立页面 |
+| 10 | 原型 v0.1 只有 4 个场景（2 个可练、2 个「即将上线」），App 现有 26 个 | 原型保留为 v0.1 交互参考，其「分类 Chip + 场景卡 + N 个可练计数」的版面骨架被 `ScenarioLibraryPage` 沿用；原型里的「机场值机」「和新同事闲聊」已在 App 中作为正式场景开放，但原型未补它们的完整对话脚本，**不回写原型**。是否需要把原型同步到 26 个场景，需用户确认 |
 
 ---
 

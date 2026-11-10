@@ -8,6 +8,7 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import 'scenario_visual.dart';
 
 class ScenarioPage extends ConsumerStatefulWidget {
   const ScenarioPage({super.key, required this.scenarioId});
@@ -179,7 +180,7 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCafe = scenario.id.contains('cafe');
+    final visual = scenarioVisual(scenario.category);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -204,11 +205,7 @@ class _Hero extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  isCafe ? Icons.local_cafe_rounded : Icons.groups_2_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
+                child: Icon(visual.icon, color: Colors.white, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -218,8 +215,10 @@ class _Hero extends StatelessWidget {
                     Text(scenario.titleZh, style: AppText.h1.copyWith(color: Colors.white)),
                     const SizedBox(height: 3),
                     Text(
-                      scenario.titleEn,
+                      '${scenario.category} · ${scenario.titleEn}',
                       style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

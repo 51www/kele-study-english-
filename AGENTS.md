@@ -13,6 +13,7 @@
 | UI 设计规范 | `docs/UI 设计规范.md` | 颜色/字号/间距/圆角/阴影 Token、组件规格、版面骨架 | 写任何界面、调任何样式之前 |
 | 交互原型 | `prototype/index.html` | 页面流程与组件组织（可直接用浏览器打开，无需构建） | 实现页面前；确认交互细节时 |
 | 市场调研 | `docs/research-speaking-apps-2026-11.md` | 竞品玩法、纠错时机、收费与差评 | 质疑产品方向或要加功能时 |
+| 场景库调研 | `docs/research-practice-scenarios-2026-11.md` | 同类产品场景库分类/颗粒度、24 个新增场景清单、验收口径 | 加场景、调场景分类、质疑场景数量前 |
 | 二期预研 | `docs/research-video-material-dictation-2026-11.md` | 视频教材导入、字幕对齐、听写判分、版权风险 | 二期立项或提前评估风险时 |
 | ASR 选型 | `docs/selection-asr-2026-11.md` | 语音识别供应商、价格、OpenAI 兼容性、M1 推荐方案 | 动语音识别、改 ASR 配置项之前 |
 | ASR 实测 | `docs/test-mimo-v2.6-flash-asr-2026-11.md` | MiMo-V2.6-Flash 音频输入能力、协议、延迟、限制 | 评估「用对话模型做识别」之前 |

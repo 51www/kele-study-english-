@@ -52,7 +52,7 @@ M0 ──▶ M1 ──┬──▶ M2 ──┐
 |---|---|---|---|---|---|
 | T0.1 | 工程骨架与主题 Token | `app/theme`、`app/widgets` | `AppColors`/`AppText`/`app_metrics`/`AppTheme`、`GradientScaffold`、`WhitePanel`、`AppButton` | 3 | 与 T0.3 并行 |
 | T0.2 | 路由与页面占位 | `app/router`、`app/shell` | 首页/场景/对话/复盘/记录/表达本/设置 7 个空页 + 悬浮导航 | 2 | 依赖 T0.1 |
-| T0.3 | 数据库与迁移 v1 | `data/db` | 9 张表 + DAO + `schemaVersion=1` + 2 个内置场景种子 | 3 | 与 T0.1 并行 |
+| T0.3 | 数据库与迁移 v1 | `data/db` | 9 张表 + DAO + `schemaVersion=1` + 2 个内置场景种子（MVP 首批；2026-11-10 扩至 26 个，见 §12，表结构不变） | 3 | 与 T0.1 并行 |
 | T0.4 | 安全存储与配置仓储 | `data/secure`、`LlmProfileRepository` | Key 存取封装 + `llm_profile` 读写 | 2 | 依赖 T0.3 |
 | T0.5 | 非流式模型客户端 | `services/llm` | `OpenAiCompatibleClient.chat()` + `LlmErrorMapper` 四分类 | 3 | 依赖 T0.4 |
 | T0.6 | 模型配置页 + 测试连接 | `features/profile` | 三项输入 + 三态结果 + 保存 | 2 | 依赖 T0.4、T0.5 |
@@ -274,6 +274,8 @@ MVP 完整功能 + 一份逐条通过的验收记录。
 - 能看到：两个场景、可用的提示与翻译、完整的 MVP。
 - 验收方式：用户按需求 §10.2 清单逐条打勾，开发者陪同；第 8 条由开发者截图比对规范。
 
+> 注：本节「两个场景」是 **M4 当时的验收口径**，保持原样；2026-11-10 场景库扩容到 26 个属于 M4 之后的收尾项（§12），有独立验收清单，不改变本节 8 条标准。
+
 ### 6.5 风险点
 
 | 风险 | 影响 | 缓解 |
@@ -357,7 +359,7 @@ MVP 完整功能 + 一份逐条通过的验收记录。
 | M0 / M1 | 已完成 | 骨架、配置、文字闭环；真机完整语音对话链路 |
 | M2 | 已落地，待真机验收 | 统一超时表 + 四类错误行动 + 落盘朗读缓存 + 播放端慢速 + 设备切换/中断恢复 + 分阶段延迟埋点；T2.7 端侧 Whisper 按可选项不启用 |
 | M3 | 已落地，待真机验收 | 复盘容错解析 + 一次自动重试、气泡纠错展开、记录/表达本、首页「上次卡在哪」与本周统计、删会话级联与清空所有数据 |
-| M4 | 已落地，待真机验收 | 2 个场景、L1–L4 提示、翻译三态 +「我想说」、空态/错误态、成本估算与月度上限、按 UI 规范 Token 的视觉走查 |
+| M4 | 已落地，待真机验收 | 2 个场景（MVP 验收口径；当前已扩至 26 个，见 §12）、L1–L4 提示、翻译三态 +「我想说」、空态/错误态、成本估算与月度上限、按 UI 规范 Token 的视觉走查 |
 | 技巧分享 | 已落地，待真机验收 | 首页栏目入口 + 7 篇全文 + 出处块 + 原文链接 |
 
 **仍需用户在真机上逐条执行的验收动作**
@@ -375,8 +377,61 @@ MVP 完整功能 + 一份逐条通过的验收记录。
 - APK 已产出：`build/app/outputs/flutter-apk/app-debug.apk`（debug 包），包内含 `assets/flutter_assets/docs/tips-share/articles.json`，与 `rootBundle` 读取路径一致。
 - 设备上旧包 `com.kele.kele_speak` 与本次 debug keystore 签名不同（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）；经用户明确确认后卸载旧包（本机练习数据清空），`adb install -r -t` 成功。App 启动正常，无 `FATAL EXCEPTION`。
 - 真机走查发现并修复 4 处问题：技巧列表来源文字过长导致 `RenderFlex` 溢出 76px；弹层 `initState` 里通知 Controller 导致 `setState() during build`；L1 重听等待 TTS 合成会卡住提示弹层；「我的」页「练习与语音设置」和「数据与存储」重复跳 `/settings`。数据操作拆到独立页 `/settings/data`（`DataSettingsPage`），设置页只留入口行；修复后复验 `logcat` 无 `FlutterError` / `overflowed`。
-- 已走通的路径：首页统计与「方法 / 技巧」入口 → 分类列表（7 篇 JSON 正常加载）→ 全文详情（小标题、`[图：说明]` 占位、固定出处块、原文链接、底部版权说明）→ 模型配置（密钥只显示尾 4 位）→ 场景详情 → 对话页（提示 / 我想说 / 翻译三态）→ L1 提示只给重听、不自动发送 → 朗读失败降级为文字且不阻塞 → 「我的」成本与统计 → 设置 → 清空所有数据（重启后回到首次启动状态，2 个内置场景与「去配置」提示恢复）。
+- 已走通的路径：首页统计与「方法 / 技巧」入口 → 分类列表（7 篇 JSON 正常加载）→ 全文详情（小标题、`[图：说明]` 占位、固定出处块、原文链接、底部版权说明）→ 模型配置（密钥只显示尾 4 位）→ 场景详情 → 对话页（提示 / 我想说 / 翻译三态）→ L1 提示只给重听、不自动发送 → 朗读失败降级为文字且不阻塞 → 「我的」成本与统计 → 设置 → 清空所有数据（重启后回到首次启动状态；场景数按 `seeds.dart` 恢复，当前为 26 个内置场景与「去配置」提示）。
 - 双入口真机复验：「我的 → 数据与存储」进入 `/settings/data` 独立页；「我的 → 练习与语音设置」进入 `/settings`；设置页内「数据与存储」入口也能进入 `/settings/data`。三条路径截图见 `docs/shortscreen/M3/07–11`，`logcat` 无 `FlutterError`。
 - 正式发布配置（2026-11-10 补充，不属于 M0–M4 验收）：正式包名定为 `com.kele.saylo`（`namespace` 与 `MainActivity` 同步），生成 `android/keystore/saylo-release.jks`（alias `saylo` / RSA 2048 / 10000 天）与 `android/key.properties`（均被 gitignore）；debug 与 release 共用同一把签名。`flutter build apk --release` 通过，`apksigner verify` 的 SHA-256 指纹 `69de…5cc3b8` 与密钥库一致，真机安装启动 `com.kele.saylo` 无崩溃。详见 README「正式包名与签名」与开发文档 §5.1。
 - 截图归档：`docs/shortscreen/M3/`（统计、设置、数据与存储双入口、清空数据）与 `docs/shortscreen/M4/`（首页、技巧列表与详情、配置、对话页、提示弹层、正式包首页）。
 - **仍需用户现场完成**：上文 1–6 中涉及真实 API 的 8 回合对话、延迟 p50/p95 实测、蓝牙 / 来电 / 弱网降级与真实成本统计；需求 §10.2 的 11 条清单保持未勾选。
+
+---
+
+## 12. M4 之后的收尾项：场景库扩容（2026-11-10 补）
+
+> 用户要求「参考同类产品的练习场景设计，在现有基础上新增 10~30 个练习场景」。先调研（`docs/research-practice-scenarios-2026-11.md`），再落地；**不新增里程碑 M5，也不改动 M0–M4 的验收标准**，需求 §10.2 的 11 条清单仍保持未勾选。
+
+### 12.1 任务
+
+| # | 任务 | 模块 | 交付物 |
+|---|---|---|---|
+| T12.1 | 同类产品场景库调研 | `docs/` | 分类方式、场景颗粒度、内容结构、不照搬项、24 个候选清单 |
+| T12.2 | 追加 24 个内置场景 | `data/db/seeds.dart` | 合计 26 个场景；6 分类；5 条目标表达 + 1 个意外分支/场景 |
+| T12.3 | 场景库浏览页 | `features/scenario/` | `/scenarios`：分类 Chip、中英文搜索、练过次数、空态 |
+| T12.4 | 分类图标与首页入口 | `features/scenario/scenario_visual.dart`、`features/home/` | 替换 3 处 `id.contains('cafe')`；首页「全部 26 个」入口 |
+| T12.5 | Prompt 与刷新 | `services/llm/prompt_builder.dart`、`app/providers.dart` | `targetPhrases` 进 `chatSystem`；`scenarioLibraryProvider` 在会话结束/清空数据后失效刷新 |
+| T12.6 | 文档同步 | `AGENTS.md`、需求 / 技术设计 / 开发文档 / UI 规范 / 里程碑 / README | 场景数、分类、组件规格、页面映射与范围变更记录 |
+
+### 12.2 交付物
+
+- 26 个内置场景种子（2 个 MVP 首批 + 24 个新增），按 `id` 幂等 upsert，老用户升级无需清数据、无需迁移。
+- `ScenarioLibraryPage`（`/scenarios`）、`ScenarioVisual`、`scenarioLibraryProvider`。
+- 调研文档与 UI 规范新增组件规格；首页仍遵守「首屏 1 张主推大卡 + 1 张紧凑卡」的信息预算。
+
+### 12.3 验收标准（本次新增，不替代需求 §10.2）
+
+1. 场景库显示 26 个场景，6 个分类 Chip 可切换，计数与筛选结果一致。
+2. 中文标题 / 英文标题搜索可命中；无结果时显示空态，不报错。
+3. 首页仍只有 2 张推荐卡，点「全部 26 个」一次进入场景库；库 → 详情一次点击。
+4. 每个新场景都能打开详情、开始练习、进入对话页；AI 开场白与角色一致。
+5. 完成一次对话后卡片显示「练过 N 次」；「清空所有数据」后计数归零、26 个场景仍在。
+6. 覆盖安装（不清数据）后下次启动自动出现新场景；已有记录的 `scenario_id` 引用不失效。
+7. `flutter analyze` 无 error / warning；Android 真机安装无 `FlutterError` / `overflowed`。
+
+### 12.4 范围外（明确不做）
+
+自定义场景（F9 / P1）、场景市场、随机话题、同一场景多难度版本、场景效果评测、场景数量继续增长到课程库级别。
+
+### 12.5 实现状态与真机验证（2026-11-10）
+
+| 验收项（§12.3） | 状态 | 证据 |
+|---|---|---|
+| 1 分类 Chip / 计数 | 已验证 | 场景库显示「共 26 个场景」「26 个」；切到「旅行」显示「4 个」，列表为机场值机 / 酒店入住 / 街头问路 / 航班改签 |
+| 2 搜索与空态 | 已验证 | 搜 `Hotel` 命中「酒店入住」1 条；搜 `zzzz` 显示「没有匹配的场景」空态；「清除筛选」恢复「全部」 |
+| 3 首页入口与跳转层级 | 已验证 | 首页仍 2 张推荐卡，右侧「全部 26 个」一次进入 `/scenarios`；库 → 详情一次点击 |
+| 4 新场景详情 | 部分验证 | 「酒店入住」详情的分类、AI 角色、5 条目标表达、开始练习按钮均正常；点「开始练习」按预期弹出「还没有配置密钥」对话框，**进入真实对话需用户先配置 API** |
+| 5 练过次数 / 清空数据 | 待用户现场验收 | 需一次真实对话产生 `turn_count > 0`；清空数据会抹掉本机记录与密钥，未经用户确认不主动执行 |
+| 6 覆盖安装自动获得新场景 | 已验证 | `adb install -r app-release.apk`（**未清数据**）→ 启动后首页即显示「全部 26 个」，说明种子按 `id` upsert 生效，无需迁移 |
+| 7 静态检查与构建 | 已验证 | `flutter analyze` 0 error / 0 warning（17 条既有 info/lint，与改动前一致）；`flutter build apk --release`（64.5MB）与 `flutter build web --release` 通过；真机 `adb install -r` 成功、进程存活，全程 `logcat` 无 `FATAL EXCEPTION` / `FlutterError` / `overflowed` / `setState during build` |
+
+**截图归档**：`docs/shortscreen/M4/18-home-26.png`（首页「全部 26 个」）、`19-scenario-library.png`（场景库全部）、`20-scenario-library-travel.png`（旅行分类）、`21-scenario-search.png`（英文搜索）、`22-new-scenario-detail.png`（酒店入住详情）、`23-scenario-search-empty.png`（空态）、`24-new-scenario-start.png`（未配置密钥的正确引导）。Web 构建的 `flutter_tts_web` wasm dry-run 提示属第三方包信息性警告，未阻塞构建。
+
+**仍未改变**：需求 §10.2 的 11 条 MVP 验收清单保持未勾选；真实 API 的 ≥8 回合对话、延迟 p50/p95、弱网 / 蓝牙 / 来电降级与真实成本统计仍待用户现场验收。

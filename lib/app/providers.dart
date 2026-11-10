@@ -215,6 +215,28 @@ final scenarioProvider = FutureProvider.family<Scenario?, String>((ref, id) {
   return ref.watch(scenarioRepositoryProvider).byId(id);
 });
 
+class ScenarioLibraryData {
+  const ScenarioLibraryData({required this.scenarios, required this.practiceCounts});
+
+  final List<Scenario> scenarios;
+
+  /// 按 session.scenario_id 聚合的「练过次数」，只统计真正开口过的会话。
+  final Map<String, int> practiceCounts;
+}
+
+/// 场景库：全部内置场景 + 练过次数。会话结束或清空数据后需要 invalidate。
+final scenarioLibraryProvider = FutureProvider<ScenarioLibraryData>((ref) async {
+  final scenarios = await ref.watch(scenarioRepositoryProvider).all();
+  final sessions = await ref.watch(sessionRepositoryProvider).list();
+  final counts = <String, int>{};
+  for (final session in sessions) {
+    final id = session.scenarioId;
+    if (id == null || id.isEmpty || session.turnCount <= 0) continue;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return ScenarioLibraryData(scenarios: scenarios, practiceCounts: counts);
+});
+
 /// 站内「方法 / 技巧」文章（本地 assets，无网络请求）。
 final tipsProvider = FutureProvider<List<TipArticle>>((ref) {
   return TipsRepository().all();

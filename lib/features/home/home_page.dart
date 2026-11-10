@@ -9,6 +9,7 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
+import '../scenario/scenario_visual.dart';
 import '../../domain/models/models.dart';
 
 class HomePage extends ConsumerWidget {
@@ -127,8 +128,8 @@ class _Body extends StatelessWidget {
         const SizedBox(height: 26),
         SectionTitle(
           title: '场景练习',
-          actionLabel: data.totalSessions > 0 ? '练习记录' : null,
-          onAction: () => context.go('/history'),
+          actionLabel: data.scenarios.isEmpty ? null : '全部 ${data.scenarios.length} 个',
+          onAction: () => context.push('/scenarios'),
         ),
         const SizedBox(height: 12),
         if (data.scenarios.isEmpty)
@@ -511,7 +512,7 @@ class _ScenarioIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCafe = scenario.id.contains('cafe');
+    final visual = scenarioVisual(scenario.category);
     return Container(
       width: 46,
       height: 46,
@@ -519,11 +520,7 @@ class _ScenarioIcon extends StatelessWidget {
         color: tint,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(
-        isCafe ? Icons.local_cafe_rounded : Icons.groups_2_rounded,
-        color: isCafe ? AppColors.orange : AppColors.primaryDeep,
-        size: 24,
-      ),
+      child: Icon(visual.icon, color: visual.accent, size: 24),
     );
   }
 }

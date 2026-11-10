@@ -92,6 +92,7 @@ class DataSettingsPage extends ConsumerWidget {
                 ref.invalidate(cacheBytesProvider);
                 ref.invalidate(monthlyCostProvider);
                 ref.invalidate(lastLatencyProvider);
+                ref.invalidate(scenarioLibraryProvider);
                 if (context.mounted) showAppToast(context, '已清空，回到首次启动状态');
               },
             ),

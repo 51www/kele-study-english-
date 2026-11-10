@@ -11,6 +11,7 @@ import '../features/home/home_page.dart';
 import '../features/me/me_page.dart';
 import '../features/phrasebook/phrasebook_page.dart';
 import '../features/review/review_page.dart';
+import '../features/scenario/scenario_library_page.dart';
 import '../features/scenario/scenario_page.dart';
 import '../features/settings/asr_config_page.dart';
 import '../features/settings/data_settings_page.dart';
@@ -33,6 +34,11 @@ final router = GoRouter(
         GoRoute(path: '/phrasebook', pageBuilder: (_, __) => _fade(const PhrasebookPage())),
         GoRoute(path: '/me', pageBuilder: (_, __) => _fade(const MePage())),
       ],
+    ),
+    GoRoute(
+      path: '/scenarios',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const ScenarioLibraryPage()),
     ),
     GoRoute(
       path: '/scenario/:id',

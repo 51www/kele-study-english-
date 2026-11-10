@@ -138,6 +138,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     ref.invalidate(recentSessionsProvider);
     ref.invalidate(monthlyCostProvider);
     ref.invalidate(lastLatencyProvider);
+    ref.invalidate(scenarioLibraryProvider);
     if (session == null) {
       context.go('/home');
       return;
@@ -168,6 +169,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     ref.invalidate(recentSessionsProvider);
     ref.invalidate(monthlyCostProvider);
     ref.invalidate(lastLatencyProvider);
+    ref.invalidate(scenarioLibraryProvider);
     if (mounted) context.pop();
   }
 

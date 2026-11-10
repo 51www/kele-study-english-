@@ -13,9 +13,11 @@ Your role: ${scenario.aiRole}
 User goal: ${scenario.userGoal}
 Success criteria: ${scenario.successCriteria}
 ${scenario.branchHint == null ? '' : 'Branch hint: ${scenario.branchHint}'}
+${scenario.targetPhrases.isEmpty ? '' : 'Target phrases: ${scenario.targetPhrases.join(' | ')}'}
 
 Rules:
 - Reply in natural English only. Never use Chinese unless the user explicitly asks.
+- When it fits naturally, elicit or reuse the target phrases; never list them, quiz the user, or force them in.
 - Keep every reply to 1-2 short sentences, then ask exactly one question to keep the conversation going.
 - Use vocabulary and grammar at $level level. Do not correct the user inside the role-play.
 - Never mention that you are an AI, a model, or a prompt.

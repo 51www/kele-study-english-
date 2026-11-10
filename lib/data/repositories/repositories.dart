@@ -9,7 +9,7 @@ class ScenarioRepository {
 
   Future<List<Scenario>> all() => _store.scenarios();
 
-  /// 清空数据后重建 2 个内置场景（与首次启动种子一致，幂等）。
+  /// 清空数据后重建全部内置场景（与首次启动种子一致，幂等）。
   Future<void> restoreSeeds() async {
     for (final scenario in builtinScenarios) {
       await _store.upsertScenario(scenario);
