@@ -144,7 +144,7 @@ lib/
 
 - **配套服务**：`companion/bili-helper/`（Flask + yt-dlp，Python ≥3.10，监听 `0.0.0.0:8787`），跑在用户电脑上；手机与电脑需同一局域网。协议 4 个接口：`POST /api/bili/import`（提交 `{url, cookie?}`）、`GET /api/bili/job/<id>`（进度/标题/错误）、`GET .../audio`、`GET .../subtitle`；详见其 README。
 - **App 侧**：`MaterialImportService.importBiliFromCompanion(videoUrl, serviceBase, cookie?, title?, onStatus?)` 提交任务 → 800ms 轮询 → 取回 m4a 与 SRT → 复用与本地导入完全相同的 `_createMaterial` 管线（切句、30 分钟上限、去重、落库全部继承）。导入页用 `isBiliUrl`（bilibili.com / b23.tv）分流；服务地址取 `dictation.companionUrl`，Cookie 取 `dictation.biliCookie`。
-- **Cookie**：CC/AI 字幕接口需登录态，设置页「B 站导入」分区由用户粘贴自己的 Cookie（至少含 `SESSDATA`），随任务明文传给配套服务；不填则只能拿公开字幕，服务报错文案引导补配。
+- **Cookie**：CC/AI 字幕接口需登录态，设置页「B 站导入」分区由用户粘贴自己的 Cookie（至少含 `SESSDATA`），随任务明文传给配套服务；服务端只把它写进本次任务临时目录内的 Netscape `cookies.txt`、交给 yt-dlp 的 `cookiefile`（新版 yt-dlp 已弃用 Cookie HTTP 头，避免 `Deprecated Feature` 告警与跨域作用域问题），字幕接口仍用带 Cookie 的请求头，任务结束即删除、不持久化；不填则只能拿公开字幕，服务报错文案引导补配。
 - **边界与合规口径**：下载由用户在自己电脑上运行的配套服务完成，App 不内置、不捆绑下载器；页面保留「素材版权归原权利人，仅供个人学习」声明；其他平台（YouTube / BBC 等）仍拦截。
 - **失败处理**：服务不可达、任务报错、地址非法均抛 `MaterialImportException` 原因透传；音频与字幕被 App 取走后服务端临时文件即清理，未取走 30 分钟过期。
 - **验证**：`test/companion_import_test.dart` 用假 Dio adapter 覆盖「提交→轮询→取回→落库」「服务报错透传」「服务不可达」「地址非法」四条；`test/url_import_test.dart` 平台拦截用例同步更新（B 站提示配套服务，YouTube/BBC 仍提示不抓取）。真机需验证：同一局域网连通、Cookie 拿 AI 字幕、多 P `?p=` 分 P。

@@ -34,7 +34,18 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _mediaUrlController.addListener(_onMediaUrlChanged);
+  }
+
+  void _onMediaUrlChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _mediaUrlController.removeListener(_onMediaUrlChanged);
     _titleController.dispose();
     _mediaUrlController.dispose();
     _subtitleUrlController.dispose();
@@ -329,7 +340,7 @@ class _UrlRows extends StatelessWidget {
         AppTextField(
         controller: subtitleController,
         label: '字幕链接（可选）',
-        hint: '字幕直链 .srt / .vtt；留空时自动试同站点字幕或 RSS 内嵌字幕',
+        hint: 'B 站链接留空；其他来源填字幕直链 .srt / .vtt，留空自动试同站点字幕或 RSS 内嵌字幕',
         enabled: enabled,
         ),
       ],

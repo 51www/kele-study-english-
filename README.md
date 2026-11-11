@@ -57,12 +57,8 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 构建正式包：
 
 ```bash
-flutter build apk --release
-# 校验签名（apksigner 需要 JAVA_HOME 指向 Android Studio 自带 JBR）
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-~/Library/Android/sdk/build-tools/36.0.0/apksigner verify --print-certs \
-  build/app/outputs/flutter-apk/app-release.apk
-adb install -r build/app/outputs/flutter-apk/app-release.apk
+# Android：分 ABI 打包（推荐，单个包更小）；CI 已不再产出 universal 胖包
+flutter build apk --release --split-per-abi
 ```
 
 > `saylo-release.jks` 与 `key.properties` 必须一起离线备份：丢失后无法再为已安装的 App 提供可升级的包。旧的测试包 `com.kele.kele_speak` 与正式包是两个独立应用，数据不互通，可自行卸载。
