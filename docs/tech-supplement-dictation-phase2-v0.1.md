@@ -125,4 +125,12 @@ lib/
 | §6 数据模型 | §3 |
 | §7 UI 结构 | §6 |
 | §8 里程碑 | [二期里程碑清单](milestones-phase2-dictation-v0.1.md) |
+
+## 10. 链接导入（流程 C，2026-11-11 补）
+
+- 入口：导入页「链接导入」模式，填音视频 http(s) 链接 + 可选字幕链接。
+- 实现：`MaterialImportService.importFromUrl(mediaUrl, subtitleUrl?, title, onProgress?)` 用 `dio` 下载字节流，之后调用与本地文件完全相同的 `_createMaterial`（字幕解析 → 切句 → 落库）；非 Web 端下载的音视频写入 App 私有目录，与本地文件同等待遇。
+- 隔离：不新增网络依赖（`dio` 已在 M1 引入）；不动对话状态机、不写 `session` / `message` / `correction`。
+- 失败处理：非 http(s)、下载失败、空字幕均抛 `MaterialImportException` 给导入页展示，不静默失败。
+- 限制：平台专属下载器/抓取、端内转码不做；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 | §9.1 技术风险 | §1、§8 |

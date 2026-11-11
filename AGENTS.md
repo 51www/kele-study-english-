@@ -10,8 +10,9 @@
 | 技术设计 | `docs/tech-design-speaking-app-v0.1.md` | 技术选型、语音链路、Edge TTS 接入、数据模型、UI 结构、风险 | 动架构、换依赖、改数据流之前 |
 | 开发文档 | `docs/dev-guide-speaking-app-v0.1.md` | 工程结构、模块边界、类职责、表字段、配置项、UI→Flutter 映射 | 新建模块、加页面、改表结构、接线 UI 之前 |
 | 里程碑清单（MVP） | `docs/milestones-speaking-app-v0.1.md` | M0–M4 任务、交付物、验收标准、依赖与并行关系 | 开始任一任务前；判断"做完没有"时 |
-| 里程碑清单（二期） | `docs/milestones-phase2-dictation-v0.1.md` | 二期 M5–M7 任务、验收标准、范围外与隔离原则 | 开始二期任一任务前；判断"做完没有"时 |
-| 二期技术补充 | `docs/tech-supplement-dictation-phase2-v0.1.md` | 二期模块边界、3 张新表与迁移、片段播放、配置项、页面路由 | 改二期架构、表结构或接线 UI 前 |
+| 里程碑清单（二期） | `docs/milestones-phase2-dictation-v0.1.md` | 二期 M5–M8 任务、验收标准、范围外与隔离原则 | 开始二期任一任务前；判断"做完没有"时 |
+| 二期技术补充 | `docs/tech-supplement-dictation-phase2-v0.1.md` | 二期模块边界、3 张新表与迁移、片段播放、配置项、页面路由、链接导入 | 改二期架构、表结构或接线 UI 前 |
+| 真机验收清单 | `docs/device-acceptance-checklist-v0.1.md` | MVP 11 条回归 + 二期 M5–M8 + 链接导入的真机逐项勾选与 APK 安装方式 | 出包后要在 Android 上逐条验收时 |
 | UI 设计规范 | `docs/UI 设计规范.md` | 颜色/字号/间距/圆角/阴影 Token、组件规格、版面骨架 | 写任何界面、调任何样式之前 |
 | 交互原型 | `prototype/index.html` | 页面流程与组件组织（可直接用浏览器打开，无需构建） | 实现页面前；确认交互细节时 |
 | 市场调研 | `docs/research-speaking-apps-2026-11.md` | 竞品玩法、纠错时机、收费与差评 | 质疑产品方向或要加功能时 |

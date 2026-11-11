@@ -34,11 +34,11 @@ class MaterialImportException implements Exception {
 ///
 /// 不做端内转码、不显示视频画面、不抓取平台内容。
 class MaterialImportService {
-  MaterialImportService(this._store);
-
   final LocalStore _store;
   final Map<String, String> _webUris = <String, String>{};
-  final Dio _dio = Dio();
+  final Dio dio;
+
+  MaterialImportService(this._store, {Dio? dio}) : dio = dio ?? Dio();
 
   static const audioExtensions = <String>{
     'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
@@ -144,7 +144,7 @@ class MaterialImportService {
       throw const MaterialImportException('链接格式不对，请填写 http(s) 开头的音频或字幕链接。');
     }
     try {
-      final resp = await _dio.get<Uint8List>(
+      final resp = await dio.get<Uint8List>(
         trimmed,
         options: Options(
           responseType: ResponseType.bytes,

@@ -1163,8 +1163,10 @@ app_meta（独立，schema 版本等）
 | §7 UI 结构 | 新增 `/materials`、`/materials/import`、`/materials/wrong`、`/materials/wrong/dictation`、`/materials/:id`、`/materials/:id/dictation` | 全部挂在 `ShellRoute` 外，底部 4 Tab 不变；组件规格见 UI 设计规范 §3.4 |
 | §9.1 技术风险 | 版权/平台条款、端内转码、源文件失效 | 只处理本地文件、零转码、源文件失效给「重新导入」提示 |
 
-**新增依赖**：`file_picker 13.3.3`（本地文件选择）、`charset 2.0.1`（GBK 字幕解码），两者锁定版本；`sqlite3` 仅作为开发依赖，用于 v1→v2 迁移测试。前两者不参与判分链路；判分完全离线。
+**新增依赖**：`file_picker 13.3.3`（本地文件选择）、`charset 2.0.1`（GBK 字幕解码），两者锁定版本；`sqlite3` 仅作为开发依赖，用于 v1→v2 迁移测试与 URL 导入测试。前两者不参与判分链路；判分完全离线。链接导入复用 M1 已引入的 `dio`，不新增网络依赖。
+
+**导入新增「链接导入」路线（2026-11-11，流程 C）**：`MaterialImportService.importFromUrl` 用 `dio` 下载音视频 + 字幕（支持进度回调），随后调用与本地文件相同的 `_createMaterial` 解析 / 切句 / 落库；非 Web 端下载的音视频写入 App 私有目录，与本地文件同等待遇。`AndroidManifest` 已具备 `INTERNET` 权限。不做平台专属下载器/抓取；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 
 **新增配置项**：`dictation.passThreshold` / `dictation.contractionEquivalent` / `dictation.numberEquivalent` / `dictation.speed`，默认值见开发文档 §11 与技术补充 §4。
 
-**验证记录（2026-11-11）**：`flutter analyze` 0 error / 0 warning；`flutter test` 17 个测试全通过（字幕解析、切句、判分、二期数据库 CRUD 与级联删除、v1→v2 覆盖安装迁移老数据保留）；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过。Android 真机逐条验收仍待现场完成。
+**验证记录（2026-11-11）**：`flutter analyze` 0 error / 0 warning；`flutter test` 19 个测试全通过（字幕解析、切句、判分、二期数据库 CRUD 与级联删除、v1→v2 覆盖安装迁移老数据保留、链接导入下载+解析落库及空字幕报错）；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过。Android 真机逐条验收见 [真机验收清单](device-acceptance-checklist-v0.1.md)。

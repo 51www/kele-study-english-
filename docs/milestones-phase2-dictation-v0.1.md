@@ -25,9 +25,10 @@
 | M5 | 导入与切句 | F11 教材导入与解析、F12 句子切分与对齐 | 无 | 13 | 中（文件选择、编码、schema 迁移） |
 | M6 | 听写与判分 | F13 单句听写、F14 判分与差异反馈 | M5 | 13 | 中（片段播放、判分口径） |
 | M7 | 库与复练 | F15 教材库与复练 | M5 + M6 | 8 | 低 |
+| M8 | 链接导入（流程 C） | F11 链接来源 | M5 | 5 | 低（复用同一管线，仅多下载步骤） |
 
 ```text
-M5 ──▶ M6 ──▶ M7 ──▶ 全量回归与文档同步
+M5 ──▶ M6 ──▶ M7 ──▶ M8 ──▶ 全量回归与文档同步
 ```
 
 工作量用相对点数（1/2/3/5/8），不是工期承诺。
@@ -159,7 +160,15 @@ M5 ──▶ M6 ──▶ M7 ──▶ 全量回归与文档同步
 
 ### 6.4 范围外（本轮明确不做）
 
-流程 B（无字幕自动 ASR 生成）、流程 C（链接导入）、平台下载器与批量爬取、素材分享 / 导出 / 教材市场、DRM、端内转码与抽音轨、视频画面播放、逐词卡拉 OK 高亮与音素级评分、AI 讲解与同义改写判分、多语言、云端同步。
+流程 B（无字幕自动 ASR 生成）、平台下载器与批量爬取、素材分享 / 导出 / 教材市场、DRM、端内转码与抽音轨、视频画面播放、逐词卡拉 OK 高亮与音素级评分、AI 讲解与同义改写判分、多语言、云端同步。
+
+### 6.5 M8 链接导入（2026-11-11 补，流程 C）
+
+- 覆盖能力：F11 的「链接来源」分支。
+- 实现：`MaterialImportService.importFromUrl(mediaUrl, subtitleUrl?, title, onProgress?)` 用 `dio` 下载音视频 + 字幕，随后复用与本地文件完全相同的 `_createMaterial`（字幕解析 → 切句 → 落库）；非 Web 端下载的音视频写入 App 私有目录，与本地文件同等待遇。导入页新增「链接导入」模式（两个 URL 输入框 + 进度条）。
+- 验收（代码侧）：`test/url_import_test.dart` 用假 `HttpClientAdapter` 拦截 Dio，验证「下载→解析→切句→落库」与「空字幕明确报错」；`AndroidManifest` 已具备 `INTERNET` 权限。
+- 范围外：平台专属下载器 / 抓取、端内转码；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
+- 真机验收见 [真机验收清单](device-acceptance-checklist-v0.1.md) §3。
 
 ---
 
@@ -186,5 +195,6 @@ M5 ──▶ M6 ──▶ M7 ──▶ 全量回归与文档同步
 | M5 | 已落地（代码侧） | `flutter analyze` 0 error / 0 warning；`test/subtitle_parser_test.dart`、`test/segment_split_test.dart`、`test/dictation_store_test.dart`、`test/dictation_migration_test.dart`（v1→v2 老数据保留 + 只建新表）通过；Web release 与 Android debug 构建通过 | Android 真机：文件选择器、GBK 字幕、真机覆盖安装 |
 | M6 | 已落地（代码侧） | `test/dictation_scoring_test.dart` 通过（大小写/标点/漏词定位/缩写与数字等价/长词拼错/阈值/多写）；判分链路无网络依赖 | Android 真机：片段裁剪播放精度、0.75x、3 次复听、系统 ASR 切键盘 |
 | M7 | 已落地（代码侧） | 教材库统计 / 跨教材错句本 / 只练全部错句 / 删除级联 / 清空数据接线；`test/dictation_store_test.dart` 覆盖级联与 clearAll | Android 真机：重启后进度保留、删除后音频副本清理、需求 §10.2 的 11 条 MVP 回归 |
+| M8 | 已落地（代码侧） | `test/url_import_test.dart` 通过（下载→解析→切句→落库；空字幕 / 非法链接明确报错）；`dio` 已在 M1 引入，未新增网络依赖；INTERNET 权限已具备 | Android 真机：链接导入端到端、CORS 受限场景 |
 
-**全局回归（2026-11-11）**：`flutter analyze` 18 条既有 `info`，与改动前条数一致、无新增 error/warning；`flutter test` 17 个测试全通过；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过（构建警告仅来自既有 `flutter_tts` 的 Wasm/KGP 提示）。真机逐条验收不在本次自动化范围内。
+**全局回归（2026-11-11）**：`flutter analyze` 18 条既有 `info`，与改动前条数一致、无新增 error/warning；`flutter test` 19 个测试全通过；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过（构建警告仅来自既有 `flutter_tts` 的 Wasm/KGP 提示）。真机逐条验收见 [真机验收清单](device-acceptance-checklist-v0.1.md)。
