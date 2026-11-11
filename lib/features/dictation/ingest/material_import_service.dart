@@ -95,7 +95,8 @@ class MaterialImportService {
 
   // ---- 路线 C：链接下载 ----
 
-  /// 从 http(s) 链接下载音视频与（可选）字幕，复用同一套解析落库逻辑。
+  /// 从 http(s) 链接导入：支持你有权使用的直链、播客 RSS/Atom enclosure；
+  /// 对 B 站 / YouTube / BBC 等平台页面明确拦截，不抓取平台内容。
   /// [onProgress] 在 0..1 之间回报整体进度（下载占 0.9，落库占 0.1）。
   Future<MaterialItem> importFromUrl({
     required String mediaUrl,
@@ -103,12 +104,62 @@ class MaterialImportService {
     required String title,
     void Function(double progress)? onProgress,
   }) async {
+    final resolved = await _resolveSources(mediaUrl, subtitleUrl, onProgress);
+    onProgress?.call(0.95);
+    final item = await _createMaterial(
+      mediaBytes: resolved.mediaBytes,
+      mediaName: resolved.mediaName,
+      mediaExt: _extOf(resolved.mediaName),
+      subtitleBytes: resolved.subtitleBytes,
+      subtitleName: resolved.subtitleName,
+      title: title,
+      webUri: null,
+    );
+    onProgress?.call(1);
+    return item;
+  }
+
+  Future<({Uint8List mediaBytes, String mediaName, Uint8List subtitleBytes, String subtitleName})>
+      _resolveSources(
+    String mediaUrl,
+    String? subtitleUrl,
+    void Function(double)? onProgress,
+  ) async {
+    final trimmed = mediaUrl.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+      throw const MaterialImportException(
+        '链接格式不对，请填写 http(s) 开头的直链（播客 mp3 / 自有托管 / RSS 附件 / CC 素材）。',
+      );
+    }
+    if (_isPlatformHost(uri.host)) {
+      throw const MaterialImportException(
+        '本应用不抓取平台内容（如 B 站 / YouTube / BBC 等）。请使用你有权使用的直链，或导入本地文件。',
+      );
+    }
+
+    var fetchUrl = trimmed;
+    String? feedSubtitleUrl;
+    final lowerPath = uri.path.toLowerCase();
+    if (lowerPath.endsWith('.rss') ||
+        lowerPath.endsWith('.xml') ||
+        lowerPath.endsWith('.atom')) {
+      final feed = await _downloadText(trimmed);
+      final enclosure = _parseEnclosure(feed);
+      if (enclosure == null) {
+        throw const MaterialImportException(
+          '未能从该 RSS / Atom Feed 解析出音频链接，请改用直链或本地文件。',
+        );
+      }
+      fetchUrl = enclosure;
+      feedSubtitleUrl = _parseTranscript(feed);
+    }
+
     final mediaBytes = await _download(
-      mediaUrl,
+      fetchUrl,
       (c, t) => onProgress?.call((t > 0 ? c / t : 0) * 0.9),
     );
-    final mediaName = _nameFromUrl(mediaUrl, isSubtitle: false);
-    final mediaExt = _extOf(mediaName);
+    final mediaName = _nameFromUrl(fetchUrl, isSubtitle: false);
 
     Uint8List? subtitleBytes;
     String? subtitleName;
@@ -119,19 +170,33 @@ class MaterialImportService {
         (c, t) => onProgress?.call(0.9 + (t > 0 ? c / t : 0) * 0.1),
       );
       subtitleName = _nameFromUrl(sub, isSubtitle: true);
+    } else if (feedSubtitleUrl != null) {
+      subtitleBytes = await _download(
+        feedSubtitleUrl,
+        (c, t) => onProgress?.call(0.9 + (t > 0 ? c / t : 0) * 0.1),
+      );
+      subtitleName = _nameFromUrl(feedSubtitleUrl, isSubtitle: true);
+    } else {
+      for (final candidate in _guessSubtitles(fetchUrl)) {
+        try {
+          subtitleBytes = await _download(
+            candidate,
+            (c, t) => onProgress?.call(0.9 + (t > 0 ? c / t : 0) * 0.1),
+          );
+          subtitleName = _nameFromUrl(candidate, isSubtitle: true);
+          break;
+        } on Object {
+          subtitleBytes = null;
+        }
+      }
     }
-    onProgress?.call(0.95);
-    final item = await _createMaterial(
+
+    return (
       mediaBytes: mediaBytes,
       mediaName: mediaName,
-      mediaExt: mediaExt,
       subtitleBytes: subtitleBytes ?? Uint8List(0),
       subtitleName: subtitleName ?? 'subtitle.vtt',
-      title: title,
-      webUri: null,
     );
-    onProgress?.call(1);
-    return item;
   }
 
   Future<Uint8List> _download(
@@ -161,6 +226,92 @@ class MaterialImportService {
     } on DioException catch (e) {
       throw MaterialImportException('下载失败：${e.message ?? e.type.name}');
     }
+  }
+
+  // ---- 直链来源识别（合法来源：直链 / 播客 RSS enclosure；平台页面拦截） ----
+
+  static const _platformHosts = <String>{
+    'youtube.com',
+    'youtu.be',
+    'bilibili.com',
+    'b23.tv',
+    'bbc.co.uk',
+    'bbc.com',
+    'vimeo.com',
+    'twitter.com',
+    'x.com',
+    'facebook.com',
+    'instagram.com',
+    'tiktok.com',
+    'douyin.com',
+    'pan.baidu.com',
+    'weibo.com',
+  };
+
+  bool _isPlatformHost(String host) {
+    final h = host.toLowerCase();
+    final bare = h.startsWith('www.') ? h.substring(4) : h;
+    return _platformHosts.contains(bare) || _platformHosts.contains('www.$bare');
+  }
+
+  Future<String> _downloadText(String url) async {
+    try {
+      final resp = await dio.get<Uint8List>(
+        url.trim(),
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          receiveTimeout: const Duration(minutes: 1),
+        ),
+      );
+      final data = resp.data;
+      if (data == null || data.isEmpty) {
+        throw const MaterialImportException('下载到的 Feed 是空的，请检查链接。');
+      }
+      return utf8.decode(data, allowMalformed: true);
+    } on DioException catch (e) {
+      throw MaterialImportException('读取 Feed 失败：${e.message ?? e.type.name}');
+    }
+  }
+
+  String? _parseEnclosure(String xml) {
+    final enc = RegExp(
+      '<enclosure\\b[^>]*\\burl=["\'](?<url>[^"\']+)["\']',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final media = RegExp(
+      '<media:content\\b[^>]*\\burl=["\'](?<url>[^"\']+)["\']',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    return enc.firstMatch(xml)?.namedGroup('url') ??
+        media.firstMatch(xml)?.namedGroup('url');
+  }
+
+  String? _parseTranscript(String xml) {
+    final re = RegExp(
+      '<podcast:transcript\\b[^>]*\\burl=["\'](?<url>[^"\']+)["\']',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    return re.firstMatch(xml)?.namedGroup('url');
+  }
+
+  List<String> _guessSubtitles(String mediaUrl) {
+    final uri = Uri.tryParse(mediaUrl);
+    if (uri == null) return const [];
+    final path = uri.path;
+    final dot = path.lastIndexOf('.');
+    if (dot < 0) return const [];
+    final ext = path.substring(dot + 1).toLowerCase();
+    if (!audioExtensions.contains(ext) && !videoExtensions.contains(ext)) {
+      return const [];
+    }
+    final base = path.substring(0, dot);
+    return ['.vtt', '.srt']
+        .map((s) => uri.replace(path: base + s).toString())
+        .toList();
   }
 
   String _nameFromUrl(String url, {required bool isSubtitle}) {

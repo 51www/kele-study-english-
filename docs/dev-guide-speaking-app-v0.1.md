@@ -226,7 +226,7 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `resumableSessionForScenarioProvider` | app | 某场景下最近的未完成会话 | `recentSessionsProvider` | `SessionRecord?` |
 | `AnswerActionBar` / `ImprovementCard` | feature | 用户回答句下的三枚图标操作与优化结果页内展开 | `ConversationController`、`MessageRecord` | 展开集合、播放 id |
 | `RewardBurst` | feature | 完成回答后的粒子烟花 + 鼓励徽章（纯 `CustomPainter`） | `AnimationController` | `trigger` 计数 |
-| `InlineHintPanel` / `_HintResult` | feature | L1–L4 提示与参考答案在对话页内联展开，不用弹层 | `ConversationController.requestHint` | 选中层级、中文输入 |
+| `InlineHintPanel` / `_HintResult` | feature | 点「提示」直接请求并内联展开 L3 参考答案，不展示提示项、不用弹层 | `ConversationController.requestHint(3)` | 无状态 |
 | `ScenarioEditorPage` | feature | 自建场景新建 / 编辑 / 删除表单与开场白预览试听 | `ScenarioRepository`、`TtsRouter` | 表单控制器、加载 / 保存态 |
 | `SessionRepository.ensureStarterPhrases` | data | 首次访问表达本时幂等写入初始表达 | `LocalStore.meta/setMeta`、`starterPhrases` | `phrase.starter.v1` 标记 |
 
@@ -324,13 +324,14 @@ dio / plugin 异常
 | 旁路 | 触发 | 走哪层 | 是否进对话历史 |
 |---|---|---|---|
 | 翻译 | 点按 AI / 提示气泡 / 常开字幕 | `_sideChat` → `LlmClient.chat`（非流式）→ 失败降级 `streamChat` → `PromptBuilder.cleanTranslation` | 否 |
-| 提示 L1 | 点"重听" | `AudioPlayer` / `TtsRouter` | 否 |
-| 提示 L2–L4 | 点提示项 | `RequestHint` → `_sideChat`（`EN:` / `ZH:` 两行）→ `HintParser` | 否 |
+| 提示 | 点「提示」 | `requestHint(3)` → `_sideChat`（`EN:` / `ZH:` 两行）→ `HintParser` | 否 |
 | 我想说 | 中文输入 | `RequestWantToSay` → `_sideChat` | 否 |
 
 旁路统一走 `_config()`，与对话**共用同一 Base URL / 模型 / 密钥**，没有独立翻译模型。`max_tokens`：翻译 512、提示与「我想说」384；`temperature=0.3`；整体超时 `Timeouts.sideRequest = 25s`。提示若未按 `EN:` / `ZH:` 两行返回，会补一次翻译旁路（最多 1 次）。非流式正文提取按 `message.content` → `reasoning_content` → `delta.content` → `choices[0].text` 兜底，仍为空则改走与主对话相同的流式路径重取一次（鉴权 / 404 / 限流不降级）。
 
 旁路结果写入 `message.text_zh`（翻译）或页面内存（提示 + `hintTextZh` 中文对照），会话结束后提示不落库（除非用户收藏）。
+
+> 2026-11-11 调整：「提示」按钮不再展开 L1–L4 提示项，点一下直接请求 L3 参考回答，结果卡只显示英文 + 中文对照（不再带「译」前缀）。`requestHint` 仍保留 L1 慢速重听 / L2 关键词 / L4 中→英分支，供后续入口复用；中→英需求由「我想说」承担。
 
 ---
 
@@ -559,7 +560,7 @@ dio / plugin 异常
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
 | 自定义场景 `/custom-scenario/new`、`/:id/edit` | `ScenarioEditorPage` | `AppTextField` 表单（场景名 / 英文标题 / AI 角色 / 练习目标 / 目标表达 / 开场白 / 完成标准）、`_ChoiceChip`（分类 / 难度 / 轮数）、`_OpeningPreview`（开场白实时预览 + 试听）、底部「删除 / 保存」按钮行 |
-| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开；用户气泡外侧 `AnswerActionBar` 三枚图标 + `ImprovementCard` 页内展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`InlineHintPanel`（L1–L4 就地展开参考答案，英文 + 「译」中文对照，不用弹层）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow`、`RewardBurst`（新增回答触发一次）、「回到最新」浮标（`_followBottom` / `_autoScrolling`） |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开；用户气泡外侧 `AnswerActionBar` 三枚图标 + `ImprovementCard` 页内展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`InlineHintPanel`（点「提示」直接展开 L3 参考答案，英文 + 中文对照，不展示提示项、不用弹层）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow`、`RewardBurst`（新增回答触发一次）、「回到最新」浮标（`_followBottom` / `_autoScrolling`） |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
@@ -732,5 +733,5 @@ test/{subtitle_parser,segment_split,dictation_scoring,dictation_store,dictation_
 - 需求 F11 字面写「只保留抽取出的音频片段」，预研 §6 要求避开端内转码；本轮取零转码：不导出片段文件，按时间轴裁剪播放，纯音频源文件复制到私有目录，视频源文件只记路径。
 - 需求 §12.8 Q18（无字幕 ASR 生成，流程 B）本轮不实现，仍在开放状态；无字幕时只给「后续开放」提示，不做假入口。
 - Web 端只用于页面走查：浏览器重启后不保留媒体文件，会提示重新导入；音频播放以 Android 真机为准。
-- 流程 C 链接导入已落地（M8）：`MaterialImportService.importFromUrl` 复用 `importFiles` 同一套解析/切句/落库；导入页新增「链接导入」模式。Web 端跨域链接受 CORS 限制，以 Android 真机为准。
+- 流程 C 链接导入已落地（M8）：`MaterialImportService.importFromUrl` 支持合法直链与播客 RSS enclosure（自动取音频与内嵌字幕）、同站点字幕猜测；命中平台域名（YouTube / B 站 / BBC 等）明确拦截、提示「不抓取平台内容」，不解析网页、不绕开平台保护；之后复用 `importFiles` 同一套解析/切句/落库。导入页新增「链接导入」模式。Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 - Android 真机逐条验收（需求 §10.2 的 11 条 MVP 回归 + 二期 M5–M8 验收）见 [真机验收清单](device-acceptance-checklist-v0.1.md)，尚未现场执行。

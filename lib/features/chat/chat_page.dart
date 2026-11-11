@@ -153,6 +153,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _scrollToBottom();
   }
 
+  /// 「提示」不再展开 L1–L4 工具项：打开面板即直接要一句 L3 参考回答。
+  void _toggleHint() {
+    if (_hintOpen) {
+      _controller.closeHint();
+      setState(() => _hintOpen = false);
+      return;
+    }
+    setState(() => _hintOpen = true);
+    if (!_controller.hintLoading) {
+      unawaited(_controller.requestHint(3));
+    }
+  }
+
   @override
   void dispose() {
     _controller.removeListener(_onUpdate);
@@ -579,7 +592,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         controller: c,
                         textController: _input,
                         onSend: _send,
-                        onHint: () => setState(() => _hintOpen = !_hintOpen),
+                        onHint: _toggleHint,
                         onWantToSay: () => showWantToSaySheet(
                           context,
                           controller: c,

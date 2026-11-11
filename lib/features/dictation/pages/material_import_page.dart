@@ -157,7 +157,7 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
           Text(
-            '选一份本地音视频或填一个链接，再配上对应字幕（本地选文件 / 链接填字幕 URL）。App 会按句切开，只播音频，不显示画面。',
+            '选一份本地音视频或填一个直链，再配上对应字幕（本地选文件 / 链接填字幕 URL 或播客 RSS）。App 会按句切开，只播音频，不显示画面；B 站 / YouTube / BBC 等平台页面不抓取。',
             style: AppText.bodySecondary.copyWith(height: 1.6),
           ),
           const SizedBox(height: 16),
@@ -264,7 +264,7 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
             ),
           const SizedBox(height: 24),
           Text(
-            '素材版权归原权利人。本功能只处理你自己提供的本地文件或链接，仅供个人学习使用，不下载版权内容、不分享、不做视频转码。',
+            '素材版权归原权利人。本功能只处理你有权使用的本地文件或直链（含播客 RSS），仅供个人学习使用，不抓取平台内容、不下载版权内容、不分享、不做视频转码。',
             style: AppText.caption.copyWith(height: 1.6),
             textAlign: TextAlign.center,
           ),
@@ -295,17 +295,17 @@ class _UrlRows extends StatelessWidget {
     return Column(
       children: [
         AppTextField(
-          controller: mediaController,
-          label: '音视频链接',
-          hint: 'http(s)://… 指向 MP3 / M4A / WAV / MP4 等',
-          enabled: enabled,
+        controller: mediaController,
+        label: '音视频链接 / 播客 RSS',
+        hint: '直链或播客 RSS：MP3 / M4A / WAV / MP4 等；B站/YouTube/BBC 等平台页不抓取',
+        enabled: enabled,
         ),
         const SizedBox(height: 12),
         AppTextField(
-          controller: subtitleController,
-          label: '字幕链接（可选）',
-          hint: 'http(s)://… 指向 .srt / .vtt；不填则无法切句',
-          enabled: enabled,
+        controller: subtitleController,
+        label: '字幕链接（可选）',
+        hint: '字幕直链 .srt / .vtt；留空时自动试同站点字幕或 RSS 内嵌字幕',
+        enabled: enabled,
         ),
       ],
     );

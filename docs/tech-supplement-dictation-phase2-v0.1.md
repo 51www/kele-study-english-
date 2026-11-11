@@ -128,9 +128,13 @@ lib/
 
 ## 10. 链接导入（流程 C，2026-11-11 补）
 
-- 入口：导入页「链接导入」模式，填音视频 http(s) 链接 + 可选字幕链接。
-- 实现：`MaterialImportService.importFromUrl(mediaUrl, subtitleUrl?, title, onProgress?)` 用 `dio` 下载字节流，之后调用与本地文件完全相同的 `_createMaterial`（字幕解析 → 切句 → 落库）；非 Web 端下载的音视频写入 App 私有目录，与本地文件同等待遇。
+- 入口：导入页「链接导入」模式，填音视频直链 / 播客 RSS + 可选字幕链接。
+- 实现：`MaterialImportService.importFromUrl(mediaUrl, subtitleUrl?, title, onProgress?)`：
+  - 先校验：非 http(s) 直接报错；命中平台域名（YouTube / B 站 / BBC 等）抛 `MaterialImportException('本应用不抓取平台内容…')` 拦截，不解析网页、不绕开平台保护。
+  - 若链接是 RSS/Atom Feed（`.rss/.xml/.atom`），解析 `<enclosure>` / `<media:content>` 取音频地址、`<podcast:transcript>` 取内嵌字幕。
+  - 直链音视频会尝试同站点同名 `.vtt` / `.srt`（best-effort，失败忽略）。
+  - 随后用 `dio` 下载字节流，调用与本地文件完全相同的 `_createMaterial`（字幕解析 → 切句 → 落库）；非 Web 端音视频写入 App 私有目录。
 - 隔离：不新增网络依赖（`dio` 已在 M1 引入）；不动对话状态机、不写 `session` / `message` / `correction`。
-- 失败处理：非 http(s)、下载失败、空字幕均抛 `MaterialImportException` 给导入页展示，不静默失败。
+- 失败处理：非 http(s)、平台页面、下载失败、空字幕均抛 `MaterialImportException` 给导入页展示，不静默失败。
 - 限制：平台专属下载器/抓取、端内转码不做；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 | §9.1 技术风险 | §1、§8 |

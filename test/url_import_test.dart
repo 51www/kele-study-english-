@@ -19,6 +19,16 @@ class _FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final path = options.uri.path.toLowerCase();
+    if (path.endsWith('.xml') || path.endsWith('.rss')) {
+      const xml = '''
+<?xml version="1.0"?>
+<rss version="2.0" xmlns:podcast="http://podcast">
+<channel><item>
+<enclosure url="https://example.com/audio.mp3" type="audio/mpeg"/>
+<podcast:transcript url="https://example.com/audio.srt" type="text/srt"/>
+</item></channel></rss>''';
+      return ResponseBody.fromBytes(utf8.encode(xml), 200);
+    }
     if (path.endsWith('.srt')) {
       const srt = '''
 1
@@ -100,6 +110,53 @@ void main() {
       ),
       throwsA(isA<MaterialImportException>()),
     );
+
+    await db.close();
+  });
+
+  test('链接导入：平台页面（如 YouTube / B 站）明确拦截', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final store = DriftStore(db);
+    final service = MaterialImportService(
+      store,
+      dio: Dio()..httpClientAdapter = _FakeAdapter(),
+    );
+
+    Future<void> expectBlocked(String url) async {
+      try {
+        await service.importFromUrl(mediaUrl: url, title: 'x');
+        fail('应当拦截平台页面：$url');
+      } on MaterialImportException catch (e) {
+        expect(e.message, contains('不抓取平台内容'));
+      }
+    }
+
+    await expectBlocked('https://www.youtube.com/watch?v=abc');
+    await expectBlocked('https://www.bilibili.com/video/BV1xx');
+    await expectBlocked('https://www.bbc.co.uk/learningenglish');
+
+    await db.close();
+  });
+
+  test('链接导入：播客 RSS enclosure 自动取音频与内嵌字幕', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final store = DriftStore(db);
+    final service = MaterialImportService(
+      store,
+      dio: Dio()..httpClientAdapter = _FakeAdapter(),
+    );
+
+    final item = await service.importFromUrl(
+      mediaUrl: 'https://example.com/feed.xml',
+      title: '播客',
+    );
+
+    expect(item.title, '播客');
+    expect(item.mediaName, 'audio.mp3');
+    expect(item.segmentCount, 2);
+
+    final segments = await store.segments(item.id);
+    expect(segments.first.textEn, 'I would like a cup of coffee.');
 
     await db.close();
   });
