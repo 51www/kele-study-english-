@@ -478,3 +478,72 @@ MVP 完整功能 + 一份逐条通过的验收记录。
 ### 13.4 范围外
 
 不做到云端同步、跨设备续练、多会话并行草稿、自动补发未完成的 AI 回复、自动结束长时间未续练的对话。
+
+---
+
+## 14. M4 之后的收尾项：对话交互体验优化（2026-11-11 用户反馈）
+
+### 14.1 用户反馈与任务
+
+用户一次性提出 4 项体验优化（回答后正向反馈、回答句操作栏、自定义场景、提示就地展开）与 2 个缺陷（表达句板块无内容与添加入口、对话页上滑被强制拉回底部）。本节定义口径与验收，不替代需求 §10.2 的 11 条 MVP 清单。
+
+| # | 任务 | 落点 |
+|---|---|---|
+| T1 | 完成回答后的轻量粒子烟花 + 鼓励徽章 | `features/chat/reward_burst.dart`，按「新增用户回答」触发 |
+| T2 | 回答句下方三枚图标：优化句子 / 播放原声 / TTS 朗读 | `features/chat/answer_actions.dart`，旁路优化不进主历史 |
+| T3 | 自建场景创建 / 编辑 / 删除 | `features/scenario/scenario_editor_page.dart` + 场景库管理入口 |
+| T4 | 提示面板内联展开，取消底部弹层 | `features/chat/chat_widgets.dart` 的 `InlineHintPanel` |
+| T5 | 表达本初始内容 + 常驻添加入口 + 空态推荐 | `seeds.dart` 的 `starterPhrases`、`SessionRepository.ensureStarterPhrases`、`PhrasebookPage` |
+| T6 | 滚动跟随逻辑修复 | `ChatPage._onScrollNotification` / `_scrollToBottom` |
+
+### 14.2 验收标准（本次新增，不替代需求 §10.2）
+
+1. 说完或发出一句后即时出现一次动效；等待回复、计时器刷新均不重复触发，动效不拦截任何点击。
+2. 三枚图标都可用：优化结果页内展开且可试听 / 存入表达本，原声可回放（无录音有明确提示），朗读能读出该句；三者都不改写已发送消息、不自动发送。
+3. 自建场景可新建、编辑、删除并直接开练；场景库里带「自建」标识，内置场景无编辑 / 删除入口；删除不影响历史会话。
+4. 点提示项不出现弹窗，参考答案在页内展开；结果不自动发送、不进对话历史。
+5. 首次安装打开表达本即有内容与常驻添加入口，可增删改与朗读；用户删改过的初始表达不会被重新灌回。
+6. 上滑浏览历史时不会被拉回底部（触摸 / 滚轮 / 触控板 / 惯性均适用）；回到底部后恢复自动跟随，「回到最新」浮标可用。
+7. `flutter analyze` 无 error / warning，`flutter build web --release` 通过。
+
+### 14.3 实现与验证记录
+
+| 验收项（§14.2） | 状态 | 证据 |
+|---|---|---|
+| 1–4、6 | 代码侧已落地 | `RewardBurst` / `AnswerActionBar` + `ImprovementCard` / `ScenarioEditorPage` / `InlineHintPanel` / 滚动跟随逻辑；均已在 `ChatPage` 与场景库接线 |
+| 5 | 代码侧已落地 | `starterPhrases` 6 条 + `phrase.starter.v1` 幂等标记 + 表达本页顶部表单与空态快捷添加 |
+| 7 | 已验证 | `flutter pub get` 后 `flutter analyze --no-pub` 0 error / 0 warning（19 条既有 info 与改动前一致）；`flutter build web --release --no-web-resources-cdn` 通过（第三方 `flutter_tts` 的 Wasm dry-run 提示与本次改动无关） |
+
+**浏览器验证（Web 调试构建，2026-11-11）**：在 393 × 852 视口下逐页走查，截图见 `docs/shortscreen/M5/`。
+
+| 验证项 | 结果 | 截图 |
+|---|---|---|
+| 首页 / 场景库渲染 | 通过；26 个内置场景、分类 Chip 与右上角「新建自定义场景」入口正常 | `01-home.png`、`03-scenario-library.png` |
+| 表达本首次进入 | 通过；6 条初始表达（含出处与当天日期）、「添加表达」及朗读 / 编辑 / 标记 / 删除入口齐全 | `09-phrasebook-final.png` |
+| 自建场景创建 | 通过；保存后场景库计数 26 → 27，回到列表 | `05-custom-scenario-created.png` |
+| 自建场景管理 | 通过；「我的场景」筛选下带「自建」标签，管理菜单含编辑 / 删除，编辑页能回显已存内容 | `06-my-scenarios.png`、`07-manage-menu.png` |
+| 分类 Chip 布局 | 通过；修复后为横向单行可滚的小胶囊（修复前被拉成通栏竖排） | `10-editor-chips-fixed.png` |
+| 提示内联展开 | 通过；点「提示」后 L1–L4 面板在页内展开，语义树中无 dialog / 遮罩 | 浏览器快照现场确认 |
+
+**真机验证（Android PKC110，release APK 覆盖安装，2026-11-11）**：`flutter build apk --release` 产物覆盖安装成功（签名一致、原有练习数据保留），用无障碍语义树 + 截图逐项走查，截图见 `docs/shortscreen/M5/device-*.png`。
+
+| 验证项 | 结果 | 截图 |
+|---|---|---|
+| 表达本 | 首次进入写入 6 条初始表达，日期为当天；「添加表达」与朗读 / 编辑 / 标记 / 删除入口齐全 | `device-02-phrasebook.png` |
+| 自定义场景入口与编辑器 | 场景库「新建自定义场景」正常；编辑器表单、分类 / 难度 Chip 为横排小胶囊（布局修复生效） | `device-03-scenario-library.png`、`device-04-editor.png` |
+| 回答句操作栏 | 每条用户气泡下三枚图标齐全；优化句子真实返回「A large one, please.」+ 中文理由并页内展开 | `device-06-chat-history.png`、`device-09-improvement.png` |
+| 提示内联展开 | 点「提示」→ L1–L4 面板页内展开；点 L3 后参考答案与中文对照直接出现在面板内，全程无弹窗 | `device-07-hint-inline.png`、`device-08-hint-answer.png` |
+| 正向反馈动效 | 发送一句后即时出现粒子烟花 + 「说得不错」徽章；连拍两张均可见，等 AI 回复时未重复触发 | `device-10-reward-01.png`、`device-10-reward-02.png` |
+| 滚动修复 | 上滑到最早一条历史消息后等待 6 秒（计时 06:28 → 06:38，多次刷新），所有消息 bounds 完全一致，未被拉回底部；「回到最新」浮标出现 | `device-11-scroll-history.png` |
+| TTS 朗读 | 点击后图标变蓝色停止态、底部出现「停止朗读」，`logcat` 有 `AudioTrack` 实际启停与系统 TTS 引擎记录 | `device-13-tts-playing.png` |
+| 无录音时的原声入口 | 文字输入 / 系统识别的句子，原声图标置灰，点击给出「没有录到原声」提示 | `device-14-original-playing.png` |
+
+**未复验**：真机录一句语音后「播放我的原声」的实听，以及自定义场景 CRUD 的完整手工点按。后者是因为自动化脚本按坐标代填时输入框随页面滚动错位，保存校验正确拦截了空字段，未产生脏数据；CRUD 已在浏览器 Web 构建完整走通，真机只做到新建入口与编辑器渲染。`logcat` 全程无 `FlutterError` / `overflowed` / `FATAL`。
+
+**接入时发现并修复的阻断问题**：场景库列表调用 `_ScenarioTile` 时传入 `onEdit` / `onDelete`，构造函数却未声明，导致 2 个编译 error、App 无法构建；同时本地 `package_config.json` 缺少 `pubspec.yaml` 已声明的 `url_launcher`，另报 3 个 error。两者已一并修复（补齐回调与自建场景管理菜单、重新 `flutter pub get`）。这也解释了「新功能都看不到」的现象——运行的是无法更新的旧包。
+
+### 14.4 范围外
+
+不做排行榜 / 积分 / 连击、动效音效与可配置开关、自定义场景模板市场、场景分享与导入导出、云端同步；原型 `prototype/index.html` 仍保留旧的提示 Sheet，仅作为 v0.1 交互参考，不回写。
+
+语音录入一句后「播放我的原声」的实听，以及自定义场景 CRUD 在真机 SQLite 路径上的手工点按，仍建议用户现场确认；其余验收项已在浏览器与真机分别走通（§14.3）。

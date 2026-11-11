@@ -11,6 +11,7 @@ import '../features/home/home_page.dart';
 import '../features/me/me_page.dart';
 import '../features/phrasebook/phrasebook_page.dart';
 import '../features/review/review_page.dart';
+import '../features/scenario/scenario_editor_page.dart';
 import '../features/scenario/scenario_library_page.dart';
 import '../features/scenario/scenario_page.dart';
 import '../features/settings/asr_config_page.dart';
@@ -44,6 +45,18 @@ final router = GoRouter(
       path: '/scenario/:id',
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, state) => _slide(ScenarioPage(scenarioId: state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/custom-scenario/new',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const ScenarioEditorPage()),
+    ),
+    GoRoute(
+      path: '/custom-scenario/:id/edit',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, state) => _slide(
+        ScenarioEditorPage(scenarioId: state.pathParameters['id']),
+      ),
     ),
     GoRoute(
       path: '/chat/:id',

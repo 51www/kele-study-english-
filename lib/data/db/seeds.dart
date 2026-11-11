@@ -1,5 +1,56 @@
 import '../../domain/models/models.dart';
 
+/// 表达本初始内容：首次进入时写入一次，让板块一打开就有可看、可朗读、
+/// 可编辑的句子，而不是空白页。用户改过或删掉后不会重新灌回。
+///
+/// 句子取自内置场景的目标表达，`sourceScenarioId` 让卡片能显示出处；
+/// `createdAt` 只是占位，首次写入时由 `ensureStarterPhrases` 换成当前时间，
+/// 之后用户新加的表达按真实时间排在最前。
+const starterPhrases = <Phrase>[
+  Phrase(
+    id: 'starter_cafe_1',
+    textEn: "I'd like a medium latte, please.",
+    textZh: '我要一杯中杯拿铁。',
+    sourceScenarioId: 'cafe_order',
+    createdAt: 1767225600000,
+  ),
+  Phrase(
+    id: 'starter_cafe_2',
+    textEn: 'Could I get that to go?',
+    textZh: '可以外带吗？',
+    sourceScenarioId: 'cafe_order',
+    createdAt: 1767225601000,
+  ),
+  Phrase(
+    id: 'starter_meeting_1',
+    textEn: 'Sorry, could you repeat that?',
+    textZh: '抱歉，能再说一遍吗？',
+    sourceScenarioId: 'meeting_clarify',
+    createdAt: 1767225602000,
+  ),
+  Phrase(
+    id: 'starter_meeting_2',
+    textEn: 'Just to confirm, the deadline is Friday, right?',
+    textZh: '我确认一下，截止时间是周五对吧？',
+    sourceScenarioId: 'meeting_clarify',
+    createdAt: 1767225603000,
+  ),
+  Phrase(
+    id: 'starter_meeting_3',
+    textEn: 'I see it a bit differently.',
+    textZh: '我的想法有点不一样。',
+    sourceScenarioId: 'meeting_clarify',
+    createdAt: 1767225604000,
+  ),
+  Phrase(
+    id: 'starter_meeting_4',
+    textEn: 'That works for me.',
+    textZh: '我这边没问题。',
+    sourceScenarioId: 'meeting_clarify',
+    createdAt: 1767225605000,
+  ),
+];
+
 /// 首次启动写入的 26 个内置场景（2 个 MVP 首批 + 24 个扩展，按 id 幂等 upsert）。
 ///
 /// 选题与分类依据见 `docs/research-practice-scenarios-2026-11.md`。

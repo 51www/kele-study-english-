@@ -14,8 +14,10 @@ import '../../core/formatters.dart';
 import '../../core/logger.dart';
 import '../../domain/models/models.dart';
 import '../../services/tts/tts_engine.dart';
+import 'answer_actions.dart';
 import 'chat_widgets.dart';
 import 'conversation_controller.dart';
+import 'reward_burst.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key, required this.sessionId});
@@ -33,6 +35,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _ending = false;
   final Set<String> _expandedCorrections = {};
   String? _playingCorrectionId;
+
+  bool _hintOpen = false;
+  final Set<String> _openImprovements = {};
+  String? _playingImprovementId;
+
+  // 正向反馈只按「新增用户回答」触发，不能被每秒刷新的计时器反复触发。
+  int _rewardTrigger = 0;
+  int _lastUserCount = -1;
+  int _lastMessageCount = 0;
+  String _lastStreamingText = '';
+
+  // 用户主动上滑浏览历史时停止自动跟随，回到最新后恢复。
+  bool _followBottom = true;
+  // 区分「程序自动滚到底」与「用户自己滚」，避免滚轮 / 惯性滚动被误判。
+  bool _autoScrolling = false;
 
   @override
   void initState() {
@@ -56,17 +73,84 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   void _onUpdate() {
     if (!mounted) return;
+    final c = _controller;
+    final userCount = c.messages.where((m) => m.isUser).length;
+    final answered = _lastUserCount >= 0 && userCount > _lastUserCount;
+    _lastUserCount = userCount;
+
+    // 只在「对话内容真的变了」且用户没有上滑看历史时才滚到底部。
+    // 旧实现每次 notify（含每秒计时器）都 animateTo，导致上滑被强制拉回。
+    final contentChanged = c.messages.length != _lastMessageCount ||
+        c.streamingText != _lastStreamingText;
+    _lastMessageCount = c.messages.length;
+    _lastStreamingText = c.streamingText;
+    final streaming = c.streamingText.trim().isNotEmpty;
+
+    if (answered) {
+      _rewardTrigger++;
+      _followBottom = true;
+    }
     setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    if (contentChanged && _followBottom) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToBottom(animate: !streaming),
+      );
+    }
   }
 
-  void _scrollToBottom() {
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null) {
+      // 用户一开始拖动就停止跟随，新消息不会再把他拉回底部。
+      if (_followBottom) setState(() => _followBottom = false);
+    } else if (notification is ScrollUpdateNotification && !_autoScrolling) {
+      // 按当前位置判断，覆盖触摸、鼠标滚轮、触控板与惯性滚动；
+      // 程序自动滚到底期间跳过，避免把自身动画当成用户操作。
+      final metrics = notification.metrics;
+      final atBottom = metrics.pixels >= metrics.maxScrollExtent - 24;
+      if (!atBottom && _followBottom) {
+        setState(() => _followBottom = false);
+      } else if (atBottom && !_followBottom) {
+        setState(() => _followBottom = true);
+      }
+    } else if (notification is ScrollEndNotification && !_autoScrolling) {
+      final metrics = notification.metrics;
+      if (metrics.pixels >= metrics.maxScrollExtent - 24 && !_followBottom) {
+        setState(() => _followBottom = true);
+      }
+    }
+    return false;
+  }
+
+  void _scrollToBottom({bool animate = true}) {
     if (!_scroll.hasClients) return;
-    _scroll.animateTo(
-      _scroll.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOut,
-    );
+    final target = _scroll.position.maxScrollExtent;
+    if (animate) {
+      _autoScrolling = true;
+      unawaited(
+        _scroll
+            .animateTo(
+              target,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOut,
+            )
+            .then(
+              (_) {
+                _autoScrolling = false;
+              },
+              onError: (Object _) {
+                _autoScrolling = false;
+              },
+            ),
+      );
+    } else {
+      _scroll.jumpTo(target);
+    }
+  }
+
+  void _backToLatest() {
+    setState(() => _followBottom = true);
+    _scrollToBottom();
   }
 
   @override
@@ -101,6 +185,59 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _input.selection = TextSelection.collapsed(offset: text.length);
     _controller.clearWantToSay();
     setState(() {});
+  }
+
+  Future<void> _toggleImprovement(MessageRecord message) async {
+    if (_openImprovements.contains(message.id)) {
+      _controller.closeImprovement(message.id);
+      if (mounted) setState(() => _openImprovements.remove(message.id));
+      return;
+    }
+    // 旁路一次只跑一条；否则第二张卡片会一直停在「正在想…」。
+    if (_controller.improvingMessageId != null) {
+      showAppToast(context, '上一句还在优化，稍等一下再点');
+      return;
+    }
+    setState(() => _openImprovements.add(message.id));
+    await _controller.optimizeSentence(message);
+  }
+
+  Future<void> _playOriginal(MessageRecord message) async {
+    final path = message.audioPath;
+    if (path == null || path.isEmpty) {
+      showAppToast(context, '这句是文字输入或系统识别，没有录到原声');
+      return;
+    }
+    await _controller.playOriginal(message);
+  }
+
+  Future<void> _playImprovement(String messageId, String text) async {
+    if (_playingImprovementId == messageId) {
+      await ref.read(ttsRouterProvider).stop();
+      if (mounted) setState(() => _playingImprovementId = null);
+      return;
+    }
+    setState(() => _playingImprovementId = messageId);
+    try {
+      final settings = ref.read(settingsRepositoryProvider);
+      await ref.read(ttsRouterProvider).speak(
+            text,
+            voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
+            rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
+          );
+    } on TtsException catch (e) {
+      AppLogger.warn('improvement replay failed: ${e.error.detail}');
+      if (mounted) showAppToast(context, '朗读暂不可用', error: true);
+    } finally {
+      if (mounted) setState(() => _playingImprovementId = null);
+    }
+  }
+
+  Future<void> _saveImprovement(String messageId) async {
+    await _controller.saveImprovement(messageId);
+    ref.invalidate(phrasesProvider);
+    if (mounted) showAppToast(context, '已存入表达本');
   }
 
   Future<void> _playCorrection(Correction correction) async {
@@ -362,17 +499,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             onClose: c.clearTranslationError,
                           ),
                         ),
-                      if (c.hasHint || c.hintLoading || c.hintError != null)
+                      if (_hintOpen)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                          child: HintResultCard(
-                            level: c.hintLevel,
-                            text: c.hintText,
-                            translation: c.hintTextZh,
-                            error: c.hintError,
-                            loading: c.hintLoading,
-                            onClose: c.closeHint,
-                            onRetry: () => showHintSheet(context, controller: c),
+                          child: InlineHintPanel(
+                            controller: c,
+                            onClose: () {
+                              c.closeHint();
+                              setState(() => _hintOpen = false);
+                            },
                           ),
                         ),
                       if (c.asrNotice != null)
@@ -444,7 +579,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         controller: c,
                         textController: _input,
                         onSend: _send,
-                        onHint: () => showHintSheet(context, controller: c),
+                        onHint: () => setState(() => _hintOpen = !_hintOpen),
                         onWantToSay: () => showWantToSaySheet(
                           context,
                           controller: c,
@@ -480,9 +615,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     for (final item in corrections.where((e) => !e.isDeleted && e.messageId.isNotEmpty)) {
       byMessage.putIfAbsent(item.messageId, () => <Correction>[]).add(item);
     }
-    return ListView.builder(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+    return Stack(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: ListView.builder(
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
       itemCount: c.messages.length + (streaming || c.state == TurnState.thinking ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= c.messages.length) {
@@ -529,10 +668,96 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               playingCorrectionId: _playingCorrectionId,
               onPlayCorrection: _playCorrection,
               onDeleteCorrection: _deleteCorrection,
+              trailing: message.isUser
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnswerActionBar(
+                            message: message,
+                            optimizing: c.improvingMessageId == message.id,
+                            optimizationOpen: _openImprovements.contains(message.id),
+                            hasOriginal: message.audioPath?.isNotEmpty == true,
+                            originalPlaying: c.playingOriginalId == message.id,
+                            ttsPlaying: c.playingMessageId == message.id,
+                            onOptimize: () => _toggleImprovement(message),
+                            onPlayOriginal: () => _playOriginal(message),
+                            onPlayTts: () => c.playMessage(message),
+                          ),
+                          if (_openImprovements.contains(message.id))
+                            ImprovementCard(
+                              original: message.textEn,
+                              improvement: c.improvements[message.id],
+                              error: c.improvementError,
+                              playing: _playingImprovementId == message.id,
+                              onPlay: () => _playImprovement(
+                                message.id,
+                                c.improvements[message.id]?.improved ?? message.textEn,
+                              ),
+                              onSave: () => _saveImprovement(message.id),
+                              onClose: () {
+                                c.closeImprovement(message.id);
+                                setState(() => _openImprovements.remove(message.id));
+                              },
+                              onRetry: () => c.optimizeSentence(message),
+                            ),
+                        ],
+                      ),
+                    )
+                  : null,
             ),
           ],
         );
-      },
+          },
+        ),
+        ),
+        Positioned(
+          right: 8,
+          bottom: 6,
+          child: RewardBurst(trigger: _rewardTrigger),
+        ),
+        if (!_followBottom)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 14,
+            child: Center(
+              child: GestureDetector(
+                onTap: _backToLatest,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    boxShadow: AppShadows.soft,
+                    border: Border.all(color: AppColors.primaryTint),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 14,
+                        color: AppColors.primaryDeep,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '回到最新',
+                        style: AppText.caption.copyWith(
+                          fontSize: 10,
+                          color: AppColors.primaryDeep,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -636,6 +861,7 @@ class MessageBubble extends StatelessWidget {
     this.playingCorrectionId,
     this.onPlayCorrection,
     this.onDeleteCorrection,
+    this.trailing,
   });
 
   final MessageRecord message;
@@ -651,6 +877,7 @@ class MessageBubble extends StatelessWidget {
   final String? playingCorrectionId;
   final ValueChanged<Correction>? onPlayCorrection;
   final ValueChanged<Correction>? onDeleteCorrection;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -665,11 +892,15 @@ class MessageBubble extends StatelessWidget {
         showTranslation && onTranslate != null && translation == null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (!isUser) ...[
+          Row(
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser) ...[
             _Avatar(isHint: hint),
             const SizedBox(width: 8),
           ],
@@ -847,7 +1078,10 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (isUser) const SizedBox(width: 4),
+              if (isUser) const SizedBox(width: 4),
+            ],
+          ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

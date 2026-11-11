@@ -126,13 +126,17 @@ lib/
   features/
     home/            home_page.dart（含「上次卡在哪」与「方法 / 技巧」栏目入口）
     scenario/        scenario_page.dart / scenario_library_page.dart（/scenarios：分类 Chip、
-                     搜索、练过次数）/ scenario_visual.dart（分类 → 图标/浅底/强调色）
+                     搜索、练过次数、自建场景管理）/ scenario_editor_page.dart
+                     （/custom-scenario/new 与 /:id/edit：新建 / 编辑 / 删除）/
+                     scenario_visual.dart（分类 → 图标/浅底/强调色）
     chat/            chat_page.dart / conversation_controller.dart /
-                     chat_widgets.dart（HintSheet / WantToSaySheet / TranslateModePicker /
-                     HintResultCard / CorrectionPanel）/ copy.dart（错误文案）
+                     chat_widgets.dart（InlineHintPanel / WantToSaySheet / TranslateModePicker /
+                     HintResultCard / CorrectionPanel）/ answer_actions.dart
+                     （AnswerActionBar / ImprovementCard）/ reward_burst.dart（RewardBurst）/
+                     copy.dart（错误文案）
     review/          review_page.dart
     history/         history_page.dart（详情复用 /review/:id）
-    phrasebook/      phrasebook_page.dart
+    phrasebook/      phrasebook_page.dart（添加 / 编辑 / 朗读 / 删除 / 初始表达空态）
     settings/        settings_page.dart / model_config_page.dart / asr_config_page.dart /
                      data_settings_page.dart（/settings/data，语音缓存与清空数据）
     me/              me_page.dart（含成本与延迟统计）
@@ -154,7 +158,7 @@ lib/
 | F6 记录与表达本 | `features/history`、`features/phrasebook` | `session`/`message`/`phrase` 表 | M3 |
 | F7 设置 | `features/settings` | `SettingsRepository` | M0 起增量 |
 | F8 坚持机制（极简） | `features/home` | `session` 聚合查询 | M3 |
-| F9 自定义场景（P1） | `features/scenario` | `scenario` 表 | 二期后 |
+| F9 自定义场景（已提前启用，见需求 §0.3） | `features/scenario`（`scenario_editor_page`、`scenario_library_page`） | `scenario` 表、`ScenarioRepository.saveCustom/deleteCustom/nextSortOrder`、路由 `/custom-scenario/*` | 交互优化收尾（里程碑 §14） |
 | F10 发音反馈（P2） | — | — | 不做 |
 
 ### 1.3 模块边界
@@ -220,6 +224,11 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `SessionRepository` | data | 建会话 / 结束 / 暂停续练 / 恢复 / 一次性回收旧数据 / 级联删除 | `LocalStore` | 无状态 |
 | `ConversationController.elapsedSec` | feature | 会话内累计秒数；每 15 秒落盘，退出与结束时写入 `duration_sec` | `SessionRepository` | 计时器 |
 | `resumableSessionForScenarioProvider` | app | 某场景下最近的未完成会话 | `recentSessionsProvider` | `SessionRecord?` |
+| `AnswerActionBar` / `ImprovementCard` | feature | 用户回答句下的三枚图标操作与优化结果页内展开 | `ConversationController`、`MessageRecord` | 展开集合、播放 id |
+| `RewardBurst` | feature | 完成回答后的粒子烟花 + 鼓励徽章（纯 `CustomPainter`） | `AnimationController` | `trigger` 计数 |
+| `InlineHintPanel` / `_HintResult` | feature | L1–L4 提示与参考答案在对话页内联展开，不用弹层 | `ConversationController.requestHint` | 选中层级、中文输入 |
+| `ScenarioEditorPage` | feature | 自建场景新建 / 编辑 / 删除表单与开场白预览试听 | `ScenarioRepository`、`TtsRouter` | 表单控制器、加载 / 保存态 |
+| `SessionRepository.ensureStarterPhrases` | data | 首次访问表达本时幂等写入初始表达 | `LocalStore.meta/setMeta`、`starterPhrases` | `phrase.starter.v1` 标记 |
 
 > 实现说明：复盘生成逻辑目前内联在 `features/review/review_page.dart`（含一次自动重试与 `ReviewParser` 容错解析），尚未抽出独立 `ReviewService` 类；`PromptBuilder` 位于 `services/llm/`（不是早期规划的 `services/prompt/`）。
 
@@ -547,16 +556,17 @@ dio / plugin 异常
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
 | 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
-| 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」）、`EmptyState`、`ErrorBanner` |
+| 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
-| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`HintSheet`（L1–L4）、`HintResultCard`（英文 + 「译」中文对照）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow` |
+| 自定义场景 `/custom-scenario/new`、`/:id/edit` | `ScenarioEditorPage` | `AppTextField` 表单（场景名 / 英文标题 / AI 角色 / 练习目标 / 目标表达 / 开场白 / 完成标准）、`_ChoiceChip`（分类 / 难度 / 轮数）、`_OpeningPreview`（开场白实时预览 + 试听）、底部「删除 / 保存」按钮行 |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开；用户气泡外侧 `AnswerActionBar` 三枚图标 + `ImprovementCard` 页内展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`InlineHintPanel`（L1–L4 就地展开参考答案，英文 + 「译」中文对照，不用弹层）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow`、`RewardBurst`（新增回答触发一次）、「回到最新」浮标（`_followBottom` / `_autoScrolling`） |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
 | 模型配置（设置内区块） | `ModelProfileSheet` / `ModelProfilePage` | `AppField`×3、`FetchModelsButton`、`ConnResult`、`SaveButton` |
 | 记录列表 | `HistoryPage` | `_HistoryCard`（未完成卡追加「点按继续这段对话」，跳 `/chat/:id`；已完成卡跳 `/review/:id`）、`Dismissible` 删除、`EmptyState` |
 | 记录详情 | `SessionDetailPage` | `MessageList(readOnly)`、`CorrectionList` |
-| 表达本 | `PhrasebookPage` | `PhraseTile`、`EmptyState`、`FilterChips` |
+| 表达本 | `PhrasebookPage` | 页头「添加表达」+ 展开的新建 / 编辑表单、`_PhraseCard`（朗读 / 编辑 / 标记已掌握 / 删除）、`EmptyState`（一键添加 + 查看记录 + 3 条常用表达快捷添加）、`ErrorBanner` |
 | 技巧列表 `/tips` | `TipsPage` | 分类筛选 Chip、文章卡、`EmptyState`、`ErrorBanner` |
 | 技巧详情 `/tips/:id` | `TipsDetailPage` | 摘要卡 + 分类标签、全文段落 / 小标题 / `[图：说明]` 占位、固定「出处」块、底部版权说明 |
 
@@ -574,6 +584,7 @@ dio / plugin 异常
 | 8 | 里程碑 T2.7 端侧 Whisper | 可选项，当前不启用；识别链路为独立 ASR 接口 → 系统识别 → 实验性对话模型识别，不引入端侧推理依赖 |
 | 9 | 早期规划的记录详情页 `SessionDetailPage` | 详情复用 `/review/:id` 的只读转写与纠错展开，未新增独立页面 |
 | 10 | 原型 v0.1 只有 4 个场景（2 个可练、2 个「即将上线」），App 现有 26 个 | 原型保留为 v0.1 交互参考，其「分类 Chip + 场景卡 + N 个可练计数」的版面骨架被 `ScenarioLibraryPage` 沿用；原型里的「机场值机」「和新同事闲聊」已在 App 中作为正式场景开放，但原型未补它们的完整对话脚本，**不回写原型**。是否需要把原型同步到 26 个场景，需用户确认 |
+| 11 | 原型里提示是底部 Sheet、表达本只有收藏 / 移出，且 README 旧版写「不做自定义场景」 | 按 2026-11-11 用户决策，Flutter 端已改为 `InlineHintPanel` 页内展开、表达本支持手工新建、场景库支持自建场景；原型仍留作 v0.1 交互参考不回写，README 与需求 / 开发 / UI 文档已同步 |
 
 ---
 

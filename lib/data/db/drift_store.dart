@@ -66,6 +66,11 @@ class DriftStore implements LocalStore {
   }
 
   @override
+  Future<void> deleteScenario(String id) async {
+    await _exec('DELETE FROM scenario WHERE id = ? AND is_builtin = 0', [id]);
+  }
+
+  @override
   Future<List<SessionRecord>> sessions() async {
     final rows = await _query('SELECT * FROM session ORDER BY started_at DESC');
     return rows.map(SessionRecord.fromMap).toList();

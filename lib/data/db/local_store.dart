@@ -10,6 +10,7 @@ abstract class LocalStore {
 
   Future<List<Scenario>> scenarios();
   Future<void> upsertScenario(Scenario scenario);
+  Future<void> deleteScenario(String id);
 
   Future<List<SessionRecord>> sessions();
   Future<SessionRecord?> session(String id);

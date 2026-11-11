@@ -72,6 +72,36 @@ class AudioPlayerService {
     }
   }
 
+  /// 播放用户原声。
+  ///
+  /// IO 平台传的是录音文件的绝对路径；Web 上传的是 `record` 返回的 blob URL。
+  /// 与 TTS 共用同一个播放器，因此调用方要先停掉朗读，避免两段音频叠加。
+  Future<void> playPath(String path) async {
+    await stop();
+    final generation = ++_generation;
+    _stateSub ??= _player.playerStateStream.listen(
+      (s) => AppLogger.debug(
+        'player state=${s.processingState.name} playing=${s.playing}',
+      ),
+      onError: (Object e) => AppLogger.warn('player state error: $e'),
+    );
+    try {
+      final uri = kIsWeb ? Uri.parse(path) : Uri.file(path);
+      await _player.setAudioSource(AudioSource.uri(uri)).timeout(Timeouts.playerLoad);
+      _playing = true;
+      await _player.setSpeed(1.0);
+      await _player.play();
+      if (generation != _generation) return;
+      await _player.playerStateStream.firstWhere(
+        (s) =>
+            s.processingState == ProcessingState.completed ||
+            (s.processingState == ProcessingState.idle && !s.playing),
+      );
+    } finally {
+      if (generation == _generation) _playing = false;
+    }
+  }
+
   /// IO 平台走临时文件，Web 走 data URI。
   Future<AudioSource> _buildSource(Uint8List bytes, String mimeType) async {
     if (kIsWeb) {

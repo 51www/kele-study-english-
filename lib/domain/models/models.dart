@@ -344,6 +344,22 @@ class Phrase {
   final bool mastered;
   final int createdAt;
 
+  Phrase copyWith({
+    String? textEn,
+    String? textZh,
+    bool? mastered,
+    int? createdAt,
+  }) => Phrase(
+        id: id,
+        textEn: textEn ?? this.textEn,
+        textZh: textZh ?? this.textZh,
+        sourceSessionId: sourceSessionId,
+        sourceScenarioId: sourceScenarioId,
+        audioPath: audioPath,
+        mastered: mastered ?? this.mastered,
+        createdAt: createdAt ?? this.createdAt,
+      );
+
   Map<String, Object?> toMap() => {
         'id': id,
         'text_en': textEn,

@@ -142,6 +142,24 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
     ];
   }
 
+  /// 回答句「优化句子」：与提示 / 翻译一样走独立上下文，不进主对话历史。
+  static List<LlmMessage> improveMessages(String text, Scenario? scenario) {
+    return [
+      LlmMessage.system(
+        'You are a friendly English speaking coach. Rewrite the learner sentence to sound '
+        'natural and idiomatic while keeping the exact meaning and roughly the same length. '
+        'Output exactly TWO plain-text lines and nothing else:\n'
+        'BETTER: <the improved English sentence only>\n'
+        'WHY: <one short Simplified Chinese reason, max 25 words>\n'
+        'No reasoning, no markdown, no quotes, no extra lines.',
+      ),
+      LlmMessage.user(
+        'Scenario: ${scenario?.titleZh ?? 'daily conversation'}\n'
+        'Learner said: "$text"',
+      ),
+    ];
+  }
+
   static List<LlmMessage> translateMessages(String text) {
     return [
       LlmMessage.system(
@@ -298,6 +316,53 @@ class HintParser {
     var out = value.trim().replaceAll('**', '').replaceAll('`', '');
     out = out.replaceFirst(RegExp(r'^[-*>]\s+'), '').trim();
     out = out.replaceFirst(RegExp(r'^(译文|翻译|中文|译)\s*[:：]\s*'), '').trim();
+    if (out.length > 1 && out.startsWith('"') && out.endsWith('"')) {
+      out = out.substring(1, out.length - 1).trim();
+    }
+    return out;
+  }
+}
+
+/// 解析「优化句子」旁路的两行输出（BETTER: / WHY:）。
+/// 模型没按格式返回时退化为「第一行英文、第二行含中文当理由」，避免整块空白。
+class ImprovementParser {
+  ImprovementParser._();
+
+  static ({String improved, String reasonZh}) parse(String raw) {
+    var improved = '';
+    var reason = '';
+    for (final item in raw.split('\n')) {
+      final line = _strip(item);
+      if (line.isEmpty || line == '```') continue;
+      final labeled = RegExp(r'^(BETTER|WHY|理由|原因)\s*[:：]\s*(.*)$', caseSensitive: false)
+          .firstMatch(line);
+      if (labeled != null) {
+        final value = _strip(labeled.group(2)!);
+        final tag = labeled.group(1)!.toUpperCase();
+        if (tag == 'BETTER') {
+          improved = value;
+        } else {
+          reason = value;
+        }
+        continue;
+      }
+      if (improved.isEmpty) {
+        improved = line;
+      } else if (reason.isEmpty && _hasChinese(line)) {
+        reason = line;
+      }
+    }
+    if (improved.isEmpty || _hasChinese(improved)) improved = '';
+    if (!_hasChinese(reason)) reason = '';
+    return (improved: improved, reasonZh: reason);
+  }
+
+  static bool _hasChinese(String value) => RegExp(r'[\u4e00-\u9fff]').hasMatch(value);
+
+  static String _strip(String value) {
+    var out = value.trim().replaceAll('**', '').replaceAll('`', '');
+    out = out.replaceFirst(RegExp(r'^[-*>]\s+'), '').trim();
+    out = out.replaceFirst(RegExp(r'^\d+[.)]\s+'), '').trim();
     if (out.length > 1 && out.startsWith('"') && out.endsWith('"')) {
       out = out.substring(1, out.length - 1).trim();
     }

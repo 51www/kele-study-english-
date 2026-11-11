@@ -214,8 +214,10 @@ final resumableSessionForScenarioProvider =
       .firstOrNull;
 });
 
-final phrasesProvider = FutureProvider<List<Phrase>>((ref) {
-  return ref.watch(sessionRepositoryProvider).phrases();
+final phrasesProvider = FutureProvider<List<Phrase>>((ref) async {
+  final repo = ref.watch(sessionRepositoryProvider);
+  await repo.ensureStarterPhrases();
+  return repo.phrases();
 });
 
 /// 朗读缓存占用（读 tts_cache 表求和，单位字节）。

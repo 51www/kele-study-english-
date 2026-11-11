@@ -28,6 +28,14 @@ import '../../services/tts/tts_router.dart';
 /// 回合状态机：空闲 / 录音 / 识别 / 思考 / 朗读 / 错误。
 enum TurnState { idle, recording, transcribing, thinking, speaking, error }
 
+/// 「优化句子」的旁路结果，只放在内存里，不写主对话历史。
+class SentenceImprovement {
+  const SentenceImprovement({required this.improved, required this.reasonZh});
+
+  final String improved;
+  final String reasonZh;
+}
+
 class ConversationController extends ChangeNotifier {
   ConversationController({
     required this.sessionId,
@@ -67,6 +75,7 @@ class ConversationController extends ChangeNotifier {
   String? ttsWarning;
   String? asrNotice;
   String? playingMessageId;
+  String? playingOriginalId;
   bool loading = true;
   bool asrAvailable = false;
   bool asrChecking = true;
@@ -92,6 +101,11 @@ class ConversationController extends ChangeNotifier {
   String? wantToSayText;
   String? wantToSayError;
   bool wantToSayLoading = false;
+
+  /// 用户回答句下方的「优化句子」：按 messageId 缓存，展开/收起由页面控制。
+  final Map<String, SentenceImprovement> improvements = {};
+  String? improvingMessageId;
+  String? improvementError;
 
   double sessionCost = 0;
   bool costEstimated = false;
@@ -474,9 +488,11 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     final releaseAt = DateTime.now();
     String transcript = '';
+    String? recordedPath;
     try {
       if (_usingHttpAsr && _httpAsr != null) {
         final path = await _httpAsr!.stopCapture();
+        recordedPath = path;
         if (path == null || path.isEmpty) {
           transcript = '';
         } else {
@@ -493,17 +509,21 @@ class ConversationController extends ChangeNotifier {
           }
         }
       } else if (_usingChatAudio && _chatAudioAsr != null) {
-        transcript = await _chatAudioAsr!.stop().timeout(
-          Timeouts.asrExperimental,
-          onTimeout: () => '',
-        );
+        recordedPath = await _chatAudioAsr!.stopCapture();
+        if (recordedPath != null && recordedPath.isNotEmpty) {
+          transcript = await _chatAudioAsr!.transcribe(recordedPath).timeout(
+            Timeouts.asrExperimental,
+            onTimeout: () => '',
+          );
+        }
       } else if (_usingAsr) {
+        // 系统识别独占麦克风，没有可回放的录音文件；该句只保留文字。
         transcript = await asr.stop().timeout(
           Timeouts.asrSystem,
           onTimeout: () => '',
         );
       } else {
-        await recorder.stop();
+        recordedPath = await recorder.stop();
       }
     } on AsrException catch (e) {
       await _failRecording(e.error);
@@ -540,6 +560,7 @@ class ConversationController extends ChangeNotifier {
                   : null,
       fromVoice: true,
       asrMs: _asrMs,
+      audioPath: recordedPath,
     );
   }
 
@@ -570,6 +591,7 @@ class ConversationController extends ChangeNotifier {
     String? asrProvider,
     bool fromVoice = false,
     int? asrMs,
+    String? audioPath,
   }) async {
     final clean = text.trim();
     if (clean.isEmpty) return;
@@ -601,6 +623,7 @@ class ConversationController extends ChangeNotifier {
       seq: seq,
       role: 'user',
       textEn: clean,
+      audioPath: audioPath,
       asrProvider: asrProvider,
       latencyMs: asrMs,
       createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -1180,6 +1203,92 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ------------------------------------------------- 回答句操作栏
+
+  /// 「优化句子」：旁路请求一句更自然的说法 + 中文理由；不进主历史、不自动发送。
+  Future<void> optimizeSentence(MessageRecord message) async {
+    final text = message.textEn.trim();
+    if (text.isEmpty || improvingMessageId != null) return;
+    improvingMessageId = message.id;
+    improvementError = null;
+    notifyListeners();
+    try {
+      final reply = await _sideChat(
+        PromptBuilder.improveMessages(text, scenario),
+        maxTokens: 256,
+      );
+      final parsed = ImprovementParser.parse(reply.text);
+      if (parsed.improved.isEmpty) {
+        improvementError = '这次没拿到优化建议，可以再试一次';
+      } else {
+        improvements[message.id] = SentenceImprovement(
+          improved: parsed.improved,
+          reasonZh: parsed.reasonZh,
+        );
+      }
+      await _incrementCounters(assist: 1);
+    } on AppError catch (e) {
+      improvementError = e.detail ?? '优化失败，可以重试';
+    } catch (e) {
+      AppLogger.warn('improve sentence failed: $e');
+      improvementError = '优化失败，可以重试';
+    } finally {
+      improvingMessageId = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  void closeImprovement(String messageId) {
+    improvements.remove(messageId);
+    improvementError = null;
+    if (!_disposed) notifyListeners();
+  }
+
+  /// 把优化后的说法收进表达本（表达本的手工添加入口之外的数据来源）。
+  Future<void> saveImprovement(String messageId) async {
+    final item = improvements[messageId];
+    if (item == null) return;
+    final now = DateTime.now();
+    await sessions.savePhrase(Phrase(
+      id: 'p_${now.microsecondsSinceEpoch}',
+      textEn: item.improved,
+      sourceSessionId: sessionId,
+      sourceScenarioId: scenario?.id,
+      createdAt: now.millisecondsSinceEpoch,
+    ));
+  }
+
+  /// 回放用户这句的录音。系统识别 / 文字输入没有录音文件，按钮在页面里会置灰。
+  Future<void> playOriginal(MessageRecord message) async {
+    final path = message.audioPath;
+    if (path == null || path.isEmpty) return;
+    if (playingOriginalId == message.id) {
+      await stopOriginal();
+      return;
+    }
+    await stopPlayback();
+    playingOriginalId = message.id;
+    notifyListeners();
+    try {
+      await audioSession.preparePlayback();
+      await player.playPath(path);
+    } catch (e) {
+      AppLogger.warn('play original audio failed: $e');
+      ttsWarning = '这句原声已不可用，文字仍然保留';
+    } finally {
+      if (!_disposed && playingOriginalId == message.id) {
+        playingOriginalId = null;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> stopOriginal() async {
+    playingOriginalId = null;
+    await player.stop();
+    if (!_disposed) notifyListeners();
+  }
+
   /// 旁路请求：提示 / 翻译 /「我想说」走独立消息数组，绝不混入主历史。
   ///
   /// 与对话共用 `_config()`（同一地址 / 模型 / 密钥）；默认非流式，但思考型模型
@@ -1334,6 +1443,7 @@ class ConversationController extends ChangeNotifier {
   Future<void> stopPlayback() async {
     _ttsToken++;
     playingMessageId = null;
+    playingOriginalId = null;
     resumeText = null;
     _currentSpokenText = null;
     try {

@@ -101,6 +101,12 @@ class WebStore implements LocalStore {
       _upsert(_scenarioKey, 'id', scenario.toMap());
 
   @override
+  Future<void> deleteScenario(String id) => _delete(
+        _scenarioKey,
+        (e) => e['id'] == id && (e['is_builtin'] ?? 1) == 0,
+      );
+
+  @override
   Future<List<SessionRecord>> sessions() async {
     final rows = _read(_sessionKey)
       ..sort((a, b) => ((b['started_at'] as num?) ?? 0)

@@ -23,6 +23,26 @@ class ScenarioRepository {
     }
     return null;
   }
+
+  /// 新建 / 编辑自定义场景。内置场景不允许覆盖，避免种子被改写。
+  Future<void> saveCustom(Scenario scenario) async {
+    if (scenario.isBuiltin) {
+      throw StateError('内置场景不可编辑');
+    }
+    await _store.upsertScenario(scenario);
+  }
+
+  /// 删除自定义场景；会话只留 scenario_id 快照，历史记录不受影响。
+  Future<void> deleteCustom(String id) => _store.deleteScenario(id);
+
+  /// 新场景排在内置场景之后，保证首页「场景练习」前两张仍是内置场景。
+  Future<int> nextSortOrder() async {
+    final list = await _store.scenarios();
+    return list.fold<int>(
+      100,
+      (max, item) => item.sortOrder > max ? item.sortOrder : max,
+    ) + 1;
+  }
 }
 
 class SettingsRepository {
@@ -248,6 +268,18 @@ class SessionRepository {
   Future<void> deleteCorrection(String id) => _store.deleteCorrection(id);
 
   Future<List<Phrase>> phrases() => _store.phrases();
+
+  /// 首次访问表达本时写入一组初始表达，之后不再灌回；
+  /// 只有「清空所有数据」把 meta 标记一起清掉才会恢复。
+  Future<void> ensureStarterPhrases() async {
+    if (await meta('phrase.starter.v1') == 'done') return;
+    // 用首次写入的真实时间，卡片日期才不会是一串固定的旧日期。
+    final base = DateTime.now().millisecondsSinceEpoch;
+    for (var i = 0; i < starterPhrases.length; i++) {
+      await savePhrase(starterPhrases[i].copyWith(createdAt: base + i));
+    }
+    await setMeta('phrase.starter.v1', 'done');
+  }
 
   Future<void> savePhrase(Phrase phrase) => _store.upsertPhrase(phrase);
 

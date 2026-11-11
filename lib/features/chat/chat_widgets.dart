@@ -86,275 +86,235 @@ class ChatErrorBanner extends StatelessWidget {
   }
 }
 
-/// 提示结果只展示，不自动发送、不写入对话历史。
-class HintResultCard extends StatelessWidget {
-  const HintResultCard({
+/// 提示面板：整块内联在对话页里，点提示项直接在本处展开参考答案。
+///
+/// 不再使用底部弹层；L1–L3 点一下即出结果，L4 需要中文因此就地展开输入框。
+/// 结果只放内存，不自动发送、不写入对话历史。
+class InlineHintPanel extends StatefulWidget {
+  const InlineHintPanel({
     super.key,
-    required this.level,
-    required this.text,
-    required this.error,
-    required this.loading,
+    required this.controller,
     required this.onClose,
-    required this.onRetry,
-    this.translation,
   });
 
-  final int? level;
-  final String? text;
-  final String? translation;
-  final String? error;
-  final bool loading;
-  final VoidCallback onClose;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!loading && text == null && error == null) return const SizedBox.shrink();
-    return AppCard(
-      color: AppColors.primaryWash,
-      shadow: false,
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.lightbulb_outline_rounded, size: 16, color: AppColors.primaryDeep),
-              const SizedBox(width: 6),
-              Text('L${level ?? 2} 提示', style: AppText.tag.copyWith(color: AppColors.primaryDeep)),
-              const Spacer(),
-              GestureDetector(
-                onTap: onClose,
-                child: const Icon(Icons.close_rounded, size: 16, color: AppColors.inkMuted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (loading)
-            Row(
-              children: [
-                const SizedBox(
-                  width: 13,
-                  height: 13,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                ),
-                const SizedBox(width: 8),
-                Text('正在准备提示…', style: AppText.caption),
-              ],
-            )
-          else if (error != null)
-            Row(
-              children: [
-                Expanded(child: Text(error!, style: AppText.caption.copyWith(color: AppColors.error))),
-                TextButton(
-                  onPressed: onRetry,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 28),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text('重试', style: AppText.caption.copyWith(color: AppColors.primaryDeep)),
-                ),
-              ],
-            )
-          else ...[
-            Text(text!, style: AppText.body.copyWith(height: 1.5)),
-            if (translation != null && translation!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                '译 ${translation!}',
-                style: AppText.caption.copyWith(color: AppColors.inkSecondary, height: 1.5),
-              ),
-            ],
-            const SizedBox(height: 6),
-            Text('仅作参考，不会替你发送；请自己开口或点发送。', style: AppText.caption),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// L1–L4 提示阶梯的入口 Sheet。
-Future<void> showHintSheet(
-  BuildContext context, {
-  required ConversationController controller,
-}) {
-  return showAppSheet<void>(
-    context: context,
-    title: '卡住了？一步一步来',
-    child: _HintSheetBody(controller: controller),
-  );
-}
-
-class _HintSheetBody extends StatefulWidget {
-  const _HintSheetBody({required this.controller});
-
   final ConversationController controller;
+  final VoidCallback onClose;
 
   @override
-  State<_HintSheetBody> createState() => _HintSheetBodyState();
+  State<InlineHintPanel> createState() => _InlineHintPanelState();
 }
 
-class _HintSheetBodyState extends State<_HintSheetBody> {
+class _InlineHintPanelState extends State<InlineHintPanel> {
   final _chinese = TextEditingController();
-  int _level = 1;
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onControllerUpdate);
-  }
-
-  void _onControllerUpdate() {
-    // Controller 可能在页面 build 期间通知（例如弹层刚打开时），
-    // 把重建推迟到当前帧结束，避免 setState() during build。
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
-  }
+  int _level = 3;
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onControllerUpdate);
     _chinese.dispose();
     super.dispose();
   }
 
   Future<void> _request(int level) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    await widget.controller.requestHint(level, chinese: _chinese.text);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (widget.controller.hintError == null) Navigator.of(context).pop();
+    final c = widget.controller;
+    if (c.hintLoading) return;
+    setState(() => _level = level);
+    await c.requestHint(level, chinese: _chinese.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+    final c = widget.controller;
+    final hasResult = c.hintLoading || c.hintError != null || c.hasHint;
+    return AppCard(
+      color: AppColors.primaryWash,
+      shadow: false,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('提示是阶梯，不直接替你说话；任一级都不会自动发送。', style: AppText.caption),
-          const SizedBox(height: 12),
-          _HintOption(
-            level: 1,
-            selected: _level == 1,
-            icon: Icons.replay_rounded,
-            title: 'L1 · 重听 / 慢速',
-            subtitle: '不给答案，只把 AI 上一句放慢再读一遍',
-            onTap: () => setState(() => _level = 1),
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_outline_rounded, size: 15, color: AppColors.primaryDeep),
+              const SizedBox(width: 6),
+              Text(
+                '卡住了？点一下就展开',
+                style: AppText.caption.copyWith(color: AppColors.primaryDeep, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: widget.onClose,
+                child: const Icon(Icons.close_rounded, size: 16, color: AppColors.inkMuted),
+              ),
+            ],
           ),
-          _HintOption(
-            level: 2,
-            selected: _level == 2,
-            icon: Icons.keyboard_alt_outlined,
-            title: 'L2 · 关键词 / 句型',
-            subtitle: '给 3–5 个词或一个句型，不给完整句',
-            onTap: () => setState(() => _level = 2),
-          ),
-          _HintOption(
-            level: 3,
-            selected: _level == 3,
-            icon: Icons.chat_bubble_outline_rounded,
-            title: 'L3 · 参考回答',
-            subtitle: '给 1 句完整英文，要你自己说出来',
-            onTap: () => setState(() => _level = 3),
-          ),
-          _HintOption(
-            level: 4,
-            selected: _level == 4,
-            icon: Icons.translate_rounded,
-            title: 'L4 · 中 → 英',
-            subtitle: '写下中文意思，给一句可以直接说的英文',
-            onTap: () => setState(() => _level = 4),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _HintChip(
+                icon: Icons.replay_rounded,
+                label: 'L1 慢速重听',
+                selected: _level == 1,
+                onTap: () => _request(1),
+              ),
+              _HintChip(
+                icon: Icons.keyboard_alt_outlined,
+                label: 'L2 关键词',
+                selected: _level == 2,
+                onTap: () => _request(2),
+              ),
+              _HintChip(
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'L3 参考回答',
+                selected: _level == 3,
+                onTap: () => _request(3),
+              ),
+              _HintChip(
+                icon: Icons.translate_rounded,
+                label: 'L4 中→英',
+                selected: _level == 4,
+                onTap: () {
+                  c.closeHint();
+                  setState(() => _level = 4);
+                },
+              ),
+            ],
           ),
           if (_level == 4) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             AppTextField(
               controller: _chinese,
               label: '我想说的中文',
               hint: '例如：我想确认一下会议改到几点',
               maxLines: 2,
             ),
-          ],
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: _level == 1 ? '慢速重听' : '获取 L$_level 提示',
-            icon: Icons.lightbulb_outline_rounded,
-            loading: _busy,
-            onPressed: _busy ? null : () => _request(_level),
-          ),
-          if (widget.controller.hintError != null) ...[
             const SizedBox(height: 8),
-            ErrorBanner(message: widget.controller.hintError!),
+            PrimaryButton(
+              label: '生成参考答案',
+              icon: Icons.lightbulb_outline_rounded,
+              loading: c.hintLoading,
+              onPressed: c.hintLoading ? null : () => _request(4),
+              height: 40,
+            ),
           ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: hasResult
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: _HintResult(controller: c, onRetry: () => _request(_level)),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
         ],
       ),
     );
   }
 }
 
-class _HintOption extends StatelessWidget {
-  const _HintOption({
-    required this.level,
-    required this.selected,
+class _HintChip extends StatelessWidget {
+  const _HintChip({
     required this.icon,
-    required this.title,
-    required this.subtitle,
+    required this.label,
+    required this.selected,
     required this.onTap,
   });
 
-  final int level;
-  final bool selected;
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String label;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? AppColors.primaryWash : AppColors.surfaceTint,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: selected ? AppColors.primaryDeep : AppColors.inkMuted),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppText.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: selected ? AppColors.primaryDeep : AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(subtitle, style: AppText.caption),
-                    ],
-                  ),
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primaryTint : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: selected ? AppColors.primary : AppColors.divider),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: selected ? AppColors.primaryDeep : AppColors.inkSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: AppText.caption.copyWith(
+                  fontSize: 10,
+                  color: selected ? AppColors.primaryDeep : AppColors.inkSecondary,
                 ),
-                if (selected)
-                  const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primary),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HintResult extends StatelessWidget {
+  const _HintResult({required this.controller, required this.onRetry});
+
+  final ConversationController controller;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    if (c.hintLoading) {
+      return Row(
+        children: [
+          const SizedBox(
+            width: 13,
+            height: 13,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+          ),
+          const SizedBox(width: 8),
+          Text('正在准备参考答案…', style: AppText.caption),
+        ],
+      );
+    }
+    if (c.hintError != null) {
+      return ErrorBanner(message: c.hintError!, onRetry: onRetry);
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: AppColors.primaryTint),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'L${c.hintLevel ?? 2} 参考答案',
+            style: AppText.tag.copyWith(color: AppColors.primaryDeep),
+          ),
+          const SizedBox(height: 6),
+          Text(c.hintText ?? '', style: AppText.body.copyWith(height: 1.5)),
+          if (c.hintTextZh != null && c.hintTextZh!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              '译 ${c.hintTextZh!}',
+              style: AppText.caption.copyWith(color: AppColors.inkSecondary, height: 1.5),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text('仅作参考，不会替你发送；请自己开口或点发送。', style: AppText.caption),
+        ],
       ),
     );
   }

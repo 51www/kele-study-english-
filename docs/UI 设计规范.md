@@ -490,6 +490,20 @@ Container(
 
 续练不引入新色值、新字号、新圆角或新阴影层级；状态色沿用 `success` / `warning` / `primaryDeep`，文字沿用 `AppText.cardTitle` / `caption` / `tag`。
 
+#### 对话交互体验新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 正向反馈动效 | 对话区右下角 190 × 150 的 `IgnorePointer` 浮层；20 个粒子沿圆周散开、带轻微重力与淡出，中心光晕用 `primary` 20% → 0，总时长 1100ms；鼓励徽章为白底 pill、`primaryTint` 1px 描边、`AppShadows.soft`、13 图标 + 10/700 `primaryDeep` 文案，缩放 0.78 → 1、后段淡出；不拦截点击、不加声音，粒子只取 `primary` / `primaryLight` / `yellow` / `mint` |
+| 回答句操作栏 | 用户气泡外侧右对齐一行，顶部间距 5、右侧 4；3 枚 28 × 28 圆形图标按钮，间距 6，图标 14；默认白底 + 1px `divider` + `inkSecondary`，激活为 `primaryWash` 底 + `primaryTint` 描边 + `primaryDeep` 图标，无录音置灰到 `inkMuted` 55%，请求中显示 1.6 描边 `CircularProgressIndicator`；只用图标 + `Tooltip` / `Semantics`，不加文字标签 |
+| 优化结果卡 | 紧接操作栏下方，`primaryWash` 底、`AppRadius.sm` 圆角、`primaryTint` 1px 描边、12/10 内边距、最大宽 300；标题 10/600 `primaryDeep`，原句 11/500 删除线 `inkMuted`，改进句 `AppText.body` 行高 1.5，理由 `AppText.caption`；底部「试听 / 存入表达本」复用 10/600 胶囊小按钮（白底 + 1px `divider`），不出现第二个主色实心 CTA |
+| 内联提示面板 | 复用 `AppCard`（`primaryWash` 底、无阴影、12/10 内边距）；L1–L4 为可点 Chip（沿用分类 Chip 的 28 高 / pill / 10 字号规格）；结果用 `AnimatedSize` 就地展开，白底 `AppRadius.sm` + `primaryTint` 描边，英文 `AppText.body` 行高 1.5 + 「译」中文对照；**不使用底部 Sheet / 弹窗**，不自动发送、不写入对话历史 |
+| 自建场景管理入口 | 场景库列表卡标题行追加 `AppTag`（「自建」，`mint` 字色），右侧箭头前加 `more_horiz` 18 `inkMuted` 的弹出菜单（编辑 / 删除）；仅 `isBuiltin == false` 出现，内置场景保持只读；菜单不新增色值与圆角 |
+| 自定义场景表单 | 复用 `PageScaffold` + `AppTextField` + 既有 `_ChoiceChip` 规格；底部固定「删除 / 保存」按钮行沿用主 / 次按钮规格（并排等宽、间距 10）；开场白预览卡为 `primaryWash` 底、无阴影、14/12 内边距 + 30 圆形试听按钮；不新增第三个主色 CTA |
+| 表达本添加与空态 | 页头右侧「添加表达」为 `primaryWash` 底 pill + `primaryTint` 描边 + 11/700 `primaryDeep`；展开的表单复用 `AppCard` + `AppTextField` + 主 / 次按钮；空态复用 `EmptyState`，下方给 1 个主色实心 CTA 与 1 个次按钮，再列 3 条常用表达卡（`AppCard` 无阴影 + 30 圆形加号），不新增第二处主色实心按钮 |
+
+本次新增组件仍只使用既有 Token 与 4/8 网格间距；动效不引入第三方动画库或资源文件。
+
 #### 页面头部
 
 - 左右 24，高 56–64；左返回 40 圆形；中标题 11–12/600 `inkSecondary`；右侧占位 40。

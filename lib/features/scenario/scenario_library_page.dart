@@ -24,6 +24,32 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
   final TextEditingController _search = TextEditingController();
   String _category = '全部';
   String _query = '';
+  bool _mineOnly = false;
+
+  Future<void> _openEditor([String? id]) async {
+    await context.push(id == null
+        ? '/custom-scenario/new'
+        : '/custom-scenario/$id/edit');
+    if (!mounted) return;
+    ref.invalidate(scenarioLibraryProvider);
+    ref.invalidate(homeDataProvider);
+    if (id != null) ref.invalidate(scenarioProvider(id));
+  }
+
+  Future<void> _deleteCustom(Scenario scenario) async {
+    final ok = await showConfirmDialog(
+      context,
+      title: '删除这个场景？',
+      message: '「${scenario.titleZh}」会从场景库移除，已经练过的记录不受影响。',
+      confirmLabel: '删除',
+      danger: true,
+    );
+    if (!ok) return;
+    await ref.read(scenarioRepositoryProvider).deleteCustom(scenario.id);
+    ref.invalidate(scenarioLibraryProvider);
+    ref.invalidate(homeDataProvider);
+    if (mounted) showAppToast(context, '场景已删除');
+  }
 
   @override
   void initState() {
@@ -44,6 +70,14 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
     final async = ref.watch(scenarioLibraryProvider);
     return PageScaffold(
       title: '场景库',
+      actions: [
+        IconButton(
+          onPressed: () => _openEditor(),
+          icon: const Icon(Icons.add_rounded, size: 22),
+          color: AppColors.primaryDeep,
+          tooltip: '新建自定义场景',
+        ),
+      ],
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, _) => Padding(
@@ -60,14 +94,16 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
 
   Widget _body(ScenarioLibraryData data) {
     final categories = scenarioCategoriesOf(data.scenarios.map((e) => e.category));
+    final customCount = data.scenarios.where((e) => !e.isBuiltin).length;
     final activeCategory = categories.contains(_category) ? _category : '全部';
     final filtered = data.scenarios.where((scenario) {
       final matchCategory = activeCategory == '全部' || scenario.category == activeCategory;
+      final matchMine = !_mineOnly || !scenario.isBuiltin;
       final matchQuery = _query.isEmpty ||
           scenario.titleZh.toLowerCase().contains(_query) ||
           scenario.titleEn.toLowerCase().contains(_query) ||
           scenario.userGoal.toLowerCase().contains(_query);
-      return matchCategory && matchQuery;
+      return matchCategory && matchMine && matchQuery;
     }).toList();
 
     return ListView.builder(
@@ -87,21 +123,34 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
             activeCategory: activeCategory,
             search: _search,
             query: _query,
+            mineOnly: _mineOnly,
+            onMine: () => setState(() => _mineOnly = !_mineOnly),
             onCategory: (value) => setState(() => _category = value),
             onClear: () {
               _search.clear();
-              setState(() => _category = '全部');
+              setState(() {
+                _category = '全部';
+                _mineOnly = false;
+              });
             },
           );
         }
         if (filtered.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 72),
-            child: EmptyState(
-              icon: Icons.search_off_rounded,
-              title: '没有匹配的场景',
-              message: '换个关键词，或把分类切回「全部」再看看。',
-            ),
+          return Padding(
+            padding: const EdgeInsets.only(top: 72),
+            child: _mineOnly && customCount == 0
+                ? EmptyState(
+                    icon: Icons.add_circle_outline_rounded,
+                    title: '还没有自己的场景',
+                    message: '把常遇到的对话情境写成一个场景，聊起来更贴近真实需要。',
+                    actionLabel: '新建场景',
+                    action: () => _openEditor(),
+                  )
+                : const EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: '没有匹配的场景',
+                    message: '换个关键词，或把分类切回「全部」再看看。',
+                  ),
           );
         }
         final scenario = filtered[index - 1];
@@ -110,6 +159,8 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
           child: _ScenarioTile(
             scenario: scenario,
             practiced: data.practiceCounts[scenario.id] ?? 0,
+            onEdit: () => _openEditor(scenario.id),
+            onDelete: () => _deleteCustom(scenario),
           ),
         );
       },
@@ -125,6 +176,8 @@ class _Header extends StatelessWidget {
     required this.activeCategory,
     required this.search,
     required this.query,
+    required this.mineOnly,
+    required this.onMine,
     required this.onCategory,
     required this.onClear,
   });
@@ -135,12 +188,14 @@ class _Header extends StatelessWidget {
   final String activeCategory;
   final TextEditingController search;
   final String query;
+  final bool mineOnly;
+  final VoidCallback onMine;
   final ValueChanged<String> onCategory;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final hasFilter = activeCategory != '全部' || query.isNotEmpty;
+    final hasFilter = activeCategory != '全部' || query.isNotEmpty || mineOnly;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -164,6 +219,11 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.xs),
               ],
+              _CategoryChip(
+                label: '我的场景',
+                selected: mineOnly,
+                onTap: onMine,
+              ),
             ],
           ),
         ),
@@ -233,14 +293,22 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _ScenarioTile extends StatelessWidget {
-  const _ScenarioTile({required this.scenario, required this.practiced});
+  const _ScenarioTile({
+    required this.scenario,
+    required this.practiced,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final Scenario scenario;
   final int practiced;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final visual = scenarioVisual(scenario.category);
+    final custom = !scenario.isBuiltin;
     return AppCard(
       onTap: () => context.push('/scenario/${scenario.id}'),
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -270,6 +338,10 @@ class _ScenarioTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (custom) ...[
+                      const SizedBox(width: 6),
+                      const AppTag(label: '自建', color: AppColors.mint),
+                    ],
                     if (practiced > 0) ...[
                       const SizedBox(width: 6),
                       AppTag(label: '练过 $practiced 次', color: AppColors.primaryDeep),
@@ -293,6 +365,24 @@ class _ScenarioTile extends StatelessWidget {
               ],
             ),
           ),
+          if (custom)
+            PopupMenuButton<String>(
+              tooltip: '管理我的场景',
+              padding: EdgeInsets.zero,
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                size: 18,
+                color: AppColors.inkMuted,
+              ),
+              onSelected: (value) {
+                if (value == 'edit') onEdit();
+                if (value == 'delete') onDelete();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem<String>(value: 'edit', child: Text('编辑场景')),
+                PopupMenuItem<String>(value: 'delete', child: Text('删除场景')),
+              ],
+            ),
           const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
         ],
       ),
