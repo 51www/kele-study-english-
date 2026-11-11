@@ -14,7 +14,7 @@
 3. **不动全局朗读播放器契约**：`AudioPlayerService.playBytes/playPath` 的「等待播放完成才返回」语义是 TTS 状态的基础；听写用独立片段播放器实例，进入听写前只调用既有 `stop()`。
 4. **老数据零丢失**：SQLite 从 v1 升 v2，`onUpgrade` 只 `createTable` 新表，不 `ALTER`/`DROP` 老表；覆盖安装不清数据仍能续练、记录与表达本仍在。
 5. **判分离线**：判分是纯 Dart 词级 diff，不调用模型接口、不联网；需求 §12.6 的模型配置只用于已有的表达本 / TTS，不进入判分链路。
-6. **合规边界**：只处理用户自己选的本地文件，App 不下载、不抓取、不分发、不做 DRM；页面内保留「素材版权归原权利人，仅供个人学习」声明。
+6. **合规边界**：只处理用户自己选的本地文件，App 本体不内置下载器、不抓取、不分发、不做 DRM；页面内保留「素材版权归原权利人，仅供个人学习」声明。（2026-11-11 用户决策增补：B 站导入改走用户自建的配套服务承担下载，见 §6.6，App 本体边界不变。）
 
 ---
 
@@ -170,6 +170,14 @@ M5 ──▶ M6 ──▶ M7 ──▶ M8 ──▶ 全量回归与文档同步
 - 范围外：平台专属下载器 / 抓取（不解析网页、不绕开平台保护）、端内转码；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 - 真机验收见 [真机验收清单](device-acceptance-checklist-v0.1.md) §3。
 
+### 6.6 M8 增补：B 站导入（路线 D，2026-11-11 用户决策）
+
+- 覆盖能力：F11 的「B 站视频地址」分支，整句/整段精听复用既有切句与手动合并能力。
+- 实现：`companion/bili-helper/`（Flask + yt-dlp）跑在用户电脑上，用 yt-dlp 取回音频（m4a）与字幕（B 站 JSON 转 SRT，人工字幕优先于 AI 字幕，多 P 按 `?p=` 取分 P，b23.tv 短链自动跟随）；App 端 `MaterialImportService.importBiliFromCompanion` 提交任务、轮询进度、取回两份文件后复用 `_createMaterial` 同一管线。设置页新增「B 站导入」分区：服务地址 + 用户自己的 B 站 Cookie（`dictation.companionUrl` / `dictation.biliCookie`）。
+- 验收（代码侧）：`test/companion_import_test.dart` 四条用例（全链路落库 / 服务报错透传 / 服务不可达 / 地址非法）；`test/url_import_test.dart` 平台拦截用例更新（B 站提示配套服务，YouTube / BBC 仍拦截）；`flutter analyze` 无新增 error/warning。
+- 真机验收待办：同一局域网连通、Cookie 取 AI 字幕、多 P 视频、服务未启动时的提示。
+- 范围外：App 内置下载器、YouTube 等其他平台、端内转码。
+
 ---
 
 ## 7. 与现有文档的对应关系
@@ -195,6 +203,6 @@ M5 ──▶ M6 ──▶ M7 ──▶ M8 ──▶ 全量回归与文档同步
 | M5 | 已落地（代码侧） | `flutter analyze` 0 error / 0 warning；`test/subtitle_parser_test.dart`、`test/segment_split_test.dart`、`test/dictation_store_test.dart`、`test/dictation_migration_test.dart`（v1→v2 老数据保留 + 只建新表）通过；Web release 与 Android debug 构建通过 | Android 真机：文件选择器、GBK 字幕、真机覆盖安装 |
 | M6 | 已落地（代码侧） | `test/dictation_scoring_test.dart` 通过（大小写/标点/漏词定位/缩写与数字等价/长词拼错/阈值/多写）；判分链路无网络依赖 | Android 真机：片段裁剪播放精度、0.75x、3 次复听、系统 ASR 切键盘 |
 | M7 | 已落地（代码侧） | 教材库统计 / 跨教材错句本 / 只练全部错句 / 删除级联 / 清空数据接线；`test/dictation_store_test.dart` 覆盖级联与 clearAll | Android 真机：重启后进度保留、删除后音频副本清理、需求 §10.2 的 11 条 MVP 回归 |
-| M8 | 已落地（代码侧） | `test/url_import_test.dart` 通过（直链下载→解析→切句→落库；空字幕 / 非法链接报错；平台页面拦截；播客 RSS enclosure 取音频与内嵌字幕）；`dio` 已在 M1 引入，未新增网络依赖；INTERNET 权限已具备 | Android 真机：直链/RSS 端到端、平台页面拦截提示、CORS 受限场景 |
+| M8 | 已落地（代码侧） | `test/url_import_test.dart` 通过（直链下载→解析→切句→落库；空字幕 / 非法链接报错；平台页面拦截；播客 RSS enclosure 取音频与内嵌字幕）；`dio` 已在 M1 引入，未新增网络依赖；INTERNET 权限已具备。B 站配套服务路线见 §6.6，`test/companion_import_test.dart` 四条用例通过 | Android 真机：直链/RSS 端到端、平台页面拦截提示、CORS 受限场景；B 站路线的局域网连通 / Cookie 取 AI 字幕 / 多 P |
 
-**全局回归（2026-11-11）**：`flutter analyze` 18 条既有 `info`，与改动前条数一致、无新增 error/warning；`flutter test` 19 个测试全通过；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过（构建警告仅来自既有 `flutter_tts` 的 Wasm/KGP 提示）。真机逐条验收见 [真机验收清单](device-acceptance-checklist-v0.1.md)。
+**全局回归（2026-11-11，B 站导入增补后复测）**：`flutter analyze` 18 条既有 `info`，与改动前条数一致、无新增 error/warning；`flutter test` 25 个测试全通过；配套服务（`companion/bili-helper/server.py`）py_compile 与 Flask test client 冒烟通过。`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过（构建警告仅来自既有 `flutter_tts` 的 Wasm/KGP 提示）。真机逐条验收见 [真机验收清单](device-acceptance-checklist-v0.1.md)。

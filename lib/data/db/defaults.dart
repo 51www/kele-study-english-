@@ -24,4 +24,7 @@ const defaultSettings = <String, String>{
   SettingsKeys.dictationContractionEquivalent: 'true',
   SettingsKeys.dictationNumberEquivalent: 'true',
   SettingsKeys.dictationSpeed: '1.0',
+  // B 站导入：默认未配置，需用户填配套服务地址
+  SettingsKeys.dictationCompanionUrl: '',
+  SettingsKeys.dictationBiliCookie: '',
 };

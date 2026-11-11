@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
@@ -114,7 +113,7 @@ void main() {
     await db.close();
   });
 
-  test('链接导入：平台页面（如 YouTube / B 站）明确拦截', () async {
+  test('链接导入：平台页面明确拦截，B 站提示配套服务', () async {
     final db = AppDatabase(NativeDatabase.memory());
     final store = DriftStore(db);
     final service = MaterialImportService(
@@ -122,18 +121,36 @@ void main() {
       dio: Dio()..httpClientAdapter = _FakeAdapter(),
     );
 
-    Future<void> expectBlocked(String url) async {
-      try {
-        await service.importFromUrl(mediaUrl: url, title: 'x');
-        fail('应当拦截平台页面：$url');
-      } on MaterialImportException catch (e) {
-        expect(e.message, contains('不抓取平台内容'));
-      }
-    }
-
-    await expectBlocked('https://www.youtube.com/watch?v=abc');
-    await expectBlocked('https://www.bilibili.com/video/BV1xx');
-    await expectBlocked('https://www.bbc.co.uk/learningenglish');
+    await expectLater(
+      () => service.importFromUrl(mediaUrl: 'https://www.youtube.com/watch?v=abc', title: 'x'),
+      throwsA(
+        isA<MaterialImportException>().having(
+          (e) => e.message,
+          'message',
+          contains('不抓取平台内容'),
+        ),
+      ),
+    );
+    await expectLater(
+      () => service.importFromUrl(mediaUrl: 'https://www.bilibili.com/video/BV1xx', title: 'x'),
+      throwsA(
+        isA<MaterialImportException>().having(
+          (e) => e.message,
+          'message',
+          contains('配套导入服务'),
+        ),
+      ),
+    );
+    await expectLater(
+      () => service.importFromUrl(mediaUrl: 'https://www.bbc.co.uk/learningenglish', title: 'x'),
+      throwsA(
+        isA<MaterialImportException>().having(
+          (e) => e.message,
+          'message',
+          contains('不抓取平台内容'),
+        ),
+      ),
+    );
 
     await db.close();
   });

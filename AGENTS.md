@@ -20,6 +20,7 @@
 | 二期预研 | `docs/research-video-material-dictation-2026-11.md` | 视频教材导入、字幕对齐、听写判分、版权风险 | 二期立项或提前评估风险时 |
 | ASR 选型 | `docs/selection-asr-2026-11.md` | 语音识别供应商、价格、OpenAI 兼容性、M1 推荐方案 | 动语音识别、改 ASR 配置项之前 |
 | ASR 实测 | `docs/test-mimo-v2.6-flash-asr-2026-11.md` | MiMo-V2.6-Flash 音频输入能力、协议、延迟、限制 | 评估「用对话模型做识别」之前 |
+| B 站配套服务 | `companion/bili-helper/README.md` | App「B 站导入」的配套 Python 服务（yt-dlp 取音频+SRT）、接口协议、启动方式 | 改 B 站导入链路、启动/调试配套服务前 |
 
 ## 2. 优先级与冲突处理
 

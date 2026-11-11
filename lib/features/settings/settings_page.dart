@@ -38,6 +38,8 @@ class SettingsPage extends ConsumerWidget {
         (settings[SettingsKeys.dictationNumberEquivalent] ?? 'true') == 'true';
     final dictationSpeed =
         double.tryParse(settings[SettingsKeys.dictationSpeed] ?? '1.0') ?? 1.0;
+    final companionUrl = settings[SettingsKeys.dictationCompanionUrl] ?? '';
+    final biliCookie = settings[SettingsKeys.dictationBiliCookie] ?? '';
 
     Future<void> set(String key, String value) =>
         ref.read(settingsControllerProvider.notifier).set(key, value);
@@ -272,6 +274,43 @@ class SettingsPage extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 24),
+          const SectionTitle(title: 'B 站导入'),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            child: Column(
+              children: [
+                SettingRow(
+                  icon: Icons.computer_rounded,
+                  title: '配套服务地址',
+                  value: companionUrl.isEmpty ? '未配置' : companionUrl,
+                  subtitle: '电脑上运行配套服务，手机与电脑同一局域网',
+                  onTap: () => _editText(
+                    context,
+                    title: '配套服务地址',
+                    hint: '如 http://192.168.1.5:8787',
+                    current: companionUrl,
+                    onSave: (value) => set(SettingsKeys.dictationCompanionUrl, value.trim()),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.vpn_key_rounded,
+                  title: 'B 站 Cookie',
+                  value: biliCookie.isEmpty ? '未配置' : '已配置',
+                  subtitle: 'CC / AI 字幕需登录后才能拿到，填浏览器里的 Cookie',
+                  onTap: () => _editText(
+                    context,
+                    title: 'B 站 Cookie',
+                    hint: '粘贴包含 SESSDATA=... 的 Cookie',
+                    current: biliCookie,
+                    multiline: true,
+                    onSave: (value) => set(SettingsKeys.dictationBiliCookie, value.trim()),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             '判分规则：忽略大小写、标点和多余空格；长词拼错按半词计，多写的词计入分母；不使用模型接口。听写页也会显示当前规则。',
@@ -321,6 +360,47 @@ class SettingsPage extends ConsumerWidget {
   };
 
   String _voiceLabel(String voice) => _voices[voice] ?? voice;
+
+  Future<void> _editText(
+    BuildContext context, {
+    required String title,
+    required String hint,
+    required String current,
+    required ValueChanged<String> onSave,
+    bool multiline = false,
+  }) {
+    final controller = TextEditingController(text: current);
+    return showAppSheet<void>(
+      context: context,
+      title: title,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              maxLines: multiline ? 4 : 1,
+              style: AppText.body,
+              decoration: InputDecoration(
+                hintText: hint,
+                isDense: true,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            PrimaryButton(
+              label: '保存',
+              onPressed: () {
+                Navigator.of(context).pop();
+                onSave(controller.text);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<String?> _pick(
     BuildContext context, {
