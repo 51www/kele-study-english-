@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 import 'app_database.dart'
     hide
@@ -10,7 +11,10 @@ import 'app_database.dart'
         Phrase,
         LlmProfile,
         TtsCache,
-        AppMeta;
+        AppMeta,
+        Material,
+        MaterialSegment,
+        DictationAttempt;
 import 'defaults.dart';
 import 'local_store.dart';
 import 'seeds.dart';
@@ -271,9 +275,121 @@ class DriftStore implements LocalStore {
     );
   }
 
+  // ── 二期：教材 / 句子 / 听写记录 ────────────────────────────────────────
+
+  @override
+  Future<List<MaterialItem>> materials() async {
+    final rows = await _query('SELECT * FROM material ORDER BY created_at DESC');
+    return rows.map(MaterialItem.fromMap).toList();
+  }
+
+  @override
+  Future<MaterialItem?> material(String id) async {
+    final rows = await _query('SELECT * FROM material WHERE id = ? LIMIT 1', [id]);
+    if (rows.isEmpty) return null;
+    return MaterialItem.fromMap(rows.first);
+  }
+
+  @override
+  Future<MaterialItem?> materialByHash(String hash) async {
+    final rows = await _query('SELECT * FROM material WHERE source_hash = ? LIMIT 1', [hash]);
+    if (rows.isEmpty) return null;
+    return MaterialItem.fromMap(rows.first);
+  }
+
+  @override
+  Future<void> upsertMaterial(MaterialItem item) async {
+    final m = item.toMap();
+    await _exec(
+      'INSERT OR REPLACE INTO material (id, title, media_path, media_name, media_kind, '
+      'subtitle_name, source_hash, duration_ms, segment_count, created_at, '
+      'last_practiced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [
+        m['id'], m['title'], m['media_path'], m['media_name'], m['media_kind'],
+        m['subtitle_name'], m['source_hash'], m['duration_ms'], m['segment_count'],
+        m['created_at'], m['last_practiced_at'],
+      ],
+    );
+  }
+
+  @override
+  Future<void> deleteMaterial(String id) async {
+    await _db.transaction(() async {
+      await _exec('DELETE FROM dictation_attempt WHERE material_id = ?', [id]);
+      await _exec('DELETE FROM material_segment WHERE material_id = ?', [id]);
+      await _exec('DELETE FROM material WHERE id = ?', [id]);
+    });
+  }
+
+  @override
+  Future<List<MaterialSegment>> segments(String materialId) async {
+    final rows = await _query(
+      'SELECT * FROM material_segment WHERE material_id = ? ORDER BY seq ASC',
+      [materialId],
+    );
+    return rows.map(MaterialSegment.fromMap).toList();
+  }
+
+  @override
+  Future<void> replaceSegments(String materialId, List<MaterialSegment> list) async {
+    await _db.transaction(() async {
+      await _exec('DELETE FROM material_segment WHERE material_id = ?', [materialId]);
+      for (final segment in list) {
+        final m = segment.toMap();
+        await _exec(
+          'INSERT OR REPLACE INTO material_segment (id, material_id, seq, text_en, '
+          'start_ms, end_ms, word_count, is_hard, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+          [
+            m['id'], m['material_id'], m['seq'], m['text_en'], m['start_ms'],
+            m['end_ms'], m['word_count'], m['is_hard'], m['created_at'],
+          ],
+        );
+      }
+    });
+  }
+
+  @override
+  Future<void> deleteSegment(String id) async {
+    await _db.transaction(() async {
+      await _exec('DELETE FROM dictation_attempt WHERE segment_id = ?', [id]);
+      await _exec('DELETE FROM material_segment WHERE id = ?', [id]);
+    });
+  }
+
+  @override
+  Future<List<DictationAttempt>> attempts(String materialId) async {
+    final rows = await _query(
+      'SELECT * FROM dictation_attempt WHERE material_id = ? ORDER BY created_at ASC',
+      [materialId],
+    );
+    return rows.map(DictationAttempt.fromMap).toList();
+  }
+
+  @override
+  Future<List<DictationAttempt>> allAttempts() async {
+    final rows = await _query('SELECT * FROM dictation_attempt ORDER BY created_at ASC');
+    return rows.map(DictationAttempt.fromMap).toList();
+  }
+
+  @override
+  Future<void> upsertAttempt(DictationAttempt attempt) async {
+    final m = attempt.toMap();
+    await _exec(
+      'INSERT OR REPLACE INTO dictation_attempt (id, material_id, segment_id, user_text, '
+      'accuracy, passed, diff_json, created_at) VALUES (?,?,?,?,?,?,?,?)',
+      [
+        m['id'], m['material_id'], m['segment_id'], m['user_text'], m['accuracy'],
+        m['passed'], m['diff_json'], m['created_at'],
+      ],
+    );
+  }
+
   @override
   Future<void> clearAll() async {
     for (final table in [
+      'dictation_attempt',
+      'material_segment',
+      'material',
       'message',
       'correction',
       'session',

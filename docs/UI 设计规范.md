@@ -504,6 +504,22 @@ Container(
 
 本次新增组件仍只使用既有 Token 与 4/8 网格间距；动效不引入第三方动画库或资源文件。
 
+#### 二期听写新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 首页「听写教材」栏目 | 与「方法 / 技巧」同构：`SectionTitle` + 单张 `AppCard`（24 圆角 / 16 内边距），左 42 × 42 圆角 12 `primaryWash` 图标块 + `Icons.hearing_outlined` 22 `primaryDeep`，中间 `AppText.cardTitle` 标题 + `AppText.caption` 副标题，右 `chevron_right_rounded`；不新增 Tab、不新增第二个主色实心 CTA |
+| 教材卡 | 复用 `AppCard`（24 圆角 / 16 内边距 / `AppShadows.card`），卡间距 12；第一行 `AppText.cardTitle` 标题 + 右侧 `AppTag`（`primaryWash` 底 + `primaryDeep` 字）显示「N 句」；第二行 `AppText.caption` 元信息「时长 · 已练 X 句 · 正确率 Y%」；第三行 3 px 线性进度（轨道 `line`、进度 `primary`），只用 4/8 网格间距 |
+| 句子行 | `AppCard` 内一行：左 28 宽序号 `AppText.caption`（`inkMuted`），中间最多 2 行 `AppText.bodySecondary`（英文），右侧 8 圆点状态点（未练 `inkMuted` / 已通过 `success` / 有错 `warning`）+ `AppText.caption` 时间轴；无描边、无第二层卡片；长按/菜单提供合并、拆分、微调，菜单沿用既有 10/600 胶囊小按钮规格 |
+| 片段播放控制条 | 听写页唯一的主视觉：`AppCard`（`primaryWash` 底、无阴影、16 内边距）；上方一行 `AppText.caption`「第 07 / 62 句」+ 右侧词数弱提示；中间 44 圆形 `primary` 播放键（28 图标，白字）+ 左右各 32 圆形白底小键（0.75x / 复听），间距 12；下方 3 px 线性进度（`line` / `primary`）；不出现字幕原文、不出现视频画面 |
+| 听写输入区 | 复用 `AppTextField`（高 48、圆角 14、白底 1px `line`），允许多行时最小高 88；底部一行 `PrimaryButton`（「提交这句」）与 `SecondaryButton`（「显示答案」）并排等宽、间距 12；判分前 `PrimaryButton` 是页面唯一主色实心 CTA |
+| 逐词差异标签 | 结果卡内 `Wrap`，间距 6/4；每词一个 8 圆角胶囊、左右 8、上下 4、字号 11/600；正确 `mint` 28% 底 + `success` 字，漏写 `warning` 10% 底 + `warning` 字（词前加 `＋` 表示要补），多写 `error` 10% 底 + `error` 字（词前加 `−`），拼错 `primaryTint` 底 + `primaryDeep` 字（下方 10 字注释）；不使用下划线/表格/第二种高饱和底色 |
+| 判分结果卡 | `AppCard`（24 圆角 / 16 内边距）；首行 `AppText.h2` 显示「正确率 92%」+ `AppTag`（通过 `success` / 未通过 `warning`）；第二行 `AppText.caption` 解释口径「正确词 11 / 参考词 12 · 阈值 90%」；下方逐词差异标签；再下方 10/600 胶囊小按钮「复听 / 存入表达本 / 下一句」；未通过时不显示整句答案，点「显示答案」后才展开 `AppText.body` 原句 |
+| 错句本行 | 与句子行同构，左侧 8 圆点状态点、下方 `AppText.caption` 正确率与时间轴；顶部 `PrimaryButton`「只练全部错句」，按教材分组的 `SectionTitle` 带「练这份的错句」入口，沿用既有按钮规格，不新增颜色 |
+| 导入页文件行 | `AppCard` 内左 36 × 36 圆角 10 `surfaceTint` 图标块 + `Icons.insert_drive_file_outlined` 18 `inkSecondary`，中间 `AppText.body` 文件名 + `AppText.caption` 状态，右 `Icons.check_circle_rounded` 18 `success`；错误态用 `ErrorBanner`（既有规格）+ 一句「下一步做什么」；底部版权说明复用技巧详情页的 11/500 `inkMuted` 居中写法 |
+
+二期页面仍遵循「一屏一个主色实心 CTA」「彩色辅助色只做状态点/小面积标签」「间距只用 4/8 倍数」，不引入新色值、新字号、新圆角或新阴影层级；序列编号（`第 07 / 62 句`）是真实句子顺序，不作装饰性编号。
+
 #### 页面头部
 
 - 左右 24，高 56–64；左返回 40 圆形；中标题 11–12/600 `inkSecondary`；右侧占位 40。

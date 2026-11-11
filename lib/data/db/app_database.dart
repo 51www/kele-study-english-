@@ -171,6 +171,62 @@ class AppMetas extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+// 二期（需求 F11–F15）：教材 / 句子 / 听写记录。老表一律不改。
+class Materials extends Table {
+  @override
+  String get tableName => 'material';
+
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get mediaPath => text().named('media_path')();
+  TextColumn get mediaName => text().named('media_name')();
+  TextColumn get mediaKind => text().named('media_kind')();
+  TextColumn get subtitleName => text().named('subtitle_name')();
+  TextColumn get sourceHash => text().named('source_hash')();
+  IntColumn get durationMs => integer().named('duration_ms')();
+  IntColumn get segmentCount => integer().named('segment_count')();
+  IntColumn get createdAt => integer().named('created_at')();
+  IntColumn get lastPracticedAt => integer().named('last_practiced_at').nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class MaterialSegments extends Table {
+  @override
+  String get tableName => 'material_segment';
+
+  TextColumn get id => text()();
+  TextColumn get materialId => text().named('material_id')();
+  IntColumn get seq => integer()();
+  TextColumn get textEn => text().named('text_en')();
+  IntColumn get startMs => integer().named('start_ms')();
+  IntColumn get endMs => integer().named('end_ms')();
+  IntColumn get wordCount => integer().named('word_count')();
+  IntColumn get isHard => integer().named('is_hard')();
+  IntColumn get createdAt => integer().named('created_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class DictationAttempts extends Table {
+  @override
+  String get tableName => 'dictation_attempt';
+
+  TextColumn get id => text()();
+  TextColumn get materialId => text().named('material_id')();
+  TextColumn get segmentId => text().named('segment_id')();
+  TextColumn get userText => text().named('user_text')();
+  RealColumn get accuracy => real()();
+  IntColumn get passed => integer()();
+  TextColumn get diffJson => text().named('diff_json')();
+  IntColumn get createdAt => integer().named('created_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Scenarios,
   Sessions,
@@ -181,6 +237,9 @@ class AppMetas extends Table {
   SettingsTable,
   TtsCaches,
   AppMetas,
+  Materials,
+  MaterialSegments,
+  DictationAttempts,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -191,13 +250,21 @@ class AppDatabase extends _$AppDatabase {
     return AppDatabase(NativeDatabase.createInBackground(file));
   }
 
+  /// v1 → v2 只新增二期三张表；老表不 ALTER / 不 DROP / 不回填。
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(materials);
+            await m.createTable(materialSegments);
+            await m.createTable(dictationAttempts);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

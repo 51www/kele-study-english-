@@ -527,6 +527,11 @@ class SettingsKeys {
   static const asrExperimentalBaseUrl = 'asr.experimental.baseUrl';
   static const asrExperimentalModel = 'asr.experimental.model';
   static const asrExperimentalKeyRef = 'asr_experimental_api_key';
+  // 二期：单句听写判分与播放（判分不依赖网络与模型）
+  static const dictationPassThreshold = 'dictation.passThreshold';
+  static const dictationContractionEquivalent = 'dictation.contractionEquivalent';
+  static const dictationNumberEquivalent = 'dictation.numberEquivalent';
+  static const dictationSpeed = 'dictation.speed';
 }
 
 class ReviewCorrection {

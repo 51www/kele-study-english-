@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 import 'defaults.dart';
 import 'local_store.dart';
@@ -23,6 +24,9 @@ class WebStore implements LocalStore {
   static const _settingKey = 'store.setting';
   static const _ttsCacheKey = 'store.tts_cache';
   static const _metaKey = 'store.app_meta';
+  static const _materialKey = 'store.material';
+  static const _segmentKey = 'store.material_segment';
+  static const _attemptKey = 'store.dictation_attempt';
 
   static Future<WebStore> open() async {
     final prefs = await SharedPreferences.getInstance();
@@ -258,9 +262,88 @@ class WebStore implements LocalStore {
     await _write(_metaKey, rows);
   }
 
+  // ── 二期：教材 / 句子 / 听写记录 ────────────────────────────────────────
+
+  @override
+  Future<List<MaterialItem>> materials() async {
+    final rows = _read(_materialKey)
+      ..sort((a, b) => ((b['created_at'] as num?) ?? 0)
+          .compareTo((a['created_at'] as num?) ?? 0));
+    return rows.map(MaterialItem.fromMap).toList();
+  }
+
+  @override
+  Future<MaterialItem?> material(String id) async {
+    final rows = _read(_materialKey).where((e) => e['id'] == id);
+    if (rows.isEmpty) return null;
+    return MaterialItem.fromMap(rows.first);
+  }
+
+  @override
+  Future<MaterialItem?> materialByHash(String hash) async {
+    final rows = _read(_materialKey).where((e) => e['source_hash'] == hash);
+    if (rows.isEmpty) return null;
+    return MaterialItem.fromMap(rows.first);
+  }
+
+  @override
+  Future<void> upsertMaterial(MaterialItem item) =>
+      _upsert(_materialKey, 'id', item.toMap());
+
+  @override
+  Future<void> deleteMaterial(String id) async {
+    await _delete(_attemptKey, (e) => e['material_id'] == id);
+    await _delete(_segmentKey, (e) => e['material_id'] == id);
+    await _delete(_materialKey, (e) => e['id'] == id);
+  }
+
+  @override
+  Future<List<MaterialSegment>> segments(String materialId) async {
+    final rows = _read(_segmentKey).where((e) => e['material_id'] == materialId).toList()
+      ..sort((a, b) => ((a['seq'] as num?) ?? 0).compareTo((b['seq'] as num?) ?? 0));
+    return rows.map(MaterialSegment.fromMap).toList();
+  }
+
+  @override
+  Future<void> replaceSegments(String materialId, List<MaterialSegment> list) async {
+    final rows = _read(_segmentKey)
+      ..removeWhere((e) => e['material_id'] == materialId);
+    rows.addAll(list.map((e) => e.toMap()));
+    await _write(_segmentKey, rows);
+  }
+
+  @override
+  Future<void> deleteSegment(String id) async {
+    await _delete(_attemptKey, (e) => e['segment_id'] == id);
+    await _delete(_segmentKey, (e) => e['id'] == id);
+  }
+
+  @override
+  Future<List<DictationAttempt>> attempts(String materialId) async {
+    final rows = _read(_attemptKey).where((e) => e['material_id'] == materialId).toList()
+      ..sort((a, b) => ((a['created_at'] as num?) ?? 0)
+          .compareTo((b['created_at'] as num?) ?? 0));
+    return rows.map(DictationAttempt.fromMap).toList();
+  }
+
+  @override
+  Future<List<DictationAttempt>> allAttempts() async {
+    final rows = _read(_attemptKey)
+      ..sort((a, b) => ((a['created_at'] as num?) ?? 0)
+          .compareTo((b['created_at'] as num?) ?? 0));
+    return rows.map(DictationAttempt.fromMap).toList();
+  }
+
+  @override
+  Future<void> upsertAttempt(DictationAttempt attempt) =>
+      _upsert(_attemptKey, 'id', attempt.toMap());
+
   @override
   Future<void> clearAll() async {
     for (final key in [
+      _materialKey,
+      _segmentKey,
+      _attemptKey,
       _scenarioKey,
       _sessionKey,
       _messageKey,

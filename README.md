@@ -15,6 +15,7 @@
 - **场景库扩容已完成**：参考同类产品场景库设计，新增 24 个练习场景，合计 **26 个内置场景**，按日常 / 工作 / 旅行 / 社交 / 健康 / 观点 6 类组织；新增独立场景库页 `/scenarios`（分类 Chip、中英文搜索、练过次数），首页只保留 2 张推荐卡 +「全部 26 个」入口。调研与完整清单见 `docs/research-practice-scenarios-2026-11.md`。
 - **会话续练已完成**：半路退出不再被当成「已完成」，对话会原样留着；可从首页「继续上次」、练习记录里标「进行中」的卡片，或场景详情的「继续上次（N 轮）」按钮接着往下说。消息、轮次、成本与计时都连续，不重放开场白；只有点「结束并复盘」才会生成复盘。旧版本误标为已完成的半路退出会话，升级时会一次性回收为可续练。
 - **对话交互体验优化已完成**：回答后出现轻量鼓励动效；每条回答下方有优化句子 / 播放原声 / TTS 朗读三枚图标；提示改为页内展开不再弹窗；场景库支持自建场景的创建、编辑与删除；表达本首次进入即有内容与常驻添加入口；对话页上滑看历史不再被强制拉回底部。
+- **二期 M5–M7 已完成（代码侧）**：本地音视频 + 字幕导入（SRT/VTT、UTF-8/BOM/GBK、30 分钟上限）、自动切句与时间轴对齐、单句听写与离线逐词判分、教材库 / 错句本 / 只练错句、清空数据接线。底部 4 Tab 与对话链路未改动；逐条验收见 `docs/milestones-phase2-dictation-v0.1.md`。
 
 > 明确未启用：**端侧 Whisper（T2.7，里程碑可选项）**。当前识别链路是「独立 ASR 接口 → 系统识别 → 实验性对话模型识别」，端侧推理留到确有离线需求时再接入；已记录在里程碑文档 §9。
 
@@ -34,6 +35,8 @@ flutter pub get
 flutter run -d chrome
 # 或构建静态产物
 flutter build web --release
+# 受限网络下改用本地 CanvasKit（本项目验证过的命令）
+flutter build web --release --no-web-resources-cdn --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/
 ```
 
 构建并安装 Android 真机（开发调试）：
@@ -73,7 +76,7 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 
 对话页的「提示」按钮提供 L1 重听/慢速 → L2 关键词 → L3 参考回答 → L4 中→英；「我想说」把中文变成一句英文建议并填入输入框，两者都不会替你发送。翻译默认关闭，可在对话页切成「点按」或「常开字幕」，也可在设置里改默认值。
 
-密钥保存在设备安全存储中（Android 用 Keychain/Keystore，Web 端回退到浏览器本地存储），界面上只显示尾号。「清空所有数据」会把记录、表达本、密钥、缓存与设置一并清掉并恢复 26 个内置场景。
+密钥保存在设备安全存储中（Android 用 Keychain/Keystore，Web 端回退到浏览器本地存储），界面上只显示尾号。「清空所有数据」会把记录、表达本、听写教材、密钥、缓存与设置一并清掉并恢复 26 个内置场景。
 
 ## 对话体验
 
@@ -93,6 +96,15 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 - **自定义场景**：场景库右上角「+」可新建自己的场景，填场景名、分类、难度、AI 角色、练习目标、目标表达与开场白，保存后即可直接开练；自建场景在列表里带「自建」标签，可从右侧菜单编辑或删除，已经练过的记录不受影响。内置场景仍只读。
 - **不做**：场景市场、随机话题、同一场景多难度版本。调研依据与 24 个场景清单见 `docs/research-practice-scenarios-2026-11.md`。
 
+## 听写教材（二期）
+
+- **怎么用**：首页「听写教材」栏目进入教材库 → 右上角「导入」选一份本地音视频和对应的 `.srt` / `.vtt` 字幕 → 教材详情里可逐句播放、手动合并 / 拆分 / 微调起止时间 → 点「开始听写」进入逐句练习，提交后当场看到逐词差异、复听、存入表达本。
+- **判分**：完全离线，忽略大小写 / 标点 / 多余空格；缩写与数字等价、通过阈值、默认速度都可在「我的 → 设置 → 听写练习」调整，规则在听写页也可见。不调用模型接口，不写对话记录与复盘。
+- **复练**：教材库显示已练句数与正确率；错句本跨教材汇总最近一次没通过的句子，可「只练全部错句」或按教材只练错句；中途退出会回到上次那一句。
+- **素材与版权**：只处理你自己选的本地文件。纯音频复制到 App 私有目录；视频不复制整个文件、只按时间轴播放音轨，源文件被移动或删除时会提示重新导入。素材版权归原权利人，仅供个人学习，不下载、不分享。
+- **范围外**：无字幕自动生成字幕（ASR）、链接导入、平台下载器、端内转码、视频画面播放、逐词卡拉 OK 高亮。
+- **清理**：「我的 → 数据与存储」可单独清空听写教材与音频副本；「清空所有数据」也包含二期教材、句子与听写记录。
+
 ## 免责说明
 
 - 仅供个人学习使用，不构成任何教学服务。
@@ -104,6 +116,6 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 
 ## 致谢
 
-开源项目与依赖：Flutter、flutter_riverpod、go_router、dio、drift + sqlite3_flutter_libs、flutter_secure_storage、shared_preferences、record、speech_to_text、flutter_tts、just_audio、audio_session、web_socket_channel、crypto、connectivity_plus、wakelock_plus、url_launcher、uuid、intl、path / path_provider。
+开源项目与依赖：Flutter、flutter_riverpod、go_router、dio、drift + sqlite3_flutter_libs、flutter_secure_storage、shared_preferences、record、speech_to_text、flutter_tts、just_audio、audio_session、web_socket_channel、crypto、connectivity_plus、wakelock_plus、url_launcher、uuid、intl、path / path_provider、file_picker（二期本地文件选择）、charset（二期 GBK 字幕解码）、sqlite3（v1→v2 迁移测试）。
 
 第三方服务：对话接口（OpenAI 兼容协议）、语音识别接口（OpenAI 兼容 `/audio/transcriptions`）、Edge 在线朗读（非官方）、系统语音识别与系统朗读。

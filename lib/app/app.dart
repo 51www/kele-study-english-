@@ -6,6 +6,11 @@ import 'providers.dart';
 import 'shell.dart';
 import 'theme/app_theme.dart';
 import '../features/chat/chat_page.dart';
+import '../features/dictation/pages/dictation_page.dart';
+import '../features/dictation/pages/material_detail_page.dart';
+import '../features/dictation/pages/material_import_page.dart';
+import '../features/dictation/pages/material_library_page.dart';
+import '../features/dictation/pages/wrong_segments_page.dart';
 import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/me/me_page.dart';
@@ -98,6 +103,47 @@ final router = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, state) =>
           _slide(TipsDetailPage(articleId: state.pathParameters['id']!)),
+    ),
+    // 二期：教材库 / 导入 / 详情，全部在 ShellRoute 外，不改底部 4 Tab。
+    GoRoute(
+      path: '/materials',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const MaterialLibraryPage()),
+    ),
+    GoRoute(
+      path: '/materials/import',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const MaterialImportPage()),
+    ),
+    // 静态路由必须排在 /materials/:id 之前。
+    GoRoute(
+      path: '/materials/wrong',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const WrongSegmentsPage()),
+    ),
+    GoRoute(
+      path: '/materials/wrong/dictation',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(
+        const DictationPage(materialId: 'all', mode: 'wrong'),
+      ),
+    ),
+    GoRoute(
+      path: '/materials/:id',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, state) => _slide(
+        MaterialDetailPage(materialId: state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/materials/:id/dictation',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, state) => _slide(
+        DictationPage(
+          materialId: state.pathParameters['id']!,
+          mode: state.uri.queryParameters['mode'] == 'wrong' ? 'wrong' : 'all',
+        ),
+      ),
     ),
     GoRoute(path: '/', redirect: (_, __) => '/home'),
   ],

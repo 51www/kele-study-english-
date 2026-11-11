@@ -182,6 +182,8 @@ class _Body extends StatelessWidget {
         ],
         const SizedBox(height: 24),
         const _TipsEntry(),
+        const SizedBox(height: 24),
+        const _DictationEntry(),
       ],
     );
   }
@@ -259,6 +261,51 @@ class _TipsEntry extends StatelessWidget {
                       '第三方文章全文 · 保留出处与原文链接',
                       style: AppText.caption,
                     ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 二期「听写教材」首页栏目：与「方法 / 技巧」同构，不新增 Tab、不加第二个主色 CTA。
+class _DictationEntry extends StatelessWidget {
+  const _DictationEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionTitle(title: '听写教材'),
+        const SizedBox(height: 10),
+        AppCard(
+          onTap: () => context.push('/materials'),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryWash,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.hearing_outlined, color: AppColors.primaryDeep, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('用自己的素材逐句精听', style: AppText.cardTitle),
+                    SizedBox(height: 3),
+                    Text('本地音视频 + 字幕 · 错句集中复练', style: AppText.caption),
                   ],
                 ),
               ),

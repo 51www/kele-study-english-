@@ -1145,3 +1145,26 @@ app_meta（独立，schema 版本等）
 - Kokoro / Piper 在 Android 上的集成方案与性能。
 - 不同 Android ROM 上 `speech_to_text` 的可用性与中文厂商限制。
 - 蓝牙 HFP 切换的具体延迟（机型差异大）。
+
+---
+
+## 11. 二期补充（2026-11-11）：本地教材与单句听写
+
+> 本节只登记二期带来的**增量**，§1–§10 的 MVP 结论全部保持不变。任务与验收见 [二期里程碑清单](milestones-phase2-dictation-v0.1.md)，实现细节见 [二期技术补充](tech-supplement-dictation-phase2-v0.1.md)，产品依据见 [需求 §12](requirements-speaking-app-v0.2.md)。
+
+| 本文条目 | 二期增量 | 结论 |
+|---|---|---|
+| §2.4 录音与播放 | 新增 `ClipPlayerService`（独立 `AudioPlayer` + `ClippingAudioSource`） | 不改 `AudioPlayerService.playBytes/playPath` 的 TTS 契约；片段按起止时间裁剪，不落地片段文件 |
+| §2.5 音频格式与采样 | 直接播放本地音视频文件的音轨；不对素材做全片重采样或转写 | 语音输入仍只处理用户短语音，复用既有 `AsrEngine` |
+| §2.6 后台行为 | 字幕解码与切句是秒级纯 Dart 操作，导入页展示解析状态 | 不引入后台任务、不做「离开页面继续处理」 |
+| §3.2 模块边界 | 新增 `features/dictation/{ingest,align,scoring,repository,pages,widgets}`、`services/audio/clip_player.dart` | 判分是纯函数，不接模型接口 |
+| §4 语音链路 | 语音输入（`AsrEngine`）为可选项，失败无缝切回键盘；判分不经过对话状态机 | 不写 `session` / `message` / `correction`，首页统计口径不变 |
+| §6 数据模型 | 新增 `material` / `material_segment` / `dictation_attempt` 三表 | `schemaVersion` 1 → 2，`onUpgrade` 只 `createTable`；老表不 ALTER / 不 DROP / 不回填 |
+| §7 UI 结构 | 新增 `/materials`、`/materials/import`、`/materials/wrong`、`/materials/wrong/dictation`、`/materials/:id`、`/materials/:id/dictation` | 全部挂在 `ShellRoute` 外，底部 4 Tab 不变；组件规格见 UI 设计规范 §3.4 |
+| §9.1 技术风险 | 版权/平台条款、端内转码、源文件失效 | 只处理本地文件、零转码、源文件失效给「重新导入」提示 |
+
+**新增依赖**：`file_picker 13.3.3`（本地文件选择）、`charset 2.0.1`（GBK 字幕解码），两者锁定版本；`sqlite3` 仅作为开发依赖，用于 v1→v2 迁移测试。前两者不参与判分链路；判分完全离线。
+
+**新增配置项**：`dictation.passThreshold` / `dictation.contractionEquivalent` / `dictation.numberEquivalent` / `dictation.speed`，默认值见开发文档 §11 与技术补充 §4。
+
+**验证记录（2026-11-11）**：`flutter analyze` 0 error / 0 warning；`flutter test` 17 个测试全通过（字幕解析、切句、判分、二期数据库 CRUD 与级联删除、v1→v2 覆盖安装迁移老数据保留）；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过。Android 真机逐条验收仍待现场完成。

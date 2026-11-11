@@ -658,4 +658,78 @@ dio / plugin 异常
 | 2 | 是否引入端侧 Whisper | 决定 `WhisperAsrEngine` 是否进 M2 |
 | 3 | Edge TTS 用 `edge_tts` 包还是自写 WSS | 决定 `EdgeTtsEngine` 的实现量 |
 | 4 | iOS 是否同步 | 决定 `AudioSessionManager` 是否需要平台分支 |
-| 5 | 是否保留视频画面（二期） | 本次不影响 |
+| 5 | 是否保留视频画面（二期） | 本次不影响；二期已按 Q16「只音频」落地，见 §11 |
+
+---
+
+## 11. 二期模块（2026-11-11 补）
+
+> 只登记二期增量；§1–§10 的 MVP 结构不变。索引见 [二期里程碑清单](milestones-phase2-dictation-v0.1.md)、[二期技术补充](tech-supplement-dictation-phase2-v0.1.md)，组件规格见 [UI 设计规范](UI%20设计规范.md) §3.4。
+
+### 11.1 目录结构（新增）
+
+```text
+lib/
+├─ domain/models/dictation_models.dart    MaterialItem / MaterialSegment / DictationAttempt / WordDiff
+├─ data/db/app_database.dart              3 张新表 + schemaVersion 2 + onUpgrade 只建表
+├─ data/db/{local_store,drift_store,web_store}.dart   二期 CRUD 与 clearAll
+├─ services/audio/clip_player.dart       独立片段播放器（不改 AudioPlayerService）
+└─ features/dictation/
+   ├─ ingest/{subtitle_parser,material_import_service}.dart   SRT/VTT 解码、选文件、去重、落库
+   ├─ align/segment_splitter.dart        切句 / 合并 / 拆分 / 时间轴分配
+   ├─ scoring/dictation_scorer.dart      离线词级判分
+   ├─ repository/material_repository.dart 教材库 / 详情 / 错句本 / 进度
+   ├─ providers.dart                     二期专用 Riverpod Provider
+   ├─ widgets/word_diff_view.dart        逐词差异标签
+   └─ pages/                             教材库 / 导入 / 详情 / 听写 / 错句本
+test/{subtitle_parser,segment_split,dictation_scoring,dictation_store,dictation_migration}_test.dart
+```
+
+### 11.2 模块职责与依赖
+
+| 模块 | 职责 | 不做什么 |
+|---|---|---|
+| `ingest` | 本地文件选择、UTF-8/BOM/GBK 解码、30 分钟上限、去重、音频副本 | 不下载、不抓取、不转码、不显示视频画面 |
+| `align` | 纯函数切句：5–22 词 / 3–12 秒、标点与连词二次切分、首尾 100ms 余量 | 不做强制对齐、不做音素级时间戳 |
+| `scoring` | 规范化 + 词级对齐 + 可解释正确率 + 四类逐词标记 | 不联网、不用模型、不生成复盘 |
+| `repository` | 聚合教材进度 / 错句本 / `app_meta` 进度键 | 不写 MVP 的 session / message / correction |
+| `clip_player` | 独立 `AudioPlayer`，`ClippingAudioSource` 片段播放、0.75x / 1.0x、无限复听 | 不改全局 TTS 播放器契约 |
+
+### 11.3 表字段（`schemaVersion = 2`）
+
+| 表 | 字段 |
+|---|---|
+| `material` | `id` PK、`title`、`media_path`、`media_name`、`media_kind`、`subtitle_name`、`source_hash`、`duration_ms`、`segment_count`、`created_at`、`last_practiced_at` |
+| `material_segment` | `id` PK、`material_id`、`seq`、`text_en`、`start_ms`、`end_ms`、`word_count`、`is_hard`、`created_at` |
+| `dictation_attempt` | `id` PK、`material_id`、`segment_id`、`user_text`、`accuracy`、`passed`、`diff_json`、`created_at` |
+
+进度键：`app_meta` 的 `dictation.position.<materialId>`，跨教材「只练全部错句」用 `dictation.position.all-wrong`。`clearAll` 先删 `dictation_attempt` / `material_segment` 再删 `material`；删除教材由 `MaterialRepository` 级联并清理私有目录音频副本。
+
+### 11.4 配置项（追加）
+
+| Key | 默认 | 界面位置 |
+|---|---|---|
+| `dictation.passThreshold` | `90` | 设置 → 听写练习 → 通过阈值 |
+| `dictation.contractionEquivalent` | `true` | 设置 → 听写练习 → 缩写等价 |
+| `dictation.numberEquivalent` | `true` | 设置 → 听写练习 → 数字等价 |
+| `dictation.speed` | `1.0` | 设置 → 听写练习 → 默认播放速度（听写页可切 0.75x） |
+
+判分规则同时显示在设置页与听写页，规则随配置变化。
+
+### 11.5 UI → Flutter 映射
+
+| 页面 | 路由 | 组件 |
+|---|---|---|
+| 首页入口「听写教材」 | `/home` 内栏目 | `SectionTitle` + `AppCard`，不新增 Tab |
+| 教材库 | `/materials` | `PageScaffold`、`AppCard`、`AppTag`、3px 线性进度 |
+| 导入页 | `/materials/import` | `AppCard` 文件行、`AppTextField`、`ErrorBanner`、版权说明 |
+| 教材详情 | `/materials/:id` | `PopupMenuButton` 合并/拆分/微调/太难、句子状态点 |
+| 听写页 | `/materials/:id/dictation?mode=all\|wrong`、`/materials/wrong/dictation` | `ClippingAudioSource` 播放条、`AppTextField`、`WordDiffView`、结果卡 |
+| 错句本 | `/materials/wrong` | 按教材分组、只练全部错句 / 只练这份的错句 |
+
+### 11.6 已知差异与未复验项
+
+- 需求 F11 字面写「只保留抽取出的音频片段」，预研 §6 要求避开端内转码；本轮取零转码：不导出片段文件，按时间轴裁剪播放，纯音频源文件复制到私有目录，视频源文件只记路径。
+- 需求 §12.8 Q18（无字幕 ASR 生成，流程 B）本轮不实现，仍在开放状态；无字幕时只给「后续开放」提示，不做假入口。
+- Web 端只用于页面走查：浏览器重启后不保留媒体文件，会提示重新导入；音频播放以 Android 真机为准。
+- Android 真机逐条验收（需求 §10.2 的 11 条 MVP 回归 + 二期 M5–M7 验收）尚未现场执行。

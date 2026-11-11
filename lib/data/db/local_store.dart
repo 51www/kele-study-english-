@@ -1,8 +1,9 @@
+import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 
 /// 本地持久化门面。
 ///
-/// - Android / 桌面：Drift + SQLite（9 张表，schemaVersion = 1）。
+/// - Android / 桌面：Drift + SQLite（12 张表，schemaVersion = 2；v1 → v2 只建二期 3 张新表）。
 /// - Web：SharedPreferences（localStorage）上的 JSON 集合，字段与表结构一致，
 ///   仅作为本轮浏览器验证的等价实现（Android 待真机确认）。
 abstract class LocalStore {
@@ -43,6 +44,21 @@ abstract class LocalStore {
 
   Future<String?> meta(String key);
   Future<void> setMeta(String key, String value);
+
+  // 二期：教材 / 句子 / 听写记录。删除教材时由实现层级联删除子表。
+  Future<List<MaterialItem>> materials();
+  Future<MaterialItem?> material(String id);
+  Future<MaterialItem?> materialByHash(String hash);
+  Future<void> upsertMaterial(MaterialItem item);
+  Future<void> deleteMaterial(String id);
+
+  Future<List<MaterialSegment>> segments(String materialId);
+  Future<void> replaceSegments(String materialId, List<MaterialSegment> list);
+  Future<void> deleteSegment(String id);
+
+  Future<List<DictationAttempt>> attempts(String materialId);
+  Future<List<DictationAttempt>> allAttempts();
+  Future<void> upsertAttempt(DictationAttempt attempt);
 
   Future<void> clearAll();
 }

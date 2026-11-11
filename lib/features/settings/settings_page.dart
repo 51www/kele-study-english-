@@ -30,6 +30,14 @@ class SettingsPage extends ConsumerWidget {
     final targetMinutes = int.tryParse(settings[SettingsKeys.targetMinutes] ?? '10') ?? 10;
     final budget = int.tryParse(settings[SettingsKeys.monthlyBudget] ?? '50') ?? 50;
     final asrModel = settings[SettingsKeys.asrModel] ?? 'FunAudioLLM/SenseVoiceSmall';
+    final passThreshold =
+        int.tryParse(settings[SettingsKeys.dictationPassThreshold] ?? '90') ?? 90;
+    final contractionEquivalent =
+        (settings[SettingsKeys.dictationContractionEquivalent] ?? 'true') == 'true';
+    final numberEquivalent =
+        (settings[SettingsKeys.dictationNumberEquivalent] ?? 'true') == 'true';
+    final dictationSpeed =
+        double.tryParse(settings[SettingsKeys.dictationSpeed] ?? '1.0') ?? 1.0;
 
     Future<void> set(String key, String value) =>
         ref.read(settingsControllerProvider.notifier).set(key, value);
@@ -194,6 +202,80 @@ class SettingsPage extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 24),
+          const SectionTitle(title: '听写练习'),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            child: Column(
+              children: [
+                SettingRow(
+                  icon: Icons.rule_rounded,
+                  title: '通过阈值',
+                  value: '$passThreshold%',
+                  subtitle: '按逐词正确率判定，判分完全离线',
+                  onTap: () => _pick(
+                    context,
+                    title: '通过阈值',
+                    options: const ['80%', '85%', '90%', '95%'],
+                    current: '$passThreshold%',
+                    onPick: (value) => set(
+                      SettingsKeys.dictationPassThreshold,
+                      value.replaceAll('%', ''),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.short_text_rounded,
+                  title: '缩写等价',
+                  subtitle: "I'd like 与 I would like 按同一句处理",
+                  trailing: Switch(
+                    value: contractionEquivalent,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (value) => set(
+                      SettingsKeys.dictationContractionEquivalent,
+                      value ? 'true' : 'false',
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.numbers_rounded,
+                  title: '数字等价',
+                  subtitle: '10 与 ten、\$5 与 five dollars 不判错',
+                  trailing: Switch(
+                    value: numberEquivalent,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (value) => set(
+                      SettingsKeys.dictationNumberEquivalent,
+                      value ? 'true' : 'false',
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.speed_rounded,
+                  title: '默认播放速度',
+                  value: dictationSpeed == 0.75 ? '0.75x' : '1.0x',
+                  onTap: () => _pick(
+                    context,
+                    title: '默认播放速度',
+                    options: const ['0.75x', '1.0x'],
+                    current: dictationSpeed == 0.75 ? '0.75x' : '1.0x',
+                    onPick: (value) => set(
+                      SettingsKeys.dictationSpeed,
+                      value.replaceAll('x', ''),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '判分规则：忽略大小写、标点和多余空格；长词拼错按半词计，多写的词计入分母；不使用模型接口。听写页也会显示当前规则。',
+            style: AppText.caption.copyWith(height: 1.6),
           ),
           const SizedBox(height: 24),
           const SectionTitle(title: '数据与存储'),

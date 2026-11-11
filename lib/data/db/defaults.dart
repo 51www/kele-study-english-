@@ -19,4 +19,9 @@ const defaultSettings = <String, String>{
   SettingsKeys.asrExperimentalEnabled: 'false',
   SettingsKeys.asrExperimentalBaseUrl: 'https://aiping.cn/api/v1',
   SettingsKeys.asrExperimentalModel: 'MiMo-V2.6-Flash',
+  // 二期：单句听写（默认值见技术补充文档 §4）
+  SettingsKeys.dictationPassThreshold: '90',
+  SettingsKeys.dictationContractionEquivalent: 'true',
+  SettingsKeys.dictationNumberEquivalent: 'true',
+  SettingsKeys.dictationSpeed: '1.0',
 };

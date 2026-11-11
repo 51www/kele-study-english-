@@ -5091,6 +5091,1749 @@ class AppMetasCompanion extends UpdateCompanion<AppMeta> {
   }
 }
 
+class $MaterialsTable extends Materials
+    with TableInfo<$MaterialsTable, Material> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MaterialsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mediaPathMeta = const VerificationMeta(
+    'mediaPath',
+  );
+  @override
+  late final GeneratedColumn<String> mediaPath = GeneratedColumn<String>(
+    'media_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mediaNameMeta = const VerificationMeta(
+    'mediaName',
+  );
+  @override
+  late final GeneratedColumn<String> mediaName = GeneratedColumn<String>(
+    'media_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mediaKindMeta = const VerificationMeta(
+    'mediaKind',
+  );
+  @override
+  late final GeneratedColumn<String> mediaKind = GeneratedColumn<String>(
+    'media_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subtitleNameMeta = const VerificationMeta(
+    'subtitleName',
+  );
+  @override
+  late final GeneratedColumn<String> subtitleName = GeneratedColumn<String>(
+    'subtitle_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceHashMeta = const VerificationMeta(
+    'sourceHash',
+  );
+  @override
+  late final GeneratedColumn<String> sourceHash = GeneratedColumn<String>(
+    'source_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _segmentCountMeta = const VerificationMeta(
+    'segmentCount',
+  );
+  @override
+  late final GeneratedColumn<int> segmentCount = GeneratedColumn<int>(
+    'segment_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastPracticedAtMeta = const VerificationMeta(
+    'lastPracticedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastPracticedAt = GeneratedColumn<int>(
+    'last_practiced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    mediaPath,
+    mediaName,
+    mediaKind,
+    subtitleName,
+    sourceHash,
+    durationMs,
+    segmentCount,
+    createdAt,
+    lastPracticedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'material';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Material> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('media_path')) {
+      context.handle(
+        _mediaPathMeta,
+        mediaPath.isAcceptableOrUnknown(data['media_path']!, _mediaPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mediaPathMeta);
+    }
+    if (data.containsKey('media_name')) {
+      context.handle(
+        _mediaNameMeta,
+        mediaName.isAcceptableOrUnknown(data['media_name']!, _mediaNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mediaNameMeta);
+    }
+    if (data.containsKey('media_kind')) {
+      context.handle(
+        _mediaKindMeta,
+        mediaKind.isAcceptableOrUnknown(data['media_kind']!, _mediaKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mediaKindMeta);
+    }
+    if (data.containsKey('subtitle_name')) {
+      context.handle(
+        _subtitleNameMeta,
+        subtitleName.isAcceptableOrUnknown(
+          data['subtitle_name']!,
+          _subtitleNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_subtitleNameMeta);
+    }
+    if (data.containsKey('source_hash')) {
+      context.handle(
+        _sourceHashMeta,
+        sourceHash.isAcceptableOrUnknown(data['source_hash']!, _sourceHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceHashMeta);
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMsMeta);
+    }
+    if (data.containsKey('segment_count')) {
+      context.handle(
+        _segmentCountMeta,
+        segmentCount.isAcceptableOrUnknown(
+          data['segment_count']!,
+          _segmentCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_segmentCountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_practiced_at')) {
+      context.handle(
+        _lastPracticedAtMeta,
+        lastPracticedAt.isAcceptableOrUnknown(
+          data['last_practiced_at']!,
+          _lastPracticedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Material map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Material(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      mediaPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_path'],
+      )!,
+      mediaName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_name'],
+      )!,
+      mediaKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_kind'],
+      )!,
+      subtitleName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subtitle_name'],
+      )!,
+      sourceHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_hash'],
+      )!,
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      segmentCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}segment_count'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastPracticedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_practiced_at'],
+      ),
+    );
+  }
+
+  @override
+  $MaterialsTable createAlias(String alias) {
+    return $MaterialsTable(attachedDatabase, alias);
+  }
+}
+
+class Material extends DataClass implements Insertable<Material> {
+  final String id;
+  final String title;
+  final String mediaPath;
+  final String mediaName;
+  final String mediaKind;
+  final String subtitleName;
+  final String sourceHash;
+  final int durationMs;
+  final int segmentCount;
+  final int createdAt;
+  final int? lastPracticedAt;
+  const Material({
+    required this.id,
+    required this.title,
+    required this.mediaPath,
+    required this.mediaName,
+    required this.mediaKind,
+    required this.subtitleName,
+    required this.sourceHash,
+    required this.durationMs,
+    required this.segmentCount,
+    required this.createdAt,
+    this.lastPracticedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['media_path'] = Variable<String>(mediaPath);
+    map['media_name'] = Variable<String>(mediaName);
+    map['media_kind'] = Variable<String>(mediaKind);
+    map['subtitle_name'] = Variable<String>(subtitleName);
+    map['source_hash'] = Variable<String>(sourceHash);
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['segment_count'] = Variable<int>(segmentCount);
+    map['created_at'] = Variable<int>(createdAt);
+    if (!nullToAbsent || lastPracticedAt != null) {
+      map['last_practiced_at'] = Variable<int>(lastPracticedAt);
+    }
+    return map;
+  }
+
+  MaterialsCompanion toCompanion(bool nullToAbsent) {
+    return MaterialsCompanion(
+      id: Value(id),
+      title: Value(title),
+      mediaPath: Value(mediaPath),
+      mediaName: Value(mediaName),
+      mediaKind: Value(mediaKind),
+      subtitleName: Value(subtitleName),
+      sourceHash: Value(sourceHash),
+      durationMs: Value(durationMs),
+      segmentCount: Value(segmentCount),
+      createdAt: Value(createdAt),
+      lastPracticedAt: lastPracticedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPracticedAt),
+    );
+  }
+
+  factory Material.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Material(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      mediaPath: serializer.fromJson<String>(json['mediaPath']),
+      mediaName: serializer.fromJson<String>(json['mediaName']),
+      mediaKind: serializer.fromJson<String>(json['mediaKind']),
+      subtitleName: serializer.fromJson<String>(json['subtitleName']),
+      sourceHash: serializer.fromJson<String>(json['sourceHash']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      segmentCount: serializer.fromJson<int>(json['segmentCount']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      lastPracticedAt: serializer.fromJson<int?>(json['lastPracticedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'mediaPath': serializer.toJson<String>(mediaPath),
+      'mediaName': serializer.toJson<String>(mediaName),
+      'mediaKind': serializer.toJson<String>(mediaKind),
+      'subtitleName': serializer.toJson<String>(subtitleName),
+      'sourceHash': serializer.toJson<String>(sourceHash),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'segmentCount': serializer.toJson<int>(segmentCount),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'lastPracticedAt': serializer.toJson<int?>(lastPracticedAt),
+    };
+  }
+
+  Material copyWith({
+    String? id,
+    String? title,
+    String? mediaPath,
+    String? mediaName,
+    String? mediaKind,
+    String? subtitleName,
+    String? sourceHash,
+    int? durationMs,
+    int? segmentCount,
+    int? createdAt,
+    Value<int?> lastPracticedAt = const Value.absent(),
+  }) => Material(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    mediaPath: mediaPath ?? this.mediaPath,
+    mediaName: mediaName ?? this.mediaName,
+    mediaKind: mediaKind ?? this.mediaKind,
+    subtitleName: subtitleName ?? this.subtitleName,
+    sourceHash: sourceHash ?? this.sourceHash,
+    durationMs: durationMs ?? this.durationMs,
+    segmentCount: segmentCount ?? this.segmentCount,
+    createdAt: createdAt ?? this.createdAt,
+    lastPracticedAt: lastPracticedAt.present
+        ? lastPracticedAt.value
+        : this.lastPracticedAt,
+  );
+  Material copyWithCompanion(MaterialsCompanion data) {
+    return Material(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      mediaPath: data.mediaPath.present ? data.mediaPath.value : this.mediaPath,
+      mediaName: data.mediaName.present ? data.mediaName.value : this.mediaName,
+      mediaKind: data.mediaKind.present ? data.mediaKind.value : this.mediaKind,
+      subtitleName: data.subtitleName.present
+          ? data.subtitleName.value
+          : this.subtitleName,
+      sourceHash: data.sourceHash.present
+          ? data.sourceHash.value
+          : this.sourceHash,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      segmentCount: data.segmentCount.present
+          ? data.segmentCount.value
+          : this.segmentCount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastPracticedAt: data.lastPracticedAt.present
+          ? data.lastPracticedAt.value
+          : this.lastPracticedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Material(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mediaName: $mediaName, ')
+          ..write('mediaKind: $mediaKind, ')
+          ..write('subtitleName: $subtitleName, ')
+          ..write('sourceHash: $sourceHash, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('segmentCount: $segmentCount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastPracticedAt: $lastPracticedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    mediaPath,
+    mediaName,
+    mediaKind,
+    subtitleName,
+    sourceHash,
+    durationMs,
+    segmentCount,
+    createdAt,
+    lastPracticedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Material &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.mediaPath == this.mediaPath &&
+          other.mediaName == this.mediaName &&
+          other.mediaKind == this.mediaKind &&
+          other.subtitleName == this.subtitleName &&
+          other.sourceHash == this.sourceHash &&
+          other.durationMs == this.durationMs &&
+          other.segmentCount == this.segmentCount &&
+          other.createdAt == this.createdAt &&
+          other.lastPracticedAt == this.lastPracticedAt);
+}
+
+class MaterialsCompanion extends UpdateCompanion<Material> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> mediaPath;
+  final Value<String> mediaName;
+  final Value<String> mediaKind;
+  final Value<String> subtitleName;
+  final Value<String> sourceHash;
+  final Value<int> durationMs;
+  final Value<int> segmentCount;
+  final Value<int> createdAt;
+  final Value<int?> lastPracticedAt;
+  final Value<int> rowid;
+  const MaterialsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.mediaPath = const Value.absent(),
+    this.mediaName = const Value.absent(),
+    this.mediaKind = const Value.absent(),
+    this.subtitleName = const Value.absent(),
+    this.sourceHash = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.segmentCount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastPracticedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MaterialsCompanion.insert({
+    required String id,
+    required String title,
+    required String mediaPath,
+    required String mediaName,
+    required String mediaKind,
+    required String subtitleName,
+    required String sourceHash,
+    required int durationMs,
+    required int segmentCount,
+    required int createdAt,
+    this.lastPracticedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       mediaPath = Value(mediaPath),
+       mediaName = Value(mediaName),
+       mediaKind = Value(mediaKind),
+       subtitleName = Value(subtitleName),
+       sourceHash = Value(sourceHash),
+       durationMs = Value(durationMs),
+       segmentCount = Value(segmentCount),
+       createdAt = Value(createdAt);
+  static Insertable<Material> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? mediaPath,
+    Expression<String>? mediaName,
+    Expression<String>? mediaKind,
+    Expression<String>? subtitleName,
+    Expression<String>? sourceHash,
+    Expression<int>? durationMs,
+    Expression<int>? segmentCount,
+    Expression<int>? createdAt,
+    Expression<int>? lastPracticedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (mediaPath != null) 'media_path': mediaPath,
+      if (mediaName != null) 'media_name': mediaName,
+      if (mediaKind != null) 'media_kind': mediaKind,
+      if (subtitleName != null) 'subtitle_name': subtitleName,
+      if (sourceHash != null) 'source_hash': sourceHash,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (segmentCount != null) 'segment_count': segmentCount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastPracticedAt != null) 'last_practiced_at': lastPracticedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MaterialsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? mediaPath,
+    Value<String>? mediaName,
+    Value<String>? mediaKind,
+    Value<String>? subtitleName,
+    Value<String>? sourceHash,
+    Value<int>? durationMs,
+    Value<int>? segmentCount,
+    Value<int>? createdAt,
+    Value<int?>? lastPracticedAt,
+    Value<int>? rowid,
+  }) {
+    return MaterialsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      mediaPath: mediaPath ?? this.mediaPath,
+      mediaName: mediaName ?? this.mediaName,
+      mediaKind: mediaKind ?? this.mediaKind,
+      subtitleName: subtitleName ?? this.subtitleName,
+      sourceHash: sourceHash ?? this.sourceHash,
+      durationMs: durationMs ?? this.durationMs,
+      segmentCount: segmentCount ?? this.segmentCount,
+      createdAt: createdAt ?? this.createdAt,
+      lastPracticedAt: lastPracticedAt ?? this.lastPracticedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (mediaPath.present) {
+      map['media_path'] = Variable<String>(mediaPath.value);
+    }
+    if (mediaName.present) {
+      map['media_name'] = Variable<String>(mediaName.value);
+    }
+    if (mediaKind.present) {
+      map['media_kind'] = Variable<String>(mediaKind.value);
+    }
+    if (subtitleName.present) {
+      map['subtitle_name'] = Variable<String>(subtitleName.value);
+    }
+    if (sourceHash.present) {
+      map['source_hash'] = Variable<String>(sourceHash.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (segmentCount.present) {
+      map['segment_count'] = Variable<int>(segmentCount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (lastPracticedAt.present) {
+      map['last_practiced_at'] = Variable<int>(lastPracticedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MaterialsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mediaName: $mediaName, ')
+          ..write('mediaKind: $mediaKind, ')
+          ..write('subtitleName: $subtitleName, ')
+          ..write('sourceHash: $sourceHash, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('segmentCount: $segmentCount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastPracticedAt: $lastPracticedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $MaterialSegmentsTable extends MaterialSegments
+    with TableInfo<$MaterialSegmentsTable, MaterialSegment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MaterialSegmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _materialIdMeta = const VerificationMeta(
+    'materialId',
+  );
+  @override
+  late final GeneratedColumn<String> materialId = GeneratedColumn<String>(
+    'material_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  @override
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _textEnMeta = const VerificationMeta('textEn');
+  @override
+  late final GeneratedColumn<String> textEn = GeneratedColumn<String>(
+    'text_en',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startMsMeta = const VerificationMeta(
+    'startMs',
+  );
+  @override
+  late final GeneratedColumn<int> startMs = GeneratedColumn<int>(
+    'start_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endMsMeta = const VerificationMeta('endMs');
+  @override
+  late final GeneratedColumn<int> endMs = GeneratedColumn<int>(
+    'end_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wordCountMeta = const VerificationMeta(
+    'wordCount',
+  );
+  @override
+  late final GeneratedColumn<int> wordCount = GeneratedColumn<int>(
+    'word_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isHardMeta = const VerificationMeta('isHard');
+  @override
+  late final GeneratedColumn<int> isHard = GeneratedColumn<int>(
+    'is_hard',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    materialId,
+    seq,
+    textEn,
+    startMs,
+    endMs,
+    wordCount,
+    isHard,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'material_segment';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MaterialSegment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('material_id')) {
+      context.handle(
+        _materialIdMeta,
+        materialId.isAcceptableOrUnknown(data['material_id']!, _materialIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_materialIdMeta);
+    }
+    if (data.containsKey('seq')) {
+      context.handle(
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seqMeta);
+    }
+    if (data.containsKey('text_en')) {
+      context.handle(
+        _textEnMeta,
+        textEn.isAcceptableOrUnknown(data['text_en']!, _textEnMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_textEnMeta);
+    }
+    if (data.containsKey('start_ms')) {
+      context.handle(
+        _startMsMeta,
+        startMs.isAcceptableOrUnknown(data['start_ms']!, _startMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startMsMeta);
+    }
+    if (data.containsKey('end_ms')) {
+      context.handle(
+        _endMsMeta,
+        endMs.isAcceptableOrUnknown(data['end_ms']!, _endMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endMsMeta);
+    }
+    if (data.containsKey('word_count')) {
+      context.handle(
+        _wordCountMeta,
+        wordCount.isAcceptableOrUnknown(data['word_count']!, _wordCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordCountMeta);
+    }
+    if (data.containsKey('is_hard')) {
+      context.handle(
+        _isHardMeta,
+        isHard.isAcceptableOrUnknown(data['is_hard']!, _isHardMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isHardMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MaterialSegment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MaterialSegment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      materialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}material_id'],
+      )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+      textEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_en'],
+      )!,
+      startMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_ms'],
+      )!,
+      endMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}end_ms'],
+      )!,
+      wordCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}word_count'],
+      )!,
+      isHard: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}is_hard'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MaterialSegmentsTable createAlias(String alias) {
+    return $MaterialSegmentsTable(attachedDatabase, alias);
+  }
+}
+
+class MaterialSegment extends DataClass implements Insertable<MaterialSegment> {
+  final String id;
+  final String materialId;
+  final int seq;
+  final String textEn;
+  final int startMs;
+  final int endMs;
+  final int wordCount;
+  final int isHard;
+  final int createdAt;
+  const MaterialSegment({
+    required this.id,
+    required this.materialId,
+    required this.seq,
+    required this.textEn,
+    required this.startMs,
+    required this.endMs,
+    required this.wordCount,
+    required this.isHard,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['material_id'] = Variable<String>(materialId);
+    map['seq'] = Variable<int>(seq);
+    map['text_en'] = Variable<String>(textEn);
+    map['start_ms'] = Variable<int>(startMs);
+    map['end_ms'] = Variable<int>(endMs);
+    map['word_count'] = Variable<int>(wordCount);
+    map['is_hard'] = Variable<int>(isHard);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  MaterialSegmentsCompanion toCompanion(bool nullToAbsent) {
+    return MaterialSegmentsCompanion(
+      id: Value(id),
+      materialId: Value(materialId),
+      seq: Value(seq),
+      textEn: Value(textEn),
+      startMs: Value(startMs),
+      endMs: Value(endMs),
+      wordCount: Value(wordCount),
+      isHard: Value(isHard),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MaterialSegment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MaterialSegment(
+      id: serializer.fromJson<String>(json['id']),
+      materialId: serializer.fromJson<String>(json['materialId']),
+      seq: serializer.fromJson<int>(json['seq']),
+      textEn: serializer.fromJson<String>(json['textEn']),
+      startMs: serializer.fromJson<int>(json['startMs']),
+      endMs: serializer.fromJson<int>(json['endMs']),
+      wordCount: serializer.fromJson<int>(json['wordCount']),
+      isHard: serializer.fromJson<int>(json['isHard']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'materialId': serializer.toJson<String>(materialId),
+      'seq': serializer.toJson<int>(seq),
+      'textEn': serializer.toJson<String>(textEn),
+      'startMs': serializer.toJson<int>(startMs),
+      'endMs': serializer.toJson<int>(endMs),
+      'wordCount': serializer.toJson<int>(wordCount),
+      'isHard': serializer.toJson<int>(isHard),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  MaterialSegment copyWith({
+    String? id,
+    String? materialId,
+    int? seq,
+    String? textEn,
+    int? startMs,
+    int? endMs,
+    int? wordCount,
+    int? isHard,
+    int? createdAt,
+  }) => MaterialSegment(
+    id: id ?? this.id,
+    materialId: materialId ?? this.materialId,
+    seq: seq ?? this.seq,
+    textEn: textEn ?? this.textEn,
+    startMs: startMs ?? this.startMs,
+    endMs: endMs ?? this.endMs,
+    wordCount: wordCount ?? this.wordCount,
+    isHard: isHard ?? this.isHard,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  MaterialSegment copyWithCompanion(MaterialSegmentsCompanion data) {
+    return MaterialSegment(
+      id: data.id.present ? data.id.value : this.id,
+      materialId: data.materialId.present
+          ? data.materialId.value
+          : this.materialId,
+      seq: data.seq.present ? data.seq.value : this.seq,
+      textEn: data.textEn.present ? data.textEn.value : this.textEn,
+      startMs: data.startMs.present ? data.startMs.value : this.startMs,
+      endMs: data.endMs.present ? data.endMs.value : this.endMs,
+      wordCount: data.wordCount.present ? data.wordCount.value : this.wordCount,
+      isHard: data.isHard.present ? data.isHard.value : this.isHard,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MaterialSegment(')
+          ..write('id: $id, ')
+          ..write('materialId: $materialId, ')
+          ..write('seq: $seq, ')
+          ..write('textEn: $textEn, ')
+          ..write('startMs: $startMs, ')
+          ..write('endMs: $endMs, ')
+          ..write('wordCount: $wordCount, ')
+          ..write('isHard: $isHard, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    materialId,
+    seq,
+    textEn,
+    startMs,
+    endMs,
+    wordCount,
+    isHard,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MaterialSegment &&
+          other.id == this.id &&
+          other.materialId == this.materialId &&
+          other.seq == this.seq &&
+          other.textEn == this.textEn &&
+          other.startMs == this.startMs &&
+          other.endMs == this.endMs &&
+          other.wordCount == this.wordCount &&
+          other.isHard == this.isHard &&
+          other.createdAt == this.createdAt);
+}
+
+class MaterialSegmentsCompanion extends UpdateCompanion<MaterialSegment> {
+  final Value<String> id;
+  final Value<String> materialId;
+  final Value<int> seq;
+  final Value<String> textEn;
+  final Value<int> startMs;
+  final Value<int> endMs;
+  final Value<int> wordCount;
+  final Value<int> isHard;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const MaterialSegmentsCompanion({
+    this.id = const Value.absent(),
+    this.materialId = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.textEn = const Value.absent(),
+    this.startMs = const Value.absent(),
+    this.endMs = const Value.absent(),
+    this.wordCount = const Value.absent(),
+    this.isHard = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MaterialSegmentsCompanion.insert({
+    required String id,
+    required String materialId,
+    required int seq,
+    required String textEn,
+    required int startMs,
+    required int endMs,
+    required int wordCount,
+    required int isHard,
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       materialId = Value(materialId),
+       seq = Value(seq),
+       textEn = Value(textEn),
+       startMs = Value(startMs),
+       endMs = Value(endMs),
+       wordCount = Value(wordCount),
+       isHard = Value(isHard),
+       createdAt = Value(createdAt);
+  static Insertable<MaterialSegment> custom({
+    Expression<String>? id,
+    Expression<String>? materialId,
+    Expression<int>? seq,
+    Expression<String>? textEn,
+    Expression<int>? startMs,
+    Expression<int>? endMs,
+    Expression<int>? wordCount,
+    Expression<int>? isHard,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (materialId != null) 'material_id': materialId,
+      if (seq != null) 'seq': seq,
+      if (textEn != null) 'text_en': textEn,
+      if (startMs != null) 'start_ms': startMs,
+      if (endMs != null) 'end_ms': endMs,
+      if (wordCount != null) 'word_count': wordCount,
+      if (isHard != null) 'is_hard': isHard,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MaterialSegmentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? materialId,
+    Value<int>? seq,
+    Value<String>? textEn,
+    Value<int>? startMs,
+    Value<int>? endMs,
+    Value<int>? wordCount,
+    Value<int>? isHard,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return MaterialSegmentsCompanion(
+      id: id ?? this.id,
+      materialId: materialId ?? this.materialId,
+      seq: seq ?? this.seq,
+      textEn: textEn ?? this.textEn,
+      startMs: startMs ?? this.startMs,
+      endMs: endMs ?? this.endMs,
+      wordCount: wordCount ?? this.wordCount,
+      isHard: isHard ?? this.isHard,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (materialId.present) {
+      map['material_id'] = Variable<String>(materialId.value);
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (textEn.present) {
+      map['text_en'] = Variable<String>(textEn.value);
+    }
+    if (startMs.present) {
+      map['start_ms'] = Variable<int>(startMs.value);
+    }
+    if (endMs.present) {
+      map['end_ms'] = Variable<int>(endMs.value);
+    }
+    if (wordCount.present) {
+      map['word_count'] = Variable<int>(wordCount.value);
+    }
+    if (isHard.present) {
+      map['is_hard'] = Variable<int>(isHard.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MaterialSegmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('materialId: $materialId, ')
+          ..write('seq: $seq, ')
+          ..write('textEn: $textEn, ')
+          ..write('startMs: $startMs, ')
+          ..write('endMs: $endMs, ')
+          ..write('wordCount: $wordCount, ')
+          ..write('isHard: $isHard, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DictationAttemptsTable extends DictationAttempts
+    with TableInfo<$DictationAttemptsTable, DictationAttempt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DictationAttemptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _materialIdMeta = const VerificationMeta(
+    'materialId',
+  );
+  @override
+  late final GeneratedColumn<String> materialId = GeneratedColumn<String>(
+    'material_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _segmentIdMeta = const VerificationMeta(
+    'segmentId',
+  );
+  @override
+  late final GeneratedColumn<String> segmentId = GeneratedColumn<String>(
+    'segment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userTextMeta = const VerificationMeta(
+    'userText',
+  );
+  @override
+  late final GeneratedColumn<String> userText = GeneratedColumn<String>(
+    'user_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accuracyMeta = const VerificationMeta(
+    'accuracy',
+  );
+  @override
+  late final GeneratedColumn<double> accuracy = GeneratedColumn<double>(
+    'accuracy',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _passedMeta = const VerificationMeta('passed');
+  @override
+  late final GeneratedColumn<int> passed = GeneratedColumn<int>(
+    'passed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _diffJsonMeta = const VerificationMeta(
+    'diffJson',
+  );
+  @override
+  late final GeneratedColumn<String> diffJson = GeneratedColumn<String>(
+    'diff_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    materialId,
+    segmentId,
+    userText,
+    accuracy,
+    passed,
+    diffJson,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dictation_attempt';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DictationAttempt> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('material_id')) {
+      context.handle(
+        _materialIdMeta,
+        materialId.isAcceptableOrUnknown(data['material_id']!, _materialIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_materialIdMeta);
+    }
+    if (data.containsKey('segment_id')) {
+      context.handle(
+        _segmentIdMeta,
+        segmentId.isAcceptableOrUnknown(data['segment_id']!, _segmentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_segmentIdMeta);
+    }
+    if (data.containsKey('user_text')) {
+      context.handle(
+        _userTextMeta,
+        userText.isAcceptableOrUnknown(data['user_text']!, _userTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userTextMeta);
+    }
+    if (data.containsKey('accuracy')) {
+      context.handle(
+        _accuracyMeta,
+        accuracy.isAcceptableOrUnknown(data['accuracy']!, _accuracyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accuracyMeta);
+    }
+    if (data.containsKey('passed')) {
+      context.handle(
+        _passedMeta,
+        passed.isAcceptableOrUnknown(data['passed']!, _passedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_passedMeta);
+    }
+    if (data.containsKey('diff_json')) {
+      context.handle(
+        _diffJsonMeta,
+        diffJson.isAcceptableOrUnknown(data['diff_json']!, _diffJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_diffJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DictationAttempt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DictationAttempt(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      materialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}material_id'],
+      )!,
+      segmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}segment_id'],
+      )!,
+      userText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_text'],
+      )!,
+      accuracy: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}accuracy'],
+      )!,
+      passed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}passed'],
+      )!,
+      diffJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}diff_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DictationAttemptsTable createAlias(String alias) {
+    return $DictationAttemptsTable(attachedDatabase, alias);
+  }
+}
+
+class DictationAttempt extends DataClass
+    implements Insertable<DictationAttempt> {
+  final String id;
+  final String materialId;
+  final String segmentId;
+  final String userText;
+  final double accuracy;
+  final int passed;
+  final String diffJson;
+  final int createdAt;
+  const DictationAttempt({
+    required this.id,
+    required this.materialId,
+    required this.segmentId,
+    required this.userText,
+    required this.accuracy,
+    required this.passed,
+    required this.diffJson,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['material_id'] = Variable<String>(materialId);
+    map['segment_id'] = Variable<String>(segmentId);
+    map['user_text'] = Variable<String>(userText);
+    map['accuracy'] = Variable<double>(accuracy);
+    map['passed'] = Variable<int>(passed);
+    map['diff_json'] = Variable<String>(diffJson);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  DictationAttemptsCompanion toCompanion(bool nullToAbsent) {
+    return DictationAttemptsCompanion(
+      id: Value(id),
+      materialId: Value(materialId),
+      segmentId: Value(segmentId),
+      userText: Value(userText),
+      accuracy: Value(accuracy),
+      passed: Value(passed),
+      diffJson: Value(diffJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DictationAttempt.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DictationAttempt(
+      id: serializer.fromJson<String>(json['id']),
+      materialId: serializer.fromJson<String>(json['materialId']),
+      segmentId: serializer.fromJson<String>(json['segmentId']),
+      userText: serializer.fromJson<String>(json['userText']),
+      accuracy: serializer.fromJson<double>(json['accuracy']),
+      passed: serializer.fromJson<int>(json['passed']),
+      diffJson: serializer.fromJson<String>(json['diffJson']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'materialId': serializer.toJson<String>(materialId),
+      'segmentId': serializer.toJson<String>(segmentId),
+      'userText': serializer.toJson<String>(userText),
+      'accuracy': serializer.toJson<double>(accuracy),
+      'passed': serializer.toJson<int>(passed),
+      'diffJson': serializer.toJson<String>(diffJson),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  DictationAttempt copyWith({
+    String? id,
+    String? materialId,
+    String? segmentId,
+    String? userText,
+    double? accuracy,
+    int? passed,
+    String? diffJson,
+    int? createdAt,
+  }) => DictationAttempt(
+    id: id ?? this.id,
+    materialId: materialId ?? this.materialId,
+    segmentId: segmentId ?? this.segmentId,
+    userText: userText ?? this.userText,
+    accuracy: accuracy ?? this.accuracy,
+    passed: passed ?? this.passed,
+    diffJson: diffJson ?? this.diffJson,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DictationAttempt copyWithCompanion(DictationAttemptsCompanion data) {
+    return DictationAttempt(
+      id: data.id.present ? data.id.value : this.id,
+      materialId: data.materialId.present
+          ? data.materialId.value
+          : this.materialId,
+      segmentId: data.segmentId.present ? data.segmentId.value : this.segmentId,
+      userText: data.userText.present ? data.userText.value : this.userText,
+      accuracy: data.accuracy.present ? data.accuracy.value : this.accuracy,
+      passed: data.passed.present ? data.passed.value : this.passed,
+      diffJson: data.diffJson.present ? data.diffJson.value : this.diffJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DictationAttempt(')
+          ..write('id: $id, ')
+          ..write('materialId: $materialId, ')
+          ..write('segmentId: $segmentId, ')
+          ..write('userText: $userText, ')
+          ..write('accuracy: $accuracy, ')
+          ..write('passed: $passed, ')
+          ..write('diffJson: $diffJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    materialId,
+    segmentId,
+    userText,
+    accuracy,
+    passed,
+    diffJson,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DictationAttempt &&
+          other.id == this.id &&
+          other.materialId == this.materialId &&
+          other.segmentId == this.segmentId &&
+          other.userText == this.userText &&
+          other.accuracy == this.accuracy &&
+          other.passed == this.passed &&
+          other.diffJson == this.diffJson &&
+          other.createdAt == this.createdAt);
+}
+
+class DictationAttemptsCompanion extends UpdateCompanion<DictationAttempt> {
+  final Value<String> id;
+  final Value<String> materialId;
+  final Value<String> segmentId;
+  final Value<String> userText;
+  final Value<double> accuracy;
+  final Value<int> passed;
+  final Value<String> diffJson;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const DictationAttemptsCompanion({
+    this.id = const Value.absent(),
+    this.materialId = const Value.absent(),
+    this.segmentId = const Value.absent(),
+    this.userText = const Value.absent(),
+    this.accuracy = const Value.absent(),
+    this.passed = const Value.absent(),
+    this.diffJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DictationAttemptsCompanion.insert({
+    required String id,
+    required String materialId,
+    required String segmentId,
+    required String userText,
+    required double accuracy,
+    required int passed,
+    required String diffJson,
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       materialId = Value(materialId),
+       segmentId = Value(segmentId),
+       userText = Value(userText),
+       accuracy = Value(accuracy),
+       passed = Value(passed),
+       diffJson = Value(diffJson),
+       createdAt = Value(createdAt);
+  static Insertable<DictationAttempt> custom({
+    Expression<String>? id,
+    Expression<String>? materialId,
+    Expression<String>? segmentId,
+    Expression<String>? userText,
+    Expression<double>? accuracy,
+    Expression<int>? passed,
+    Expression<String>? diffJson,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (materialId != null) 'material_id': materialId,
+      if (segmentId != null) 'segment_id': segmentId,
+      if (userText != null) 'user_text': userText,
+      if (accuracy != null) 'accuracy': accuracy,
+      if (passed != null) 'passed': passed,
+      if (diffJson != null) 'diff_json': diffJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DictationAttemptsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? materialId,
+    Value<String>? segmentId,
+    Value<String>? userText,
+    Value<double>? accuracy,
+    Value<int>? passed,
+    Value<String>? diffJson,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DictationAttemptsCompanion(
+      id: id ?? this.id,
+      materialId: materialId ?? this.materialId,
+      segmentId: segmentId ?? this.segmentId,
+      userText: userText ?? this.userText,
+      accuracy: accuracy ?? this.accuracy,
+      passed: passed ?? this.passed,
+      diffJson: diffJson ?? this.diffJson,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (materialId.present) {
+      map['material_id'] = Variable<String>(materialId.value);
+    }
+    if (segmentId.present) {
+      map['segment_id'] = Variable<String>(segmentId.value);
+    }
+    if (userText.present) {
+      map['user_text'] = Variable<String>(userText.value);
+    }
+    if (accuracy.present) {
+      map['accuracy'] = Variable<double>(accuracy.value);
+    }
+    if (passed.present) {
+      map['passed'] = Variable<int>(passed.value);
+    }
+    if (diffJson.present) {
+      map['diff_json'] = Variable<String>(diffJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DictationAttemptsCompanion(')
+          ..write('id: $id, ')
+          ..write('materialId: $materialId, ')
+          ..write('segmentId: $segmentId, ')
+          ..write('userText: $userText, ')
+          ..write('accuracy: $accuracy, ')
+          ..write('passed: $passed, ')
+          ..write('diffJson: $diffJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5103,6 +6846,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SettingsTableTable settingsTable = $SettingsTableTable(this);
   late final $TtsCachesTable ttsCaches = $TtsCachesTable(this);
   late final $AppMetasTable appMetas = $AppMetasTable(this);
+  late final $MaterialsTable materials = $MaterialsTable(this);
+  late final $MaterialSegmentsTable materialSegments = $MaterialSegmentsTable(
+    this,
+  );
+  late final $DictationAttemptsTable dictationAttempts =
+      $DictationAttemptsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5117,6 +6866,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     settingsTable,
     ttsCaches,
     appMetas,
+    materials,
+    materialSegments,
+    dictationAttempts,
   ];
 }
 
@@ -7667,6 +9419,905 @@ typedef $$AppMetasTableProcessedTableManager =
       AppMeta,
       PrefetchHooks Function()
     >;
+typedef $$MaterialsTableCreateCompanionBuilder = MaterialsCompanion Function({
+  required String id,
+  required String title,
+  required String mediaPath,
+  required String mediaName,
+  required String mediaKind,
+  required String subtitleName,
+  required String sourceHash,
+  required int durationMs,
+  required int segmentCount,
+  required int createdAt,
+  Value<int?> lastPracticedAt,
+  Value<int> rowid,
+});
+typedef $$MaterialsTableUpdateCompanionBuilder = MaterialsCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<String> mediaPath,
+  Value<String> mediaName,
+  Value<String> mediaKind,
+  Value<String> subtitleName,
+  Value<String> sourceHash,
+  Value<int> durationMs,
+  Value<int> segmentCount,
+  Value<int> createdAt,
+  Value<int?> lastPracticedAt,
+  Value<int> rowid,
+});
+
+class $$MaterialsTableFilterComposer
+    extends Composer<_$AppDatabase, $MaterialsTable> {
+  $$MaterialsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaName => $composableBuilder(
+    column: $table.mediaName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaKind => $composableBuilder(
+    column: $table.mediaKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subtitleName => $composableBuilder(
+    column: $table.subtitleName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceHash => $composableBuilder(
+    column: $table.sourceHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get segmentCount => $composableBuilder(
+    column: $table.segmentCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastPracticedAt => $composableBuilder(
+    column: $table.lastPracticedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MaterialsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MaterialsTable> {
+  $$MaterialsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaName => $composableBuilder(
+    column: $table.mediaName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaKind => $composableBuilder(
+    column: $table.mediaKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subtitleName => $composableBuilder(
+    column: $table.subtitleName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceHash => $composableBuilder(
+    column: $table.sourceHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get segmentCount => $composableBuilder(
+    column: $table.segmentCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastPracticedAt => $composableBuilder(
+    column: $table.lastPracticedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MaterialsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MaterialsTable> {
+  $$MaterialsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaPath =>
+      $composableBuilder(column: $table.mediaPath, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaName =>
+      $composableBuilder(column: $table.mediaName, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaKind =>
+      $composableBuilder(column: $table.mediaKind, builder: (column) => column);
+
+  GeneratedColumn<String> get subtitleName => $composableBuilder(
+    column: $table.subtitleName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceHash => $composableBuilder(
+    column: $table.sourceHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get segmentCount => $composableBuilder(
+    column: $table.segmentCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get lastPracticedAt => $composableBuilder(
+    column: $table.lastPracticedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$MaterialsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MaterialsTable,
+          Material,
+          $$MaterialsTableFilterComposer,
+          $$MaterialsTableOrderingComposer,
+          $$MaterialsTableAnnotationComposer,
+          $$MaterialsTableCreateCompanionBuilder,
+          $$MaterialsTableUpdateCompanionBuilder,
+          (Material, BaseReferences<_$AppDatabase, $MaterialsTable, Material>),
+          Material,
+          PrefetchHooks Function()
+        > {
+  $$MaterialsTableTableManager(_$AppDatabase db, $MaterialsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MaterialsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MaterialsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MaterialsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> mediaPath = const Value.absent(),
+                Value<String> mediaName = const Value.absent(),
+                Value<String> mediaKind = const Value.absent(),
+                Value<String> subtitleName = const Value.absent(),
+                Value<String> sourceHash = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<int> segmentCount = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int?> lastPracticedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MaterialsCompanion(
+                id: id,
+                title: title,
+                mediaPath: mediaPath,
+                mediaName: mediaName,
+                mediaKind: mediaKind,
+                subtitleName: subtitleName,
+                sourceHash: sourceHash,
+                durationMs: durationMs,
+                segmentCount: segmentCount,
+                createdAt: createdAt,
+                lastPracticedAt: lastPracticedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required String mediaPath,
+                required String mediaName,
+                required String mediaKind,
+                required String subtitleName,
+                required String sourceHash,
+                required int durationMs,
+                required int segmentCount,
+                required int createdAt,
+                Value<int?> lastPracticedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MaterialsCompanion.insert(
+                id: id,
+                title: title,
+                mediaPath: mediaPath,
+                mediaName: mediaName,
+                mediaKind: mediaKind,
+                subtitleName: subtitleName,
+                sourceHash: sourceHash,
+                durationMs: durationMs,
+                segmentCount: segmentCount,
+                createdAt: createdAt,
+                lastPracticedAt: lastPracticedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$MaterialsTable, Material>(table),
+                  BaseReferences<_$AppDatabase, $MaterialsTable, Material>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MaterialsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MaterialsTable,
+      Material,
+      $$MaterialsTableFilterComposer,
+      $$MaterialsTableOrderingComposer,
+      $$MaterialsTableAnnotationComposer,
+      $$MaterialsTableCreateCompanionBuilder,
+      $$MaterialsTableUpdateCompanionBuilder,
+      (Material, BaseReferences<_$AppDatabase, $MaterialsTable, Material>),
+      Material,
+      PrefetchHooks Function()
+    >;
+typedef $$MaterialSegmentsTableCreateCompanionBuilder =
+    MaterialSegmentsCompanion Function({
+      required String id,
+      required String materialId,
+      required int seq,
+      required String textEn,
+      required int startMs,
+      required int endMs,
+      required int wordCount,
+      required int isHard,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$MaterialSegmentsTableUpdateCompanionBuilder =
+    MaterialSegmentsCompanion Function({
+      Value<String> id,
+      Value<String> materialId,
+      Value<int> seq,
+      Value<String> textEn,
+      Value<int> startMs,
+      Value<int> endMs,
+      Value<int> wordCount,
+      Value<int> isHard,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$MaterialSegmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $MaterialSegmentsTable> {
+  $$MaterialSegmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get textEn => $composableBuilder(
+    column: $table.textEn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startMs => $composableBuilder(
+    column: $table.startMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endMs => $composableBuilder(
+    column: $table.endMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get wordCount => $composableBuilder(
+    column: $table.wordCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get isHard => $composableBuilder(
+    column: $table.isHard,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MaterialSegmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MaterialSegmentsTable> {
+  $$MaterialSegmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get textEn => $composableBuilder(
+    column: $table.textEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startMs => $composableBuilder(
+    column: $table.startMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endMs => $composableBuilder(
+    column: $table.endMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get wordCount => $composableBuilder(
+    column: $table.wordCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get isHard => $composableBuilder(
+    column: $table.isHard,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MaterialSegmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MaterialSegmentsTable> {
+  $$MaterialSegmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get textEn =>
+      $composableBuilder(column: $table.textEn, builder: (column) => column);
+
+  GeneratedColumn<int> get startMs =>
+      $composableBuilder(column: $table.startMs, builder: (column) => column);
+
+  GeneratedColumn<int> get endMs =>
+      $composableBuilder(column: $table.endMs, builder: (column) => column);
+
+  GeneratedColumn<int> get wordCount =>
+      $composableBuilder(column: $table.wordCount, builder: (column) => column);
+
+  GeneratedColumn<int> get isHard =>
+      $composableBuilder(column: $table.isHard, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$MaterialSegmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MaterialSegmentsTable,
+          MaterialSegment,
+          $$MaterialSegmentsTableFilterComposer,
+          $$MaterialSegmentsTableOrderingComposer,
+          $$MaterialSegmentsTableAnnotationComposer,
+          $$MaterialSegmentsTableCreateCompanionBuilder,
+          $$MaterialSegmentsTableUpdateCompanionBuilder,
+          (
+            MaterialSegment,
+            BaseReferences<
+              _$AppDatabase,
+              $MaterialSegmentsTable,
+              MaterialSegment
+            >,
+          ),
+          MaterialSegment,
+          PrefetchHooks Function()
+        > {
+  $$MaterialSegmentsTableTableManager(
+    _$AppDatabase db,
+    $MaterialSegmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MaterialSegmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MaterialSegmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MaterialSegmentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> materialId = const Value.absent(),
+                Value<int> seq = const Value.absent(),
+                Value<String> textEn = const Value.absent(),
+                Value<int> startMs = const Value.absent(),
+                Value<int> endMs = const Value.absent(),
+                Value<int> wordCount = const Value.absent(),
+                Value<int> isHard = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MaterialSegmentsCompanion(
+                id: id,
+                materialId: materialId,
+                seq: seq,
+                textEn: textEn,
+                startMs: startMs,
+                endMs: endMs,
+                wordCount: wordCount,
+                isHard: isHard,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String materialId,
+                required int seq,
+                required String textEn,
+                required int startMs,
+                required int endMs,
+                required int wordCount,
+                required int isHard,
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => MaterialSegmentsCompanion.insert(
+                id: id,
+                materialId: materialId,
+                seq: seq,
+                textEn: textEn,
+                startMs: startMs,
+                endMs: endMs,
+                wordCount: wordCount,
+                isHard: isHard,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$MaterialSegmentsTable, MaterialSegment>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $MaterialSegmentsTable,
+                    MaterialSegment
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MaterialSegmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MaterialSegmentsTable,
+      MaterialSegment,
+      $$MaterialSegmentsTableFilterComposer,
+      $$MaterialSegmentsTableOrderingComposer,
+      $$MaterialSegmentsTableAnnotationComposer,
+      $$MaterialSegmentsTableCreateCompanionBuilder,
+      $$MaterialSegmentsTableUpdateCompanionBuilder,
+      (
+        MaterialSegment,
+        BaseReferences<_$AppDatabase, $MaterialSegmentsTable, MaterialSegment>,
+      ),
+      MaterialSegment,
+      PrefetchHooks Function()
+    >;
+typedef $$DictationAttemptsTableCreateCompanionBuilder =
+    DictationAttemptsCompanion Function({
+      required String id,
+      required String materialId,
+      required String segmentId,
+      required String userText,
+      required double accuracy,
+      required int passed,
+      required String diffJson,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$DictationAttemptsTableUpdateCompanionBuilder =
+    DictationAttemptsCompanion Function({
+      Value<String> id,
+      Value<String> materialId,
+      Value<String> segmentId,
+      Value<String> userText,
+      Value<double> accuracy,
+      Value<int> passed,
+      Value<String> diffJson,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$DictationAttemptsTableFilterComposer
+    extends Composer<_$AppDatabase, $DictationAttemptsTable> {
+  $$DictationAttemptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get segmentId => $composableBuilder(
+    column: $table.segmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userText => $composableBuilder(
+    column: $table.userText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get accuracy => $composableBuilder(
+    column: $table.accuracy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get passed => $composableBuilder(
+    column: $table.passed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get diffJson => $composableBuilder(
+    column: $table.diffJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DictationAttemptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DictationAttemptsTable> {
+  $$DictationAttemptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get segmentId => $composableBuilder(
+    column: $table.segmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userText => $composableBuilder(
+    column: $table.userText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get accuracy => $composableBuilder(
+    column: $table.accuracy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get passed => $composableBuilder(
+    column: $table.passed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get diffJson => $composableBuilder(
+    column: $table.diffJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DictationAttemptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DictationAttemptsTable> {
+  $$DictationAttemptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get materialId => $composableBuilder(
+    column: $table.materialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get segmentId =>
+      $composableBuilder(column: $table.segmentId, builder: (column) => column);
+
+  GeneratedColumn<String> get userText =>
+      $composableBuilder(column: $table.userText, builder: (column) => column);
+
+  GeneratedColumn<double> get accuracy =>
+      $composableBuilder(column: $table.accuracy, builder: (column) => column);
+
+  GeneratedColumn<int> get passed =>
+      $composableBuilder(column: $table.passed, builder: (column) => column);
+
+  GeneratedColumn<String> get diffJson =>
+      $composableBuilder(column: $table.diffJson, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DictationAttemptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DictationAttemptsTable,
+          DictationAttempt,
+          $$DictationAttemptsTableFilterComposer,
+          $$DictationAttemptsTableOrderingComposer,
+          $$DictationAttemptsTableAnnotationComposer,
+          $$DictationAttemptsTableCreateCompanionBuilder,
+          $$DictationAttemptsTableUpdateCompanionBuilder,
+          (
+            DictationAttempt,
+            BaseReferences<
+              _$AppDatabase,
+              $DictationAttemptsTable,
+              DictationAttempt
+            >,
+          ),
+          DictationAttempt,
+          PrefetchHooks Function()
+        > {
+  $$DictationAttemptsTableTableManager(
+    _$AppDatabase db,
+    $DictationAttemptsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DictationAttemptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DictationAttemptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DictationAttemptsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> materialId = const Value.absent(),
+                Value<String> segmentId = const Value.absent(),
+                Value<String> userText = const Value.absent(),
+                Value<double> accuracy = const Value.absent(),
+                Value<int> passed = const Value.absent(),
+                Value<String> diffJson = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DictationAttemptsCompanion(
+                id: id,
+                materialId: materialId,
+                segmentId: segmentId,
+                userText: userText,
+                accuracy: accuracy,
+                passed: passed,
+                diffJson: diffJson,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String materialId,
+                required String segmentId,
+                required String userText,
+                required double accuracy,
+                required int passed,
+                required String diffJson,
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DictationAttemptsCompanion.insert(
+                id: id,
+                materialId: materialId,
+                segmentId: segmentId,
+                userText: userText,
+                accuracy: accuracy,
+                passed: passed,
+                diffJson: diffJson,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$DictationAttemptsTable, DictationAttempt>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DictationAttemptsTable,
+                    DictationAttempt
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DictationAttemptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DictationAttemptsTable,
+      DictationAttempt,
+      $$DictationAttemptsTableFilterComposer,
+      $$DictationAttemptsTableOrderingComposer,
+      $$DictationAttemptsTableAnnotationComposer,
+      $$DictationAttemptsTableCreateCompanionBuilder,
+      $$DictationAttemptsTableUpdateCompanionBuilder,
+      (
+        DictationAttempt,
+        BaseReferences<
+          _$AppDatabase,
+          $DictationAttemptsTable,
+          DictationAttempt
+        >,
+      ),
+      DictationAttempt,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7689,4 +10340,10 @@ class $AppDatabaseManager {
       $$TtsCachesTableTableManager(_db, _db.ttsCaches);
   $$AppMetasTableTableManager get appMetas =>
       $$AppMetasTableTableManager(_db, _db.appMetas);
+  $$MaterialsTableTableManager get materials =>
+      $$MaterialsTableTableManager(_db, _db.materials);
+  $$MaterialSegmentsTableTableManager get materialSegments =>
+      $$MaterialSegmentsTableTableManager(_db, _db.materialSegments);
+  $$DictationAttemptsTableTableManager get dictationAttempts =>
+      $$DictationAttemptsTableTableManager(_db, _db.dictationAttempts);
 }
