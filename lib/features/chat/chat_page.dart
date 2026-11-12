@@ -1288,11 +1288,6 @@ class _TalkComposer extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
-            TranslateModePicker(
-              mode: c.translateMode,
-              onChanged: (mode) => c.setTranslateMode(mode),
-            ),
             if (c.learnerProfileEnabled) ...[
               const SizedBox(height: 6),
               Row(

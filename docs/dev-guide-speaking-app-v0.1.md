@@ -130,7 +130,7 @@ lib/
                      （/custom-scenario/new 与 /:id/edit：新建 / 编辑 / 删除）/
                      scenario_visual.dart（分类 → 图标/浅底/强调色）
     chat/            chat_page.dart / conversation_controller.dart /
-                     chat_widgets.dart（InlineHintPanel / WantToSaySheet / TranslateModePicker /
+                     chat_widgets.dart（InlineHintPanel / WantToSaySheet /
                      HintResultCard / CorrectionPanel）/ answer_actions.dart
                      （AnswerActionBar / ImprovementCard）/ reward_burst.dart（RewardBurst）/
                      copy.dart（错误文案）/ learner_profile.dart（M12 只读学习者档案聚合）
@@ -564,7 +564,7 @@ dio / plugin 异常
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
 | 自定义场景 `/custom-scenario/new`、`/:id/edit` | `ScenarioEditorPage` | `AppTextField` 表单（场景名 / 英文标题 / AI 角色 / 练习目标 / 目标表达 / 开场白 / 完成标准）、`_ChoiceChip`（分类 / 难度 / 轮数）、`_OpeningPreview`（开场白实时预览 + 试听）、底部「删除 / 保存」按钮行 |
-| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开；用户气泡外侧 `AnswerActionBar` 三枚图标 + `ImprovementCard` 页内展开）、`TranslateModePicker`、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`InlineHintPanel`（点「提示」直接展开 L3 参考答案，英文 + 中文对照，不展示提示项、不用弹层）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow`、`RewardBurst`（新增回答触发一次）、「回到最新」浮标（`_followBottom` / `_autoScrolling`） |
+| 对话 `chat` | `ChatPage` | `_ChatHeader`、`MessageBubble`（气泡操作行：左「重听/停止」、右「中文/翻译中…」；译文 / 纠错标记展开；用户气泡外侧 `AnswerActionBar` 三枚图标 + `ImprovementCard` 页内展开）、翻译失败 `ErrorBanner`（「重试翻译」）、续练提示条（`resumeNotice`「已接上」/ `needsReplyRecovery`「重试」）、`InlineHintPanel`（点「提示」直接展开 L3 参考答案，英文 + 中文对照，不展示提示项、不用弹层）、`WantToSaySheet`、`CorrectionPanel`、`_TalkComposer`、`_TalkZone`、`_TextRow`、`RewardBurst`（新增回答触发一次）、「回到最新」浮标（`_followBottom` / `_autoScrolling`） |
 | 复盘 `review` | `ReviewPage` | `TopBar`、`HighlightCard`、`CorrectionList`、`PhrasePickList`、`NextTipCard`、`ReviewDock` |
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |

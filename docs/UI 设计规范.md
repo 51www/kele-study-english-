@@ -456,7 +456,7 @@ Container(
 | 提示阶梯 Sheet | 复用 `AppBottomSheet`（32 圆角 / 遮罩 40%）；每个阶梯项白底或 `primaryWash`、12 圆角、内边距 12/10，图标 18，标题 14/600，说明 11/500，选中项右侧 16 主色勾选；底部只允许 1 个主色实心 CTA |
 | 提示结果卡 | `primaryWash` 底、无阴影、24 圆角、内边距 14/12；标签 10/600 主色深，英文正文 14/500 行高 1.5，其下一行 11/500 `inkSecondary` 中文译文（前缀「译」），辅助说明 11/500 `inkMuted`；不出现第二个主色实心按钮 |
 | 气泡操作行 | 气泡正文下方一行；「重听/停止」胶囊靠左、「中文/翻译中…」胶囊靠右，`Spacer` 分隔且最小间距 8；胶囊沿用 10/600 小按钮规格（白底 + 1px `divider`、`pill` 圆角、内边距 8/5），请求中文案置灰且不可点 |
-| 翻译三态 | 直接复用 `SegmentedControl`（浅紫底 pill、选中白底 600、轻阴影），不新增颜色或字号 |
+| 翻译三态 | 对话页不设切换栏；三态（关闭 / 点按 / 常开）仅在设置页「翻译默认方式」选择，点按翻译沿用气泡操作行胶囊规格，不新增颜色或字号 |
 | 纠错展开块 | `warning` 10% 底、12 圆角、12 内边距；原句/原因 11/500，改进句 14/500；「试听 / 删除」为 10/600 胶囊小按钮（白底 + 1px `divider`），间距 8 |
 | 文章正文 | `##` 小标题用 `AppText.section`，正文 `AppText.body` 行高 1.7、段距 12；`[图：说明]` 用 `surfaceTint` 底、12 圆角、12 内边距、11/500 灰字占位，不下载图片 |
 | 出处块 | `AppCard`（24 圆角 / 16 内边距）；标签列固定宽 64、11/500，值 13/400；原文链接 11/500 `primaryDeep` + 14 图标，整行可点 |
@@ -535,7 +535,7 @@ Container(
 | 首页 3 分钟轻量入口 | 紧跟「今天练这个」卡之后的一枚通栏 `SecondaryButton`（`Icons.bolt_rounded`），间距 12；上方 `AppText.caption` 一行说明「本周 N 次有效练习 · 轻量 M 次（轻量计入今日分钟，不计入每周 3 次）」；不新增 Tab、不新增第二个主色实心 CTA |
 | 3 分钟轻量练习页 | `PageScaffold` + `ListView`；顶部 3 段进度条同热身页；步骤说明用 `AppText.caption`，当前句 `AppText.body`，`AppTextField` + 通栏 `PrimaryButton`；完成态用 28 `success` 图标 + `AppText.cardTitle` + 一句带走的表达 + 通栏 `PrimaryButton`；全程无分数、无星级、无进度环 |
 | 进步轨迹卡 | `SectionTitle`「进步轨迹」下每张 `AppCard`（16 内边距）；首行 `AppText.cardTitle` 标题 + 右侧 `AppText.caption`「本周 N%」或「本周样本不足」；中部 88 高 `CustomPaint` 折线（2px `primary` 线 + 3.5 半径实心点 + 1px `line` 基线，样本不足的点断开不补 0）；下方 4 个 `M/D` 周标签 `AppText.caption`；底部 `ExpansionTile`「怎么算的」展开 `AppText.caption` 口径说明；连不出两个周点时整区给 `EmptyState`（文案说明「每周至少 2 次、积累两周后」），不显示单点假趋势；不画目标线、不给等级、不放排名或勋章 |
-| 一键加压行 | 对话页输入区 `TranslateModePicker` 之下一行 `Row`：两枚复用 `_ModeChip`（`Icons.alt_route_rounded`「换个角度追问」、`Icons.trending_up_rounded`「提高难度」），后接 `Expanded` 单行 `AppText.caption`（10 号、`inkMuted`）说明「只影响下一回合，不会自动发送」；选中后文案改为「下一回合：X（可取消）」并出现 `TextButton`「取消」（10 号 `primaryDeep`）；开关关闭时整行不渲染；不加新色值、不做选中态色块 |
+| 一键加压行 | 对话页输入区模式 Chip 行（语音输入 / 提示 / 我想说）之下一行 `Row`：两枚复用 `_ModeChip`（`Icons.alt_route_rounded`「换个角度追问」、`Icons.trending_up_rounded`「提高难度」），后接 `Expanded` 单行 `AppText.caption`（10 号、`inkMuted`）说明「只影响下一回合，不会自动发送」；选中后文案改为「下一回合：X（可取消）」并出现 `TextButton`「取消」（10 号 `primaryDeep`）；开关关闭时整行不渲染；不加新色值、不做选中态色块 |
 | 学习者档案设置开关 | 「设置 → 练习」分组内新增一行 `SettingRow`（`Icons.psychology_alt_outlined`），标题「学习者档案」，`subtitle` 说明用途与「关闭后回到原始对话」，`trailing` 用原生 `Switch`（`activeTrackColor = primary`）；沿用既有 `Divider` 与 4/8 网格间距 |
 
 三期组件仍只用既有色值 Token、字号 Token 与 4/8 网格间距；「已达成 N/3」「第 1 / 3 句」是真实进度，不作装饰；任何反馈位都不使用分数、等级、星级、排行榜或勋章图形。

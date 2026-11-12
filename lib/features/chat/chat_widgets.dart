@@ -9,40 +9,6 @@ import '../../domain/models/models.dart';
 import 'conversation_controller.dart';
 import 'copy.dart';
 
-/// 翻译三态：关闭（默认）/ 点按 / 常开双语字幕。
-class TranslateModePicker extends StatelessWidget {
-  const TranslateModePicker({
-    super.key,
-    required this.mode,
-    required this.onChanged,
-  });
-
-  final String mode;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final index = switch (mode) {
-      'tap' => 1,
-      'always' => 2,
-      _ => 0,
-    };
-    return Row(
-      children: [
-        Text('翻译', style: AppText.caption.copyWith(fontSize: 11, color: AppColors.inkSecondary)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SegmentedControl(
-            items: const ['关闭', '点按', '常开'],
-            index: index,
-            onChanged: (i) => onChanged(const ['off', 'tap', 'always'][i]),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// 按错误四分类给出不同文案与下一步操作。
 class ChatErrorBanner extends StatelessWidget {
   const ChatErrorBanner({

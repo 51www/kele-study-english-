@@ -158,7 +158,7 @@ class SettingsPage extends ConsumerWidget {
                 SettingRow(
                   icon: Icons.translate_rounded,
                   title: '翻译默认方式',
-                  subtitle: '关闭 / 点按 / 常开双语字幕，对话页可随时切换',
+                  subtitle: '关闭 / 点按 / 常开双语字幕，进入对话前选好默认方式',
                   value: translateLabel,
                   onTap: () => _pick(
                     context,
