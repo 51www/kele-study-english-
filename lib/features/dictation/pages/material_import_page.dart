@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/providers.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text.dart';
 import '../../../app/widgets/common.dart';
-import '../../../domain/models/models.dart';
 import '../ingest/material_import_service.dart';
 import '../ingest/subtitle_parser.dart';
 import '../providers.dart';
@@ -124,38 +122,15 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
     });
     await Future<void>.delayed(Duration.zero);
     try {
-      final import = ref.read(materialImportServiceProvider);
-      if (MaterialImportService.isBiliUrl(mediaUrl)) {
-        final settings = ref.read(settingsControllerProvider);
-        final serviceBase = settings[SettingsKeys.dictationCompanionUrl]?.trim() ?? '';
-        if (serviceBase.isEmpty) {
-          _fail('B 站链接需要配套导入服务。请先在电脑上启动配套服务，'
-              '并在「设置 → B 站导入」里填写服务地址与 Cookie。');
-          return;
-        }
-        final cookie = settings[SettingsKeys.dictationBiliCookie]?.trim() ?? '';
-        final item = await import.importBiliFromCompanion(
-          videoUrl: mediaUrl,
-          serviceBase: serviceBase,
-          cookie: cookie.isEmpty ? null : cookie,
-          title: _titleController.text,
-          onStatus: (p, stage) => setState(() {
-            _progress = p;
-            _stage = stage;
-          }),
-        );
-        _afterSuccess(item.segmentCount);
-      } else {
-        final item = await import.importFromUrl(
-          mediaUrl: mediaUrl,
-          subtitleUrl: _subtitleUrlController.text.trim().isEmpty
-              ? null
-              : _subtitleUrlController.text.trim(),
-          title: _titleController.text,
-          onProgress: (p) => setState(() => _progress = p),
-        );
-        _afterSuccess(item.segmentCount);
-      }
+      final item = await ref.read(materialImportServiceProvider).importFromUrl(
+            mediaUrl: mediaUrl,
+            subtitleUrl: _subtitleUrlController.text.trim().isEmpty
+                ? null
+                : _subtitleUrlController.text.trim(),
+            title: _titleController.text,
+            onProgress: (p) => setState(() => _progress = p),
+          );
+      _afterSuccess(item.segmentCount);
     } on MaterialImportException catch (e) {
       _fail(e.message, e.existingId);
     } on SubtitleParseException catch (e) {
@@ -193,7 +168,7 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
           Text(
-            '选一份本地音视频或填一个链接：直链 / 播客 RSS 配字幕 URL；B 站视频地址由电脑上的配套服务取回音频与字幕（设置 → B 站导入）。App 会按句切开，只播音频，不显示画面；其余平台页面不抓取。',
+            '选一份本地音视频或填一个直链，再配上对应字幕（本地选文件 / 链接填字幕 URL 或播客 RSS）。App 会按句切开，只播音频，不显示画面；B 站 / YouTube / BBC 等平台页面不抓取。',
             style: AppText.bodySecondary.copyWith(height: 1.6),
           ),
           const SizedBox(height: 16),
@@ -300,7 +275,7 @@ class _MaterialImportPageState extends ConsumerState<MaterialImportPage> {
             ),
           const SizedBox(height: 24),
           Text(
-            '素材版权归原权利人，仅供个人学习使用。只处理你有权使用的本地文件、直链（含播客 RSS）或你自行托管的 B 站配套服务取回的内容；不抓取其他平台内容、不分享、不做视频转码。',
+            '素材版权归原权利人。本功能只处理你有权使用的本地文件或直链（含播客 RSS），仅供个人学习使用，不抓取平台内容、不下载版权内容、不分享、不做视频转码。',
             style: AppText.caption.copyWith(height: 1.6),
             textAlign: TextAlign.center,
           ),
@@ -332,8 +307,8 @@ class _UrlRows extends StatelessWidget {
       children: [
         AppTextField(
         controller: mediaController,
-        label: '音视频链接 / 播客 RSS / B 站视频',
-        hint: '直链、播客 RSS 或 B 站视频地址（B 站需配套服务，见设置）',
+        label: '音视频链接 / 播客 RSS',
+        hint: '直链或播客 RSS：MP3 / M4A / WAV / MP4 等；B站/YouTube/BBC 等平台页不抓取',
         enabled: enabled,
         ),
         const SizedBox(height: 12),

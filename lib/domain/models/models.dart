@@ -532,9 +532,6 @@ class SettingsKeys {
   static const dictationContractionEquivalent = 'dictation.contractionEquivalent';
   static const dictationNumberEquivalent = 'dictation.numberEquivalent';
   static const dictationSpeed = 'dictation.speed';
-  // B 站导入：配套服务地址（局域网 Python 服务）与用户自己的 B 站 Cookie
-  static const dictationCompanionUrl = 'dictation.companionUrl';
-  static const dictationBiliCookie = 'dictation.biliCookie';
 }
 
 class ReviewCorrection {

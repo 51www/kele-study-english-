@@ -714,8 +714,6 @@ test/{subtitle_parser,segment_split,dictation_scoring,dictation_store,dictation_
 | `dictation.contractionEquivalent` | `true` | 设置 → 听写练习 → 缩写等价 |
 | `dictation.numberEquivalent` | `true` | 设置 → 听写练习 → 数字等价 |
 | `dictation.speed` | `1.0` | 设置 → 听写练习 → 默认播放速度（听写页可切 0.75x） |
-| `dictation.companionUrl` | `''` | 设置 → B 站导入 → 配套服务地址（如 `http://192.168.1.5:8787`） |
-| `dictation.biliCookie` | `''` | 设置 → B 站导入 → B 站 Cookie（CC/AI 字幕需登录） |
 
 判分规则同时显示在设置页与听写页，规则随配置变化。
 
@@ -735,6 +733,5 @@ test/{subtitle_parser,segment_split,dictation_scoring,dictation_store,dictation_
 - 需求 F11 字面写「只保留抽取出的音频片段」，预研 §6 要求避开端内转码；本轮取零转码：不导出片段文件，按时间轴裁剪播放，纯音频源文件复制到私有目录，视频源文件只记路径。
 - 需求 §12.8 Q18（无字幕 ASR 生成，流程 B）本轮不实现，仍在开放状态；无字幕时只给「后续开放」提示，不做假入口。
 - Web 端只用于页面走查：浏览器重启后不保留媒体文件，会提示重新导入；音频播放以 Android 真机为准。
-- 流程 C 链接导入已落地（M8）：`MaterialImportService.importFromUrl` 支持合法直链与播客 RSS enclosure（自动取音频与内嵌字幕）、同站点字幕猜测；命中平台域名（YouTube / BBC 等）明确拦截、提示「不抓取平台内容」，不解析网页、不绕开平台保护；之后复用 `importFiles` 同一套解析/切句/落库。导入页新增「链接导入」模式。Web 端跨域链接受 CORS 限制，以 Android 真机为准。
-- B 站导入走「路线 D：配套服务」（2026-11-11 用户决策）：导入页识别 B 站链接（bilibili.com / b23.tv）后改调 `MaterialImportService.importBiliFromCompanion`，向电脑上的配套服务（`companion/bili-helper/`，Flask + yt-dlp，协议见其 README）提交任务、轮询进度、取回 m4a 与 SRT 后复用同一套 `_createMaterial` 管线；Cookie 从设置读取并随任务下发。服务地址与 Cookie 未配置时给出可操作的提示；其他平台域名仍拦截。
+- 流程 C 链接导入已落地（M8）：`MaterialImportService.importFromUrl` 支持合法直链与播客 RSS enclosure（自动取音频与内嵌字幕）、同站点字幕猜测；命中平台域名（YouTube / B 站 / BBC 等）明确拦截、提示「不抓取平台内容」，不解析网页、不绕开平台保护；之后复用 `importFiles` 同一套解析/切句/落库。导入页新增「链接导入」模式。Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 - Android 真机逐条验收（需求 §10.2 的 11 条 MVP 回归 + 二期 M5–M8 验收）见 [真机验收清单](device-acceptance-checklist-v0.1.md)，尚未现场执行。

@@ -137,15 +137,5 @@ lib/
 - 隔离：不新增网络依赖（`dio` 已在 M1 引入）；不动对话状态机、不写 `session` / `message` / `correction`。
 - 失败处理：非 http(s)、平台页面、下载失败、空字幕均抛 `MaterialImportException` 给导入页展示，不静默失败。
 - 限制：平台专属下载器/抓取、端内转码不做；Web 端跨域链接受 CORS 限制，以 Android 真机为准。
-
-## 11. B 站导入（路线 D：配套服务，2026-11-11 用户决策）
-
-用户明确要求支持 B 站视频地址导入；本轮**不推翻**「App 本体不内置下载器、不解析网页」的边界，改为引入用户自建的配套服务承担下载：
-
-- **配套服务**：`companion/bili-helper/`（Flask + yt-dlp，Python ≥3.10，监听 `0.0.0.0:8787`），跑在用户电脑上；手机与电脑需同一局域网。协议 4 个接口：`POST /api/bili/import`（提交 `{url, cookie?}`）、`GET /api/bili/job/<id>`（进度/标题/错误）、`GET .../audio`、`GET .../subtitle`；详见其 README。
-- **App 侧**：`MaterialImportService.importBiliFromCompanion(videoUrl, serviceBase, cookie?, title?, onStatus?)` 提交任务 → 800ms 轮询 → 取回 m4a 与 SRT → 复用与本地导入完全相同的 `_createMaterial` 管线（切句、30 分钟上限、去重、落库全部继承）。导入页用 `isBiliUrl`（bilibili.com / b23.tv）分流；服务地址取 `dictation.companionUrl`，Cookie 取 `dictation.biliCookie`。
-- **Cookie**：CC/AI 字幕接口需登录态，设置页「B 站导入」分区由用户粘贴自己的 Cookie（至少含 `SESSDATA`），随任务明文传给配套服务；服务端只把它写进本次任务临时目录内的 Netscape `cookies.txt`、交给 yt-dlp 的 `cookiefile`（新版 yt-dlp 已弃用 Cookie HTTP 头，避免 `Deprecated Feature` 告警与跨域作用域问题），字幕接口仍用带 Cookie 的请求头，任务结束即删除、不持久化；不填则只能拿公开字幕，服务报错文案引导补配。
-- **边界与合规口径**：下载由用户在自己电脑上运行的配套服务完成，App 不内置、不捆绑下载器；页面保留「素材版权归原权利人，仅供个人学习」声明；其他平台（YouTube / BBC 等）仍拦截。
-- **失败处理**：服务不可达、任务报错、地址非法均抛 `MaterialImportException` 原因透传；音频与字幕被 App 取走后服务端临时文件即清理，未取走 30 分钟过期。
-- **验证**：`test/companion_import_test.dart` 用假 Dio adapter 覆盖「提交→轮询→取回→落库」「服务报错透传」「服务不可达」「地址非法」四条；`test/url_import_test.dart` 平台拦截用例同步更新（B 站提示配套服务，YouTube/BBC 仍提示不抓取）。真机需验证：同一局域网连通、Cookie 拿 AI 字幕、多 P `?p=` 分 P。
+- **B 站导入（2026-11-12 撤销）**：曾按用户决策实现「配套 Python 服务（yt-dlp）+ App 端 companion 导入路线」，次日用户决定放弃该功能，相关代码（`companion/bili-helper/`、`importBiliFromCompanion`、设置项 `dictation.companionUrl` / `dictation.biliCookie`）已整体移除，B 站域名恢复为平台拦截；文档不再保留设计描述，仅留此撤销记录。
 | §9.1 技术风险 | §1、§8 |

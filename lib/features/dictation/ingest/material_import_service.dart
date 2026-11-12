@@ -133,10 +133,8 @@ class MaterialImportService {
       );
     }
     if (_isPlatformHost(uri.host)) {
-      throw MaterialImportException(
-        _isBiliHost(uri.host)
-            ? 'B 站链接需要配套导入服务：请先在电脑上启动配套服务，并在「设置 → B 站导入」里填写服务地址。'
-            : '本应用不抓取平台内容（如 YouTube / BBC 等）。请使用你有权使用的直链，或导入本地文件。',
+      throw const MaterialImportException(
+        '本应用不抓取平台内容（如 B 站 / YouTube / BBC 等）。请使用你有权使用的直链，或导入本地文件。',
       );
     }
 
@@ -227,134 +225,6 @@ class MaterialImportService {
       return data;
     } on DioException catch (e) {
       throw MaterialImportException('下载失败：${e.message ?? e.type.name}');
-    }
-  }
-
-  // ---- 路线 D：B 站视频（配套服务） ----
-
-  /// 识别 B 站视频链接（www / m.bilibili.com / b23.tv 短链）。
-  static bool isBiliUrl(String url) {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null) return false;
-    return _isBiliHost(uri.host);
-  }
-
-  static bool _isBiliHost(String host) {
-    final h = host.toLowerCase();
-    final bare = h.startsWith('www.') ? h.substring(4) : h;
-    return bare == 'bilibili.com' ||
-        bare.endsWith('.bilibili.com') ||
-        bare == 'b23.tv';
-  }
-
-  /// 通过配套 Python 服务导入 B 站视频：服务用 yt-dlp 拉取音频与 SRT，
-  /// 本方法提交任务、轮询状态、拉回两份文件后复用与本地导入完全相同的
-  /// 「字幕解析 → 切句 → 落库」管线。服务协议见 companion/bili-helper/README.md。
-  Future<MaterialItem> importBiliFromCompanion({
-    required String videoUrl,
-    required String serviceBase,
-    String? cookie,
-    String? title,
-    void Function(double progress, String stage)? onStatus,
-  }) async {
-    final base = serviceBase.trim().replaceAll(RegExp(r'/+$'), '');
-    final baseUri = Uri.tryParse(base);
-    if (baseUri == null ||
-        (baseUri.scheme != 'http' && baseUri.scheme != 'https') ||
-        baseUri.host.isEmpty) {
-      throw const MaterialImportException(
-        '配套服务地址不正确，请在「设置 → B 站导入」里填写如 http://192.168.1.5:8787 的地址。',
-      );
-    }
-
-    onStatus?.call(0, '联系配套服务');
-    final submit = await _companionJson(() async {
-      final resp = await dio.post(
-        '$base/api/bili/import',
-        data: <String, dynamic>{'url': videoUrl.trim(), 'cookie': cookie},
-      );
-      return resp.data;
-    }, base);
-    final jobId = submit['jobId'];
-    if (jobId is! String || jobId.isEmpty) {
-      throw MaterialImportException(
-        '配套服务没有接受任务：${submit['error'] ?? '返回内容异常'}',
-      );
-    }
-
-    String videoTitle = '';
-    String audioExt = 'm4a';
-    while (true) {
-      final status = await _companionJson(() async {
-        final resp = await dio.get('$base/api/bili/job/$jobId');
-        return resp.data;
-      }, base);
-      final state = status['state']?.toString() ?? 'error';
-      onStatus?.call(
-        (double.tryParse('${status['progress']}') ?? 0),
-        status['stage']?.toString().isEmpty ?? true
-            ? '处理中'
-            : status['stage'].toString(),
-      );
-      if (state == 'error') {
-        final error = status['error']?.toString() ?? '';
-        throw MaterialImportException(
-          error.isEmpty ? '配套服务处理失败，请重试。' : error,
-        );
-      }
-      if (state == 'done') {
-        videoTitle = status['title']?.toString() ?? '';
-        audioExt = status['audioExt']?.toString() ?? 'm4a';
-        break;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-    }
-
-    final mediaBytes = await _download(
-      '$base/api/bili/job/$jobId/audio',
-      (c, t) => onStatus?.call(t > 0 ? c / t * 0.5 : 0, '取回音频'),
-    );
-    final subtitleBytes = await _download(
-      '$base/api/bili/job/$jobId/subtitle',
-      (c, t) => onStatus?.call(t > 0 ? 0.5 + c / t * 0.5 : 0.5, '取回字幕'),
-    );
-
-    onStatus?.call(1, '解析字幕并切句');
-    final effectiveTitle = title?.trim().isNotEmpty ?? false
-        ? title!.trim()
-        : (videoTitle.isEmpty ? 'B站视频' : videoTitle);
-    return _createMaterial(
-      mediaBytes: mediaBytes,
-      mediaName: 'audio.$audioExt',
-      mediaExt: audioExt,
-      subtitleBytes: subtitleBytes,
-      subtitleName: 'subtitle.srt',
-      title: effectiveTitle,
-      webUri: null,
-    );
-  }
-
-  /// 配套服务返回 JSON 时兜底解析：任何网络错误都转成可理解的导入失败原因。
-  Future<Map<String, dynamic>> _companionJson(
-    Future<Object?> Function() request,
-    String base,
-  ) async {
-    try {
-      final data = await request();
-      if (data is Map) return Map<String, dynamic>.from(data);
-      return <String, dynamic>{};
-    } on DioException catch (e) {
-      final code = e.response?.statusCode;
-      final body = e.response?.data;
-      String detail = '';
-      if (body is Map && body['error'] != null) {
-        detail = body['error'].toString();
-      }
-      throw MaterialImportException(
-        '配套服务（$base）${code == null ? '连不上' : '返回错误 $code'}'
-        '${detail.isEmpty ? '' : '：$detail'}。'
-        '请确认服务已启动、手机与电脑在同一网络、地址填写正确。',
-      );
     }
   }
 
