@@ -1,6 +1,56 @@
 import '../../domain/models/models.dart';
 import 'llm_models.dart';
 
+/// 「优化句子」与「提示」两条旁路共用的会话快照。
+///
+/// 范围严格封闭（2026-11-12 口径）：只包含**本次会话**的消息与**场景卡**字段，
+/// 不含用户水平、纠错/复盘、表达本、其它会话与提示结果。快照只读地拼进旁路
+/// prompt，旁路结果仍只放内存，绝不写回主对话历史、不自动发送。
+class SessionContext {
+  const SessionContext({this.scenario, required this.history});
+
+  final Scenario? scenario;
+  final List<MessageRecord> history;
+
+  /// 旁路与主链路的窗口都按「消息条数」计算，取值各自独立。
+  static const int sideHistoryMessages = 12;
+  static const int mainHistoryMessages = 16;
+
+  /// 场景卡字段：不含 branchHint（控制逻辑）、不含 level（全局设置）。
+  String get scenarioBlock {
+    final s = scenario;
+    if (s == null) return 'Scenario: daily conversation';
+    return <String>[
+      'Scenario: ${s.titleZh} / ${s.titleEn}',
+      'AI role: ${s.aiRole}',
+      'Learner goal: ${s.userGoal}',
+      'Success criteria: ${s.successCriteria}',
+      if (s.targetPhrases.isNotEmpty)
+        'Target phrases: ${s.targetPhrases.join(' | ')}',
+    ].join('\n');
+  }
+
+  /// 本次会话尾部消息，按时间正序；过滤失败消息、空文本与提示结果。
+  String get transcript {
+    final recent = history
+        .where((m) => m.status == 'ok' && m.textEn.trim().isNotEmpty && !m.isHint)
+        .toList();
+    final sliced = recent.length > sideHistoryMessages
+        ? recent.sublist(recent.length - sideHistoryMessages)
+        : recent;
+    if (sliced.isEmpty) return '(no conversation yet)';
+    return sliced
+        .map((m) => '${m.role == 'user' ? 'User' : 'AI'}: ${m.textEn.trim()}')
+        .join('\n');
+  }
+
+  String render() => '''
+$scenarioBlock
+
+Recent conversation (oldest first, last line is the latest):
+$transcript''';
+}
+
 class PromptBuilder {
   PromptBuilder._();
 
@@ -29,7 +79,7 @@ Rules:
     required Scenario scenario,
     required String level,
     required List<MessageRecord> history,
-    int maxTurns = 16,
+    int maxTurns = SessionContext.mainHistoryMessages,
   }) {
     final recent = history.where((m) => m.status == 'ok' && m.textEn.trim().isNotEmpty).toList();
     final sliced = recent.length > maxTurns ? recent.sublist(recent.length - maxTurns) : recent;
@@ -83,15 +133,15 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
 
   /// L2–L4 提示（L1 是重听/慢速，不请求模型）。
   ///
-  /// 只用「最近一条 AI 发言 + 本轮指令」组成独立上下文，绝不复用主对话历史。
+  /// 读取当前会话快照（本次会话消息 + 场景卡）作为旁路输入；结果是独立上下文，
+  /// 只放内存，不写回主对话历史、不自动发送、不影响 AI 下一句生成。
   /// 一次请求同时返回英文提示与中文对照，避免再单独发一次翻译请求。
   static List<LlmMessage> hintMessages({
-    required Scenario? scenario,
+    required SessionContext context,
     required int level,
-    required List<MessageRecord> history,
     String chinese = '',
   }) {
-    final lastAi = history.lastWhere(
+    final lastAi = context.history.lastWhere(
       (m) => m.role == 'assistant' && !m.isHint,
       orElse: () => const MessageRecord(
         id: 'empty',
@@ -122,8 +172,13 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
         'Output exactly TWO plain-text lines and nothing else:\n'
         'EN: <the English hint only>\n'
         'ZH: <a concise Simplified Chinese translation of that English hint only>\n'
-        'No reasoning, no markdown, no quotes, no extra lines. '
-        'Scenario: ${scenario?.titleZh ?? 'daily conversation'}.',
+        'No reasoning, no markdown, no quotes, no extra lines.\n\n'
+        'Conversation context (current session only):\n${context.render()}\n\n'
+        'Rules:\n'
+        '- The hint must continue THIS conversation: keep the same topic, refer back to what '
+        'was just said when natural, and match the role, register and wording already used.\n'
+        '- Never repeat, quote or summarise earlier lines; never explain the context or your choice.\n'
+        '- Do not fall back to a generic textbook sentence that ignores the conversation.',
       ),
       LlmMessage.user(prompt),
     ];
@@ -142,8 +197,9 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
     ];
   }
 
-  /// 回答句「优化句子」：与提示 / 翻译一样走独立上下文，不进主对话历史。
-  static List<LlmMessage> improveMessages(String text, Scenario? scenario) {
+  /// 回答句「优化句子」：与提示共用同一份会话快照；结果只放内存，
+  /// 不写回主对话历史、不自动发送。
+  static List<LlmMessage> improveMessages(String text, SessionContext context) {
     return [
       LlmMessage.system(
         'You are a friendly English speaking coach. Rewrite the learner sentence to sound '
@@ -151,12 +207,14 @@ Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes,
         'Output exactly TWO plain-text lines and nothing else:\n'
         'BETTER: <the improved English sentence only>\n'
         'WHY: <one short Simplified Chinese reason, max 25 words>\n'
-        'No reasoning, no markdown, no quotes, no extra lines.',
+        'No reasoning, no markdown, no quotes, no extra lines.\n\n'
+        'Conversation context (current session only):\n${context.render()}\n\n'
+        'Rules:\n'
+        '- The rewrite must fit THIS conversation: keep the same topic and register, and keep '
+        'the names, places or details already mentioned; do not replace them with generic examples.\n'
+        '- Never repeat or quote the conversation, never explain the context or your reasoning.',
       ),
-      LlmMessage.user(
-        'Scenario: ${scenario?.titleZh ?? 'daily conversation'}\n'
-        'Learner said: "$text"',
-      ),
+      LlmMessage.user('Learner said: "$text"'),
     ];
   }
 

@@ -254,7 +254,7 @@ features ──▶ domain/usecases ──▶ services（接口）
 | 6 | 结束录音 | `AudioRecorder.stop()` → `AsrEngine` | 系统识别直接返回 final；Whisper 走文件 |
 | 7 | 识别结果 | `SystemAsrEngine` | 空结果 → `emptyTranscript`，保留录音可重试 1 次 |
 | 8 | 用户消息落库 | `SessionRepository.appendMessage()` | 事务开始 |
-| 9 | 组装上下文 | `PromptBuilder` | 场景卡 + 水平 + 最近 6 轮 + 本回合用户文本 |
+| 9 | 组装上下文 | `PromptBuilder` | 场景卡 + 水平 + 最近 16 条消息 + 本回合用户文本 |
 | 10 | 请求模型（流式） | `LlmClient.stream()` | 6s 无首字 → 转非流式 |
 | 11 | 增量文本 | `SseParser` → Controller | 更新 AI 气泡，`isStreaming=true` |
 | 12 | 句末切分 | Controller | 遇 `. ? !` 且 ≥8 字符 → 入 TTS 队列 |
@@ -324,8 +324,11 @@ dio / plugin 异常
 | 旁路 | 触发 | 走哪层 | 是否进对话历史 |
 |---|---|---|---|
 | 翻译 | 点按 AI / 提示气泡 / 常开字幕 | `_sideChat` → `LlmClient.chat`（非流式）→ 失败降级 `streamChat` → `PromptBuilder.cleanTranslation` | 否 |
-| 提示 | 点「提示」 | `requestHint(3)` → `_sideChat`（`EN:` / `ZH:` 两行）→ `HintParser` | 否 |
+| 提示 | 点「提示」 | `requestHint(3)` → `PromptBuilder.hintMessages(SessionContext)` → `_sideChat`（`EN:` / `ZH:` 两行）→ `HintParser` | 否 |
+| 优化句子 | 回答句操作栏 | `optimizeSentence` → `PromptBuilder.improveMessages(text, SessionContext)` → `_sideChat`（`BETTER:` / `WHY:` 两行）→ `ImprovementParser` | 否 |
 | 我想说 | 中文输入 | `RequestWantToSay` → `_sideChat` | 否 |
+
+> 2026-11-12 补充：提示与优化共用 `SessionContext`（`lib/services/llm/prompt_builder.dart`），由 Controller 在 `requestHint` / `optimizeSentence` 两处从内存 `messages` 与 `scenario` 构造，只读地拼进旁路 prompt。快照 = 本次会话尾部 12 条消息 + 场景卡 5 字段（中英文标题 / AI 角色 / 练习目标 / 完成标准 / 目标表达）；不含用户水平、branchHint、纠错/复盘、表达本、其它会话与提示结果。主对话窗口仍为尾部 16 条消息，两个常量取值独立。结果仍只放内存，不写回主历史、不自动发送。`test/prompt_builder_test.dart` 覆盖字段范围、超窗截断、空历史、两行输出契约与两种语境的对照差异。
 
 旁路统一走 `_config()`，与对话**共用同一 Base URL / 模型 / 密钥**，没有独立翻译模型。`max_tokens`：翻译 512、提示与「我想说」384；`temperature=0.3`；整体超时 `Timeouts.sideRequest = 25s`。提示若未按 `EN:` / `ZH:` 两行返回，会补一次翻译旁路（最多 1 次）。非流式正文提取按 `message.content` → `reasoning_content` → `delta.content` → `choices[0].text` 兜底，仍为空则改走与主对话相同的流式路径重取一次（鉴权 / 404 / 限流不降级）。
 
@@ -623,11 +626,11 @@ dio / plugin 异常
 | 异步 | Controller 内所有请求持有 `CancelToken`/句柄，页面销毁必须取消 |
 | 时间 | 存毫秒时间戳，展示层格式化；`duration_sec` 用有效时长 |
 | 文案 | 错误文案集中在 `features/<x>/copy.dart`，service 不返回中文 |
-| 测试边界 | 必须有单测：`SseParser`、`LlmErrorMapper`、`PromptBuilder`、`TtsCache` 键生成、判分/统计（M3 后） |
+| 测试边界 | 必须有单测：`SseParser`、`LlmErrorMapper`、`PromptBuilder`、`TtsCache` 键生成、判分/统计（M3 后）；`PromptBuilder` 已由 `test/prompt_builder_test.dart` 落地（会话快照 / 窗口 / 两处旁路 prompt） |
 | 真机门槛 | 每个里程碑结束必须在一台 Android 真机跑通，不以模拟器代替 |
 | 依赖新增 | 引入新包前记录：用途、许可证、最近更新时间、替代方案 |
 | 超时 | 一律引用 `core/timeouts.dart`；新增等待时间先改表再改代码，禁止在业务层写 `Duration(seconds: x)` |
-| 旁路请求 | 提示 / 翻译 /「我想说」走 `PromptBuilder` 的独立消息数组，复用对话的 `LlmConfig`，绝不写入主 `message` 历史，也不自动发送；译文必须校验含中文，失败保留英文并给「重试翻译」 |
+| 旁路请求 | 提示 / 翻译 /「我想说」/ 优化走 `PromptBuilder` 的独立消息数组，复用对话的 `LlmConfig`；其中提示与优化只读地携带 `SessionContext` 会话快照，绝不写入主 `message` 历史，也不自动发送；译文必须校验含中文，失败保留英文并给「重试翻译」 |
 | 朗读缓存 | 内存 LRU 与落盘索引共用同一哈希键；清理入口必须同时清内存、文件与 `tts_cache` 表 |
 
 ---

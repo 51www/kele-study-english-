@@ -1083,9 +1083,8 @@ class ConversationController extends ChangeNotifier {
     try {
       final reply = await _sideChat(
         PromptBuilder.hintMessages(
-          scenario: scenario,
+          context: SessionContext(scenario: scenario, history: messages),
           level: chosen,
-          history: messages,
           chinese: chinese.trim(),
         ),
         maxTokens: 384,
@@ -1214,7 +1213,10 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     try {
       final reply = await _sideChat(
-        PromptBuilder.improveMessages(text, scenario),
+        PromptBuilder.improveMessages(
+          text,
+          SessionContext(scenario: scenario, history: messages),
+        ),
         maxTokens: 256,
       );
       final parsed = ImprovementParser.parse(reply.text);
@@ -1289,7 +1291,8 @@ class ConversationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  /// 旁路请求：提示 / 翻译 /「我想说」走独立消息数组，绝不混入主历史。
+  /// 旁路请求：提示 / 翻译 /「我想说」走独立消息数组；提示与优化只读地携带
+  /// 当前会话快照，旁路结果绝不写回主历史，也不自动发送。
   ///
   /// 与对话共用 `_config()`（同一地址 / 模型 / 密钥）；默认非流式，但思考型模型
   /// 常把非流式的 token 预算耗在 reasoning 上导致正文为空，此时降级到与对话
