@@ -24,4 +24,9 @@ const defaultSettings = <String, String>{
   SettingsKeys.dictationContractionEquivalent: 'true',
   SettingsKeys.dictationNumberEquivalent: 'true',
   SettingsKeys.dictationSpeed: '1.0',
+  // 三期：复练判分与每日上限（Q7 / Q8 默认口径）
+  SettingsKeys.reviewSpeakPassThreshold: '80',
+  SettingsKeys.reviewDailyLimit: '5',
+  // 三期 M12：主对话学习者档案，默认开启、可一键关闭
+  SettingsKeys.learnerProfileEnabled: 'true',
 };

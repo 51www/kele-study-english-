@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +10,9 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import '../../services/llm/llm_models.dart';
 import '../../services/tts/tts_engine.dart';
+import 'scenario_goals.dart';
 
 /// 自定义场景：新建 / 编辑 / 删除，数据在对话页与内置场景表现完全一致。
 ///
@@ -41,6 +45,9 @@ class _ScenarioEditorPageState extends ConsumerState<ScenarioEditorPage> {
     TextEditingController(),
     TextEditingController(),
   ];
+
+  final _brief = TextEditingController();
+  bool _generating = false;
 
   String _category = '日常';
   bool _useCustomCategory = false;
@@ -105,6 +112,7 @@ class _ScenarioEditorPageState extends ConsumerState<ScenarioEditorPage> {
 
   @override
   void dispose() {
+    _brief.dispose();
     _openingLine.removeListener(_refreshPreview);
     for (final controller in [
       _titleZh,
@@ -125,6 +133,120 @@ class _ScenarioEditorPageState extends ConsumerState<ScenarioEditorPage> {
     ref.invalidate(scenarioLibraryProvider);
     ref.invalidate(homeDataProvider);
     if (_editing) ref.invalidate(scenarioProvider(widget.scenarioId!));
+  }
+
+  Map<String, dynamic> _extractJson(String raw) {
+    final start = raw.indexOf('{');
+    final end = raw.lastIndexOf('}');
+    if (start < 0 || end <= start) throw const FormatException('没有 JSON');
+    final decoded = jsonDecode(raw.substring(start, end + 1));
+    if (decoded is! Map) throw const FormatException('不是对象');
+    return decoded.cast<String, dynamic>();
+  }
+
+  /// 一句话生成场景卡：只填表单，不直接落库；失败可随时回退手填。
+  Future<void> _generateFromBrief() async {
+    final brief = _brief.text.trim();
+    if (brief.isEmpty) {
+      showAppToast(context, '先写一句想练的场合', error: true);
+      return;
+    }
+    setState(() => _generating = true);
+    try {
+      final profile = await ref.read(llmProfileRepositoryProvider).loadOrCreate();
+      final key = await ref.read(keyStoreProvider).read(profile.keyRef);
+      if (key == null || key.isEmpty) {
+        if (mounted) {
+          showAppToast(context, '还没配置模型密钥，先手动填或去「我的」配置', error: true);
+        }
+        return;
+      }
+      final config = LlmConfig(
+        baseUrl: profile.baseUrl,
+        apiKey: key,
+        model: profile.model,
+      );
+      final reply = await ref.read(llmClientProvider).chat(
+        config,
+        <LlmMessage>[
+          LlmMessage.system(
+            'You design English speaking practice scenarios. '
+            'Reply with one JSON object only, no markdown, no explanation.',
+          ),
+          LlmMessage.user('''
+Learner describes a situation in Chinese: $brief
+
+Return this JSON:
+{"title_zh":"<short Chinese name>","title_en":"<short English title>",
+"category":"<one of 日常/工作/旅行/社交/健康/观点>","level":"<A2|B1|B2>",
+"ai_role":"<who the AI plays, in English>","user_goal":"<learner goal, in English>",
+"opening_line":"<one short English opening line the AI says first>",
+"target_phrases":["<3 to 5 useful English phrases>"],
+"expected_turns":8,"branch_hint":"<optional English hint>",
+"goals":["<3 short, checkable Chinese sub-goals for this conversation>"]}
+
+goals must be three small things the learner can actually tick off, not vague aims.
+'''),
+        ],
+        maxTokens: 700,
+        temperature: 0.6,
+      );
+      final json = _extractJson(reply.text);
+      String text(String key, [String fallback = '']) =>
+          (json[key] ?? fallback).toString().trim();
+      List<String> list(String key) {
+        final value = json[key];
+        if (value is! List) return <String>[];
+        return value
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+
+      final phrases = list('target_phrases').take(5).toList();
+      if (phrases.isEmpty) throw const FormatException('缺少目标表达');
+      final goals = list('goals').take(3).toList();
+      final category = text('category');
+      if (_categories.contains(category)) {
+        _useCustomCategory = false;
+        _category = category;
+      } else if (category.isNotEmpty) {
+        _useCustomCategory = true;
+        _customCategory.text = category;
+      }
+      final level = text('level');
+      if (_levels.contains(level)) _level = level;
+      final turns = int.tryParse(text('expected_turns'));
+      if (turns != null && _turns.contains(turns)) _expectedTurns = turns;
+      _titleZh.text = text('title_zh', brief);
+      _titleEn.text = text('title_en');
+      _aiRole.text = text('ai_role');
+      _userGoal.text = text('user_goal');
+      _openingLine.text = text('opening_line');
+      _successCriteria.text = goals.length >= 2
+          ? goalsToCriteria(goals)
+          : '用英语完成「${text('title_zh', brief)}」的完整对话。';
+      _branchHint = text('branch_hint').isEmpty ? null : text('branch_hint');
+      for (final controller in _phrases) {
+        controller.dispose();
+      }
+      _phrases
+        ..clear()
+        ..addAll(phrases.map((e) => TextEditingController(text: e)));
+      while (_phrases.length < 3) {
+        _phrases.add(TextEditingController());
+      }
+      if (mounted) {
+        setState(() {});
+        showAppToast(context, '场景卡已生成，检查一下就能保存');
+      }
+    } on Object {
+      if (mounted) {
+        showAppToast(context, '没能生成场景卡，直接在下面手动填就行', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
   }
 
   Future<void> _save() async {
@@ -278,6 +400,36 @@ class _ScenarioEditorPageState extends ConsumerState<ScenarioEditorPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('一句话生成场景卡', style: AppText.cardTitle),
+                            const SizedBox(height: 6),
+                            const Text(
+                              '描述想练的场合，AI 帮你把角色、开场白和目标都填好；生成后还能继续手动改。',
+                              style: AppText.caption,
+                            ),
+                            const SizedBox(height: 10),
+                            AppTextField(
+                              controller: _brief,
+                              hint: '例如：下周主持项目周会，需要催进度',
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: SecondaryButton(
+                                label: _generating ? '生成中…' : '生成场景卡',
+                                icon: Icons.auto_awesome_rounded,
+                                onPressed: () {
+                                  if (!_generating) _generateFromBrief();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         '按自己的练习情境搭一个场景，保存后就能直接开始对话。',
                         style: AppText.caption,

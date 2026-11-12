@@ -1,4 +1,5 @@
 import '../../domain/models/models.dart';
+import '../../features/chat/learner_profile.dart';
 import 'llm_models.dart';
 
 /// 「优化句子」与「提示」两条旁路共用的会话快照。
@@ -54,8 +55,15 @@ $transcript''';
 class PromptBuilder {
   PromptBuilder._();
 
-  static String chatSystem(Scenario scenario, String level) {
-    return '''
+  /// 主对话系统提示词。`profile` / `pressure` 都为空时，返回值与 M8 结束时逐字一致
+  /// （需求 §0.3 第 8 条：关闭学习者档案后对话行为不变）。
+  static String chatSystem(
+    Scenario scenario,
+    String level, {
+    LearnerProfile? profile,
+    String? pressure,
+  }) {
+    final base = '''
 You are playing a role in an English speaking practice app. Stay in character at all times.
 
 Scenario: ${scenario.titleZh} / ${scenario.titleEn}
@@ -73,6 +81,32 @@ Rules:
 - Never mention that you are an AI, a model, or a prompt.
 - If the user is silent or unclear, gently prompt them with a simple question.
 '''.trim();
+
+    final additions = <String>[];
+    if (profile != null) {
+      final buffer = StringBuffer();
+      if (!profile.isEmpty) {
+        buffer.writeln('Learner profile (read-only, recent sessions only):');
+        buffer.writeln(profile.render());
+        buffer.writeln();
+      }
+      buffer.writeln('Rules for variety (main conversation only):');
+      buffer.writeln('- Do not reuse an opening line or the same question type '
+          'from earlier sessions on this topic.');
+      buffer.writeln('- Move one step deeper: ask about a reason, a detail or a '
+          'follow-up instead of restarting the scenario.');
+      buffer.writeln('- Still keep 1-2 short sentences and ask exactly one '
+          'question; never list or quiz the learner.');
+      buffer.writeln('- Use the profile only to guide your next turn; never '
+          'mention, quote or explain it to the learner.');
+      additions.add(buffer.toString().trim());
+    }
+    if (pressure != null && pressure.trim().isNotEmpty) {
+      additions.add('Next-turn instruction (explicit learner request, applies once): '
+          '${pressure.trim()}');
+    }
+    if (additions.isEmpty) return base;
+    return '$base\n\n${additions.join('\n\n')}';
   }
 
   static List<LlmMessage> chatMessages({
@@ -80,11 +114,13 @@ Rules:
     required String level,
     required List<MessageRecord> history,
     int maxTurns = SessionContext.mainHistoryMessages,
+    LearnerProfile? profile,
+    String? pressure,
   }) {
     final recent = history.where((m) => m.status == 'ok' && m.textEn.trim().isNotEmpty).toList();
     final sliced = recent.length > maxTurns ? recent.sublist(recent.length - maxTurns) : recent;
     return [
-      LlmMessage.system(chatSystem(scenario, level)),
+      LlmMessage.system(chatSystem(scenario, level, profile: profile, pressure: pressure)),
       for (final message in sliced)
         LlmMessage(
           message.role == 'user' ? 'user' : 'assistant',
@@ -126,7 +162,12 @@ Reply exactly in this format:
 - <another phrase>
 下次: <one actionable tip in Chinese>
 
+补充（可选，只为上面出现过的纠错填写）:
+1. <original sentence, exactly as above> || <why a Chinese speaker would say it this way> || <casual everyday version> || <formal business version> || <when to use which, in Chinese>
+
 Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes, still give 1 improvement.
+补充 may be omitted entirely. If present, each line has exactly 5 parts separated by ||, and part 1 must match a 原句 from 纠错.
+For casual daily scenarios the formal version may repeat the casual one. Keep each part under 25 words.
 '''),
     ];
   }
@@ -265,6 +306,7 @@ class ReviewParser {
     var nextTip = '';
     final corrections = <ReviewCorrection>[];
     final phrases = <String>[];
+    final supplements = <String, List<String>>{};
     var section = '';
 
     for (final line in lines) {
@@ -288,6 +330,10 @@ class ReviewParser {
         section = 'tip';
         continue;
       }
+      if (normalized.startsWith('补充')) {
+        section = 'supplement';
+        continue;
+      }
 
       if (section == 'corrections') {
         final cleaned = normalized.replaceFirst(RegExp(r'^\d+[\.\)、]\s*'), '');
@@ -302,12 +348,37 @@ class ReviewParser {
       } else if (section == 'phrases') {
         final cleaned = normalized.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim();
         if (cleaned.isNotEmpty) phrases.add(cleaned);
+      } else if (section == 'supplement') {
+        final cleaned = normalized.replaceFirst(RegExp(r'^\d+[\.\)、]\s*'), '');
+        final parts = cleaned.split('||').map(_strip).toList();
+        if (parts.length >= 5 && parts[0].isNotEmpty) {
+          supplements[parts[0].toLowerCase()] = parts;
+        }
       } else if (section == 'highlight') {
         highlight = '$highlight $normalized'.trim();
       } else if (section == 'tip') {
         nextTip = '$nextTip $normalized'.trim();
       }
     }
+
+    // 补充段按「原句」回填；缺段 / 模型没输出时扩展字段保持 null，复盘页退回原三列。
+    List<ReviewCorrection> enrich(List<ReviewCorrection> list) =>
+        list.map((correction) {
+          final extra = supplements[correction.original.trim().toLowerCase()];
+          if (extra == null) return correction;
+          String? value(int index) => index < extra.length && extra[index].isNotEmpty
+              ? extra[index]
+              : null;
+          return ReviewCorrection(
+            original: correction.original,
+            improved: correction.improved,
+            reasonZh: correction.reasonZh,
+            causeZh: value(1),
+            casual: value(2),
+            formal: value(3),
+            registerNote: value(4),
+          );
+        }).toList();
 
     if (corrections.isEmpty && raw.trim().isNotEmpty) {
       // 模型可能没有按格式返回：标记 degraded，复盘页显示「未能生成总结 + 重试」。
@@ -322,7 +393,7 @@ class ReviewParser {
 
     return ReviewResult(
       highlight: highlight.isEmpty ? '你完成了这次练习，继续保持。' : highlight,
-      corrections: corrections.take(4).toList(),
+      corrections: enrich(corrections.take(4).toList()),
       phrases: phrases.take(5).toList(),
       nextTip: nextTip.isEmpty ? '下次练习试着多用今天学到的表达。' : nextTip,
     );

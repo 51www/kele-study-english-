@@ -10,6 +10,7 @@ import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
 import '../scenario/scenario_visual.dart';
+import '../retention/today_card.dart';
 import '../../domain/models/models.dart';
 
 class HomePage extends ConsumerWidget {
@@ -124,6 +125,20 @@ class _Body extends StatelessWidget {
           weekSessions: data.weekSessions,
           target: target,
           progress: progress.toDouble(),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '本周 ${data.weekSessions} 次有效练习 · 3 分钟轻量 ${data.quickWeekSessions} 次'
+          '（轻量计入今日分钟，不计入每周 3 次，每次需 ≥8 分钟）',
+          style: AppText.caption,
+        ),
+        const SizedBox(height: 20),
+        const TodayPracticeCard(),
+        const SizedBox(height: 12),
+        SecondaryButton(
+          label: '只有 3 分钟？来一轮轻量练习',
+          icon: Icons.bolt_rounded,
+          onPressed: () => context.push('/quick'),
         ),
         const SizedBox(height: 26),
         SectionTitle(

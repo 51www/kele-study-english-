@@ -227,6 +227,27 @@ class DictationAttempts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 三期：待复练队列。v2 → v3 只新建这一张表，老表不 ALTER / 不回填。
+class ReviewItemRows extends Table {
+  @override
+  String get tableName => 'review_item';
+
+  TextColumn get id => text()();
+  TextColumn get sourceType => text().named('source_type')();
+  TextColumn get sourceId => text().named('source_id')();
+  TextColumn get textEn => text().named('text_en')();
+  TextColumn get textZh => text().named('text_zh').nullable()();
+  IntColumn get dueAt => integer().named('due_at')();
+  IntColumn get stage => integer()();
+  IntColumn get streak => integer()();
+  IntColumn get consolidated => integer()();
+  IntColumn get lastPassed => integer().named('last_passed').nullable()();
+  IntColumn get createdAt => integer().named('created_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Scenarios,
   Sessions,
@@ -240,6 +261,7 @@ class DictationAttempts extends Table {
   Materials,
   MaterialSegments,
   DictationAttempts,
+  ReviewItemRows,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -250,9 +272,10 @@ class AppDatabase extends _$AppDatabase {
     return AppDatabase(NativeDatabase.createInBackground(file));
   }
 
-  /// v1 → v2 只新增二期三张表；老表不 ALTER / 不 DROP / 不回填。
+  /// v1 → v2 只新增二期三张表；v2 → v3 只新增三期一张表。
+  /// 老表一律不 ALTER / 不 DROP / 不回填，保证覆盖安装零数据丢失。
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -264,6 +287,9 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(materials);
             await m.createTable(materialSegments);
             await m.createTable(dictationAttempts);
+          }
+          if (from < 3) {
+            await m.createTable(reviewItemRows);
           }
         },
         beforeOpen: (details) async {

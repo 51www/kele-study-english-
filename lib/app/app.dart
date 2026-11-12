@@ -15,10 +15,13 @@ import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/me/me_page.dart';
 import '../features/phrasebook/phrasebook_page.dart';
+import '../features/quick/quick_page.dart';
+import '../features/retention/retention_page.dart';
 import '../features/review/review_page.dart';
 import '../features/scenario/scenario_editor_page.dart';
 import '../features/scenario/scenario_library_page.dart';
 import '../features/scenario/scenario_page.dart';
+import '../features/scenario/warmup_page.dart';
 import '../features/settings/asr_config_page.dart';
 import '../features/settings/data_settings_page.dart';
 import '../features/settings/model_config_page.dart';
@@ -50,6 +53,14 @@ final router = GoRouter(
       path: '/scenario/:id',
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, state) => _slide(ScenarioPage(scenarioId: state.pathParameters['id']!)),
+    ),
+    // 三期：课前 60 秒热身，默认可跳过、不阻塞「开始练习」。
+    GoRoute(
+      path: '/scenario/:id/warmup',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, state) => _slide(
+        WarmupPage(scenarioId: state.pathParameters['id']!),
+      ),
     ),
     GoRoute(
       path: '/custom-scenario/new',
@@ -144,6 +155,17 @@ final router = GoRouter(
           mode: state.uri.queryParameters['mode'] == 'wrong' ? 'wrong' : 'all',
         ),
       ),
+    ),
+    // 三期：复练中心与 3 分钟轻量练习，挂在 ShellRoute 外，不改底部 4 Tab。
+    GoRoute(
+      path: '/retention',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const RetentionPage()),
+    ),
+    GoRoute(
+      path: '/quick',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const QuickPracticePage()),
     ),
     GoRoute(path: '/', redirect: (_, __) => '/home'),
   ],

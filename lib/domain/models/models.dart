@@ -532,6 +532,11 @@ class SettingsKeys {
   static const dictationContractionEquivalent = 'dictation.contractionEquivalent';
   static const dictationNumberEquivalent = 'dictation.numberEquivalent';
   static const dictationSpeed = 'dictation.speed';
+  // 三期：90 秒开口复述的判分阈值与每日待复练上限（与听写判分解耦）
+  static const reviewSpeakPassThreshold = 'review.speakPassThreshold';
+  static const reviewDailyLimit = 'review.dailyLimit';
+  // 三期 M12：主对话只读学习者档案开关（需求 §0.3 第 8 条，默认开启）
+  static const learnerProfileEnabled = 'practice.learnerProfileEnabled';
 }
 
 class ReviewCorrection {
@@ -539,22 +544,41 @@ class ReviewCorrection {
     required this.original,
     required this.improved,
     required this.reasonZh,
+    this.causeZh,
+    this.casual,
+    this.formal,
+    this.registerNote,
   });
 
   final String original;
   final String improved;
   final String reasonZh;
 
-  Map<String, Object?> toJson() => {
+  /// 三期扩展（全部可空）：中式直译成因、口语日常版、正式商务版、适用场合。
+  /// 模型未按格式输出时保持 null，复盘页退回原三列展示。
+  final String? causeZh;
+  final String? casual;
+  final String? formal;
+  final String? registerNote;
+
+  Map<String, Object?> toJson() => <String, Object?>{
         'original': original,
         'improved': improved,
         'reason': reasonZh,
+        if (causeZh != null) 'cause': causeZh,
+        if (casual != null) 'casual': casual,
+        if (formal != null) 'formal': formal,
+        if (registerNote != null) 'registerNote': registerNote,
       };
 
   factory ReviewCorrection.fromJson(Map<String, Object?> json) => ReviewCorrection(
         original: (json['original'] ?? '') as String,
         improved: (json['improved'] ?? '') as String,
         reasonZh: (json['reason'] ?? '') as String,
+        causeZh: json['cause'] as String?,
+        casual: json['casual'] as String?,
+        formal: json['formal'] as String?,
+        registerNote: json['registerNote'] as String?,
       );
 }
 
@@ -566,6 +590,8 @@ class ReviewResult {
     required this.nextTip,
     this.promptCount = 0,
     this.degraded = false,
+    this.takeawayText,
+    this.goalResults = const <String>[],
   });
 
   final String highlight;
@@ -577,13 +603,20 @@ class ReviewResult {
   /// 模型没有按约定格式返回时的兜底标记；复盘页据此显示「重试」。
   final bool degraded;
 
-  Map<String, Object?> toJson() => {
+  /// 三期扩展（全部可空）：今日一条的文本、场景目标的达成状态。
+  /// 旧版本 review_json 没有这些键，解码时保持默认值。
+  final String? takeawayText;
+  final List<String> goalResults;
+
+  Map<String, Object?> toJson() => <String, Object?>{
         'highlight': highlight,
         'corrections': corrections.map((e) => e.toJson()).toList(),
         'phrases': phrases,
         'nextTip': nextTip,
         'promptCount': promptCount,
         if (degraded) 'degraded': true,
+        if (takeawayText != null) 'takeawayText': takeawayText,
+        if (goalResults.isNotEmpty) 'goalResults': goalResults,
       };
 
   String encode() => jsonEncode(toJson());
@@ -597,6 +630,10 @@ class ReviewResult {
         nextTip: (json['nextTip'] ?? '') as String,
         promptCount: (json['promptCount'] as num?)?.toInt() ?? 0,
         degraded: json['degraded'] == true,
+        takeawayText: json['takeawayText'] as String?,
+        goalResults: ((json['goalResults'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
       );
 
   static ReviewResult? tryDecode(String? raw) {

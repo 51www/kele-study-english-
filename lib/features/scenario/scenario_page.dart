@@ -8,6 +8,7 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import 'scenario_goals.dart';
 import 'scenario_visual.dart';
 
 class ScenarioPage extends ConsumerStatefulWidget {
@@ -164,23 +165,45 @@ class _ScenarioPageState extends ConsumerState<ScenarioPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    SectionTitle(title: '完成标准'),
+                    SectionTitle(title: '本场 3 件小事'),
                     const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 3),
-                          child: Icon(Icons.check_circle_rounded, size: 16, color: AppColors.success),
+                    for (final entry in scenarioGoals(scenario).asMap().entries)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryWash,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${entry.key + 1}',
+                                style: AppText.caption.copyWith(
+                                  color: AppColors.primaryDeep,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                entry.value,
+                                style: AppText.bodySecondary.copyWith(height: 1.5),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            scenario.successCriteria,
-                            style: AppText.bodySecondary.copyWith(height: 1.6),
-                          ),
-                        ),
-                      ],
+                      ),
+                    const SizedBox(height: 4),
+                    SecondaryButton(
+                      label: '先热个身（60 秒）',
+                      icon: Icons.record_voice_over_rounded,
+                      onPressed: () => context.push('/scenario/${scenario.id}/warmup'),
                     ),
                     const SizedBox(height: 12),
                     Row(

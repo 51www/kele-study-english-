@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
+import '../../features/retention/review_item.dart';
 import 'app_database.dart'
     hide
         Scenario,
@@ -384,9 +385,45 @@ class DriftStore implements LocalStore {
     );
   }
 
+  // ── 三期：待复练队列 ───────────────────────────────────────────────────
+
+  @override
+  Future<List<ReviewItem>> reviewItems() async {
+    final rows = await _query('SELECT * FROM review_item ORDER BY due_at ASC');
+    return rows.map(ReviewItem.fromMap).toList();
+  }
+
+  @override
+  Future<void> upsertReviewItem(ReviewItem item) async {
+    final m = item.toMap();
+    await _exec(
+      'INSERT OR REPLACE INTO review_item (id, source_type, source_id, text_en, text_zh, '
+      'due_at, stage, streak, consolidated, last_passed, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [
+        m['id'], m['source_type'], m['source_id'], m['text_en'], m['text_zh'],
+        m['due_at'], m['stage'], m['streak'], m['consolidated'], m['last_passed'],
+        m['created_at'],
+      ],
+    );
+  }
+
+  @override
+  Future<void> deleteReviewItem(String id) async {
+    await _exec('DELETE FROM review_item WHERE id = ?', [id]);
+  }
+
+  @override
+  Future<void> deleteReviewItemsForSource(String sourceType, String sourceId) async {
+    await _exec(
+      'DELETE FROM review_item WHERE source_type = ? AND source_id = ?',
+      [sourceType, sourceId],
+    );
+  }
+
   @override
   Future<void> clearAll() async {
     for (final table in [
+      'review_item',
       'dictation_attempt',
       'material_segment',
       'material',

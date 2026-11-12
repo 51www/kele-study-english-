@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
+import '../../features/retention/review_item.dart';
 import 'defaults.dart';
 import 'local_store.dart';
 import 'seeds.dart';
@@ -27,6 +28,7 @@ class WebStore implements LocalStore {
   static const _materialKey = 'store.material';
   static const _segmentKey = 'store.material_segment';
   static const _attemptKey = 'store.dictation_attempt';
+  static const _reviewItemKey = 'store.review_item';
 
   static Future<WebStore> open() async {
     final prefs = await SharedPreferences.getInstance();
@@ -338,9 +340,31 @@ class WebStore implements LocalStore {
   Future<void> upsertAttempt(DictationAttempt attempt) =>
       _upsert(_attemptKey, 'id', attempt.toMap());
 
+  // ── 三期：待复练队列 ───────────────────────────────────────────────────
+
+  @override
+  Future<List<ReviewItem>> reviewItems() =>
+      Future.value(_read(_reviewItemKey).map(ReviewItem.fromMap).toList());
+
+  @override
+  Future<void> upsertReviewItem(ReviewItem item) =>
+      _upsert(_reviewItemKey, 'id', item.toMap());
+
+  @override
+  Future<void> deleteReviewItem(String id) =>
+      _delete(_reviewItemKey, (row) => row['id'] == id);
+
+  @override
+  Future<void> deleteReviewItemsForSource(String sourceType, String sourceId) =>
+      _delete(
+        _reviewItemKey,
+        (row) => row['source_type'] == sourceType && row['source_id'] == sourceId,
+      );
+
   @override
   Future<void> clearAll() async {
     for (final key in [
+      _reviewItemKey,
       _materialKey,
       _segmentKey,
       _attemptKey,

@@ -6834,6 +6834,663 @@ class DictationAttemptsCompanion extends UpdateCompanion<DictationAttempt> {
   }
 }
 
+class $ReviewItemRowsTable extends ReviewItemRows
+    with TableInfo<$ReviewItemRowsTable, ReviewItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReviewItemRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _textEnMeta = const VerificationMeta('textEn');
+  @override
+  late final GeneratedColumn<String> textEn = GeneratedColumn<String>(
+    'text_en',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _textZhMeta = const VerificationMeta('textZh');
+  @override
+  late final GeneratedColumn<String> textZh = GeneratedColumn<String>(
+    'text_zh',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
+  @override
+  late final GeneratedColumn<int> dueAt = GeneratedColumn<int>(
+    'due_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageMeta = const VerificationMeta('stage');
+  @override
+  late final GeneratedColumn<int> stage = GeneratedColumn<int>(
+    'stage',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _streakMeta = const VerificationMeta('streak');
+  @override
+  late final GeneratedColumn<int> streak = GeneratedColumn<int>(
+    'streak',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _consolidatedMeta = const VerificationMeta(
+    'consolidated',
+  );
+  @override
+  late final GeneratedColumn<int> consolidated = GeneratedColumn<int>(
+    'consolidated',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastPassedMeta = const VerificationMeta(
+    'lastPassed',
+  );
+  @override
+  late final GeneratedColumn<int> lastPassed = GeneratedColumn<int>(
+    'last_passed',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceType,
+    sourceId,
+    textEn,
+    textZh,
+    dueAt,
+    stage,
+    streak,
+    consolidated,
+    lastPassed,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'review_item';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReviewItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTypeMeta);
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('text_en')) {
+      context.handle(
+        _textEnMeta,
+        textEn.isAcceptableOrUnknown(data['text_en']!, _textEnMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_textEnMeta);
+    }
+    if (data.containsKey('text_zh')) {
+      context.handle(
+        _textZhMeta,
+        textZh.isAcceptableOrUnknown(data['text_zh']!, _textZhMeta),
+      );
+    }
+    if (data.containsKey('due_at')) {
+      context.handle(
+        _dueAtMeta,
+        dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueAtMeta);
+    }
+    if (data.containsKey('stage')) {
+      context.handle(
+        _stageMeta,
+        stage.isAcceptableOrUnknown(data['stage']!, _stageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stageMeta);
+    }
+    if (data.containsKey('streak')) {
+      context.handle(
+        _streakMeta,
+        streak.isAcceptableOrUnknown(data['streak']!, _streakMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_streakMeta);
+    }
+    if (data.containsKey('consolidated')) {
+      context.handle(
+        _consolidatedMeta,
+        consolidated.isAcceptableOrUnknown(
+          data['consolidated']!,
+          _consolidatedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_consolidatedMeta);
+    }
+    if (data.containsKey('last_passed')) {
+      context.handle(
+        _lastPassedMeta,
+        lastPassed.isAcceptableOrUnknown(data['last_passed']!, _lastPassedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReviewItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReviewItemRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      textEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_en'],
+      )!,
+      textZh: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_zh'],
+      ),
+      dueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_at'],
+      )!,
+      stage: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stage'],
+      )!,
+      streak: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}streak'],
+      )!,
+      consolidated: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}consolidated'],
+      )!,
+      lastPassed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_passed'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReviewItemRowsTable createAlias(String alias) {
+    return $ReviewItemRowsTable(attachedDatabase, alias);
+  }
+}
+
+class ReviewItemRow extends DataClass implements Insertable<ReviewItemRow> {
+  final String id;
+  final String sourceType;
+  final String sourceId;
+  final String textEn;
+  final String? textZh;
+  final int dueAt;
+  final int stage;
+  final int streak;
+  final int consolidated;
+  final int? lastPassed;
+  final int createdAt;
+  const ReviewItemRow({
+    required this.id,
+    required this.sourceType,
+    required this.sourceId,
+    required this.textEn,
+    this.textZh,
+    required this.dueAt,
+    required this.stage,
+    required this.streak,
+    required this.consolidated,
+    this.lastPassed,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['source_type'] = Variable<String>(sourceType);
+    map['source_id'] = Variable<String>(sourceId);
+    map['text_en'] = Variable<String>(textEn);
+    if (!nullToAbsent || textZh != null) {
+      map['text_zh'] = Variable<String>(textZh);
+    }
+    map['due_at'] = Variable<int>(dueAt);
+    map['stage'] = Variable<int>(stage);
+    map['streak'] = Variable<int>(streak);
+    map['consolidated'] = Variable<int>(consolidated);
+    if (!nullToAbsent || lastPassed != null) {
+      map['last_passed'] = Variable<int>(lastPassed);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  ReviewItemRowsCompanion toCompanion(bool nullToAbsent) {
+    return ReviewItemRowsCompanion(
+      id: Value(id),
+      sourceType: Value(sourceType),
+      sourceId: Value(sourceId),
+      textEn: Value(textEn),
+      textZh: textZh == null && nullToAbsent
+          ? const Value.absent()
+          : Value(textZh),
+      dueAt: Value(dueAt),
+      stage: Value(stage),
+      streak: Value(streak),
+      consolidated: Value(consolidated),
+      lastPassed: lastPassed == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPassed),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ReviewItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReviewItemRow(
+      id: serializer.fromJson<String>(json['id']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      textEn: serializer.fromJson<String>(json['textEn']),
+      textZh: serializer.fromJson<String?>(json['textZh']),
+      dueAt: serializer.fromJson<int>(json['dueAt']),
+      stage: serializer.fromJson<int>(json['stage']),
+      streak: serializer.fromJson<int>(json['streak']),
+      consolidated: serializer.fromJson<int>(json['consolidated']),
+      lastPassed: serializer.fromJson<int?>(json['lastPassed']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'textEn': serializer.toJson<String>(textEn),
+      'textZh': serializer.toJson<String?>(textZh),
+      'dueAt': serializer.toJson<int>(dueAt),
+      'stage': serializer.toJson<int>(stage),
+      'streak': serializer.toJson<int>(streak),
+      'consolidated': serializer.toJson<int>(consolidated),
+      'lastPassed': serializer.toJson<int?>(lastPassed),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  ReviewItemRow copyWith({
+    String? id,
+    String? sourceType,
+    String? sourceId,
+    String? textEn,
+    Value<String?> textZh = const Value.absent(),
+    int? dueAt,
+    int? stage,
+    int? streak,
+    int? consolidated,
+    Value<int?> lastPassed = const Value.absent(),
+    int? createdAt,
+  }) => ReviewItemRow(
+    id: id ?? this.id,
+    sourceType: sourceType ?? this.sourceType,
+    sourceId: sourceId ?? this.sourceId,
+    textEn: textEn ?? this.textEn,
+    textZh: textZh.present ? textZh.value : this.textZh,
+    dueAt: dueAt ?? this.dueAt,
+    stage: stage ?? this.stage,
+    streak: streak ?? this.streak,
+    consolidated: consolidated ?? this.consolidated,
+    lastPassed: lastPassed.present ? lastPassed.value : this.lastPassed,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ReviewItemRow copyWithCompanion(ReviewItemRowsCompanion data) {
+    return ReviewItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      textEn: data.textEn.present ? data.textEn.value : this.textEn,
+      textZh: data.textZh.present ? data.textZh.value : this.textZh,
+      dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+      stage: data.stage.present ? data.stage.value : this.stage,
+      streak: data.streak.present ? data.streak.value : this.streak,
+      consolidated: data.consolidated.present
+          ? data.consolidated.value
+          : this.consolidated,
+      lastPassed: data.lastPassed.present
+          ? data.lastPassed.value
+          : this.lastPassed,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewItemRow(')
+          ..write('id: $id, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('textEn: $textEn, ')
+          ..write('textZh: $textZh, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('stage: $stage, ')
+          ..write('streak: $streak, ')
+          ..write('consolidated: $consolidated, ')
+          ..write('lastPassed: $lastPassed, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sourceType,
+    sourceId,
+    textEn,
+    textZh,
+    dueAt,
+    stage,
+    streak,
+    consolidated,
+    lastPassed,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReviewItemRow &&
+          other.id == this.id &&
+          other.sourceType == this.sourceType &&
+          other.sourceId == this.sourceId &&
+          other.textEn == this.textEn &&
+          other.textZh == this.textZh &&
+          other.dueAt == this.dueAt &&
+          other.stage == this.stage &&
+          other.streak == this.streak &&
+          other.consolidated == this.consolidated &&
+          other.lastPassed == this.lastPassed &&
+          other.createdAt == this.createdAt);
+}
+
+class ReviewItemRowsCompanion extends UpdateCompanion<ReviewItemRow> {
+  final Value<String> id;
+  final Value<String> sourceType;
+  final Value<String> sourceId;
+  final Value<String> textEn;
+  final Value<String?> textZh;
+  final Value<int> dueAt;
+  final Value<int> stage;
+  final Value<int> streak;
+  final Value<int> consolidated;
+  final Value<int?> lastPassed;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const ReviewItemRowsCompanion({
+    this.id = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.textEn = const Value.absent(),
+    this.textZh = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.stage = const Value.absent(),
+    this.streak = const Value.absent(),
+    this.consolidated = const Value.absent(),
+    this.lastPassed = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReviewItemRowsCompanion.insert({
+    required String id,
+    required String sourceType,
+    required String sourceId,
+    required String textEn,
+    this.textZh = const Value.absent(),
+    required int dueAt,
+    required int stage,
+    required int streak,
+    required int consolidated,
+    this.lastPassed = const Value.absent(),
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       sourceType = Value(sourceType),
+       sourceId = Value(sourceId),
+       textEn = Value(textEn),
+       dueAt = Value(dueAt),
+       stage = Value(stage),
+       streak = Value(streak),
+       consolidated = Value(consolidated),
+       createdAt = Value(createdAt);
+  static Insertable<ReviewItemRow> custom({
+    Expression<String>? id,
+    Expression<String>? sourceType,
+    Expression<String>? sourceId,
+    Expression<String>? textEn,
+    Expression<String>? textZh,
+    Expression<int>? dueAt,
+    Expression<int>? stage,
+    Expression<int>? streak,
+    Expression<int>? consolidated,
+    Expression<int>? lastPassed,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceId != null) 'source_id': sourceId,
+      if (textEn != null) 'text_en': textEn,
+      if (textZh != null) 'text_zh': textZh,
+      if (dueAt != null) 'due_at': dueAt,
+      if (stage != null) 'stage': stage,
+      if (streak != null) 'streak': streak,
+      if (consolidated != null) 'consolidated': consolidated,
+      if (lastPassed != null) 'last_passed': lastPassed,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReviewItemRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sourceType,
+    Value<String>? sourceId,
+    Value<String>? textEn,
+    Value<String?>? textZh,
+    Value<int>? dueAt,
+    Value<int>? stage,
+    Value<int>? streak,
+    Value<int>? consolidated,
+    Value<int?>? lastPassed,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ReviewItemRowsCompanion(
+      id: id ?? this.id,
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
+      textEn: textEn ?? this.textEn,
+      textZh: textZh ?? this.textZh,
+      dueAt: dueAt ?? this.dueAt,
+      stage: stage ?? this.stage,
+      streak: streak ?? this.streak,
+      consolidated: consolidated ?? this.consolidated,
+      lastPassed: lastPassed ?? this.lastPassed,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (textEn.present) {
+      map['text_en'] = Variable<String>(textEn.value);
+    }
+    if (textZh.present) {
+      map['text_zh'] = Variable<String>(textZh.value);
+    }
+    if (dueAt.present) {
+      map['due_at'] = Variable<int>(dueAt.value);
+    }
+    if (stage.present) {
+      map['stage'] = Variable<int>(stage.value);
+    }
+    if (streak.present) {
+      map['streak'] = Variable<int>(streak.value);
+    }
+    if (consolidated.present) {
+      map['consolidated'] = Variable<int>(consolidated.value);
+    }
+    if (lastPassed.present) {
+      map['last_passed'] = Variable<int>(lastPassed.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewItemRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('textEn: $textEn, ')
+          ..write('textZh: $textZh, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('stage: $stage, ')
+          ..write('streak: $streak, ')
+          ..write('consolidated: $consolidated, ')
+          ..write('lastPassed: $lastPassed, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6852,6 +7509,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $DictationAttemptsTable dictationAttempts =
       $DictationAttemptsTable(this);
+  late final $ReviewItemRowsTable reviewItemRows = $ReviewItemRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6869,6 +7527,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     materials,
     materialSegments,
     dictationAttempts,
+    reviewItemRows,
   ];
 }
 
@@ -10318,6 +10977,337 @@ typedef $$DictationAttemptsTableProcessedTableManager =
       DictationAttempt,
       PrefetchHooks Function()
     >;
+typedef $$ReviewItemRowsTableCreateCompanionBuilder =
+    ReviewItemRowsCompanion Function({
+      required String id,
+      required String sourceType,
+      required String sourceId,
+      required String textEn,
+      Value<String?> textZh,
+      required int dueAt,
+      required int stage,
+      required int streak,
+      required int consolidated,
+      Value<int?> lastPassed,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$ReviewItemRowsTableUpdateCompanionBuilder =
+    ReviewItemRowsCompanion Function({
+      Value<String> id,
+      Value<String> sourceType,
+      Value<String> sourceId,
+      Value<String> textEn,
+      Value<String?> textZh,
+      Value<int> dueAt,
+      Value<int> stage,
+      Value<int> streak,
+      Value<int> consolidated,
+      Value<int?> lastPassed,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$ReviewItemRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReviewItemRowsTable> {
+  $$ReviewItemRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get textEn => $composableBuilder(
+    column: $table.textEn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get textZh => $composableBuilder(
+    column: $table.textZh,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stage => $composableBuilder(
+    column: $table.stage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get streak => $composableBuilder(
+    column: $table.streak,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get consolidated => $composableBuilder(
+    column: $table.consolidated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastPassed => $composableBuilder(
+    column: $table.lastPassed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReviewItemRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReviewItemRowsTable> {
+  $$ReviewItemRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get textEn => $composableBuilder(
+    column: $table.textEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get textZh => $composableBuilder(
+    column: $table.textZh,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stage => $composableBuilder(
+    column: $table.stage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get streak => $composableBuilder(
+    column: $table.streak,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get consolidated => $composableBuilder(
+    column: $table.consolidated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastPassed => $composableBuilder(
+    column: $table.lastPassed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReviewItemRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReviewItemRowsTable> {
+  $$ReviewItemRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get textEn =>
+      $composableBuilder(column: $table.textEn, builder: (column) => column);
+
+  GeneratedColumn<String> get textZh =>
+      $composableBuilder(column: $table.textZh, builder: (column) => column);
+
+  GeneratedColumn<int> get dueAt =>
+      $composableBuilder(column: $table.dueAt, builder: (column) => column);
+
+  GeneratedColumn<int> get stage =>
+      $composableBuilder(column: $table.stage, builder: (column) => column);
+
+  GeneratedColumn<int> get streak =>
+      $composableBuilder(column: $table.streak, builder: (column) => column);
+
+  GeneratedColumn<int> get consolidated => $composableBuilder(
+    column: $table.consolidated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastPassed => $composableBuilder(
+    column: $table.lastPassed,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ReviewItemRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReviewItemRowsTable,
+          ReviewItemRow,
+          $$ReviewItemRowsTableFilterComposer,
+          $$ReviewItemRowsTableOrderingComposer,
+          $$ReviewItemRowsTableAnnotationComposer,
+          $$ReviewItemRowsTableCreateCompanionBuilder,
+          $$ReviewItemRowsTableUpdateCompanionBuilder,
+          (
+            ReviewItemRow,
+            BaseReferences<_$AppDatabase, $ReviewItemRowsTable, ReviewItemRow>,
+          ),
+          ReviewItemRow,
+          PrefetchHooks Function()
+        > {
+  $$ReviewItemRowsTableTableManager(
+    _$AppDatabase db,
+    $ReviewItemRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReviewItemRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReviewItemRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReviewItemRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String> textEn = const Value.absent(),
+                Value<String?> textZh = const Value.absent(),
+                Value<int> dueAt = const Value.absent(),
+                Value<int> stage = const Value.absent(),
+                Value<int> streak = const Value.absent(),
+                Value<int> consolidated = const Value.absent(),
+                Value<int?> lastPassed = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewItemRowsCompanion(
+                id: id,
+                sourceType: sourceType,
+                sourceId: sourceId,
+                textEn: textEn,
+                textZh: textZh,
+                dueAt: dueAt,
+                stage: stage,
+                streak: streak,
+                consolidated: consolidated,
+                lastPassed: lastPassed,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sourceType,
+                required String sourceId,
+                required String textEn,
+                Value<String?> textZh = const Value.absent(),
+                required int dueAt,
+                required int stage,
+                required int streak,
+                required int consolidated,
+                Value<int?> lastPassed = const Value.absent(),
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewItemRowsCompanion.insert(
+                id: id,
+                sourceType: sourceType,
+                sourceId: sourceId,
+                textEn: textEn,
+                textZh: textZh,
+                dueAt: dueAt,
+                stage: stage,
+                streak: streak,
+                consolidated: consolidated,
+                lastPassed: lastPassed,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReviewItemRowsTable, ReviewItemRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReviewItemRowsTable,
+                    ReviewItemRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReviewItemRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReviewItemRowsTable,
+      ReviewItemRow,
+      $$ReviewItemRowsTableFilterComposer,
+      $$ReviewItemRowsTableOrderingComposer,
+      $$ReviewItemRowsTableAnnotationComposer,
+      $$ReviewItemRowsTableCreateCompanionBuilder,
+      $$ReviewItemRowsTableUpdateCompanionBuilder,
+      (
+        ReviewItemRow,
+        BaseReferences<_$AppDatabase, $ReviewItemRowsTable, ReviewItemRow>,
+      ),
+      ReviewItemRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10346,4 +11336,6 @@ class $AppDatabaseManager {
       $$MaterialSegmentsTableTableManager(_db, _db.materialSegments);
   $$DictationAttemptsTableTableManager get dictationAttempts =>
       $$DictationAttemptsTableTableManager(_db, _db.dictationAttempts);
+  $$ReviewItemRowsTableTableManager get reviewItemRows =>
+      $$ReviewItemRowsTableTableManager(_db, _db.reviewItemRows);
 }

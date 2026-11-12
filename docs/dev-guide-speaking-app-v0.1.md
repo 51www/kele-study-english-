@@ -133,7 +133,7 @@ lib/
                      chat_widgets.dart（InlineHintPanel / WantToSaySheet / TranslateModePicker /
                      HintResultCard / CorrectionPanel）/ answer_actions.dart
                      （AnswerActionBar / ImprovementCard）/ reward_burst.dart（RewardBurst）/
-                     copy.dart（错误文案）
+                     copy.dart（错误文案）/ learner_profile.dart（M12 只读学习者档案聚合）
     review/          review_page.dart
     history/         history_page.dart（详情复用 /review/:id）
     phrasebook/      phrasebook_page.dart（添加 / 编辑 / 朗读 / 删除 / 初始表达空态）
@@ -495,6 +495,7 @@ dio / plugin 异常
 | `asr.experimental.baseUrl` | setting | `https://aiping.cn/api/v1` | `http(s)://` 开头 | 回落默认值 |
 | `asr.experimental.model` | setting | `MiMo-V2.6-Flash` | 必填 | 回落默认值 |
 | `asr_experimental_api_key` | SecureStorage | 空 | 留空复用对话密钥 | — |
+| `practice.learnerProfileEnabled` | setting | `true` | 布尔字符串 `'true'` / `'false'` | 关闭后主对话 `chatSystem` 回到 M8 原文；设置 → 练习 →「学习者档案」开关 |
 
 ### 5.1 发布配置（包名与签名）
 
@@ -738,3 +739,108 @@ test/{subtitle_parser,segment_split,dictation_scoring,dictation_store,dictation_
 - Web 端只用于页面走查：浏览器重启后不保留媒体文件，会提示重新导入；音频播放以 Android 真机为准。
 - 流程 C 链接导入已落地（M8）：`MaterialImportService.importFromUrl` 支持合法直链与播客 RSS enclosure（自动取音频与内嵌字幕）、同站点字幕猜测；命中平台域名（YouTube / B 站 / BBC 等）明确拦截、提示「不抓取平台内容」，不解析网页、不绕开平台保护；之后复用 `importFiles` 同一套解析/切句/落库。导入页新增「链接导入」模式。Web 端跨域链接受 CORS 限制，以 Android 真机为准。
 - Android 真机逐条验收（需求 §10.2 的 11 条 MVP 回归 + 二期 M5–M8 验收）见 [真机验收清单](device-acceptance-checklist-v0.1.md)，尚未现场执行。
+
+---
+
+## 12. 三期模块（2026-11-12 补）
+
+> 只登记三期增量；§1–§11 的 MVP / 二期结构不变。本节是 §1、§2、§4、§5、§6.3 的集中增补。索引见 [三期里程碑清单](milestones-phase3-retention-v0.1.md)，组件规格见 [UI 设计规范](UI%20设计规范.md) §3.4「三期新增组件规格」。
+
+### 12.1 目录结构（新增）
+
+```text
+lib/
+├─ domain/models/models.dart              ReviewResult / ReviewCorrection 扩展可空字段（零改表）
+├─ data/db/app_database.dart              review_item 表 + schemaVersion 3 + onUpgrade 只建表
+├─ data/db/{local_store,drift_store,web_store}.dart   三期 CRUD、clearAll、reviewItemsProvider 孤儿过滤
+├─ app/providers.dart                     reviewItems / dueReviewItems / todayPlan / syncRetentionSources
+└─ features/
+   ├─ retention/
+   │  ├─ review_item.dart                 ReviewItem 模型 + ReviewScheduler 固定阶梯 1/3/7/14 天
+   │  ├─ practice_card.dart              「今日一条」90 秒开口练习卡（ASR + 键盘 + 离线判分）
+   │  ├─ today_card.dart                 首页「今天练这个」规则卡
+   │  └─ retention_page.dart             复练中心（队列 / 反馈横幅 / 来源补充）
+   ├─ review/goal_checklist.dart         本场目标自评，结果写回 session.review_json
+   └─ scenario/
+      ├─ scenario_goals.dart             26 个内置场景的 3 条目标 + 解析/序列化
+      ├─ scenario_editor_page.dart       一句话生成场景卡（LLM 生成后填表，不直接落库）
+      ├─ scenario_page.dart              「本场 3 件小事」+ 热身入口
+      └─ warmup_page.dart                课前 60 秒热身（听 → 跟读弱判定 → 开练）
+test/{review_retention,dictation_migration,milestone10}_test.dart
+```
+
+### 12.2 模块职责与依赖
+
+| 模块 | 职责 | 不做什么 |
+|---|---|---|
+| `retention/review_item` | 纯 Dart 固定阶梯排程、到期筛选、确定性选取、来源去重 | 不联网、不用模型、不做完整 SM-2 / 难度系数 |
+| `retention/practice_card` | ASR 复述或键盘输入 → `DictationScorer.score` 判对 → 写回队列 | 不打分、不评级、不新增 `/chat/completions` 请求 |
+| `app/providers` 三期部分 | 首页推荐纯规则聚合、孤儿复习项过滤、表达本 / 错句本入队 | 不读其它会话内容进 prompt（M12 解锁前） |
+| `scenario/scenario_goals` | 内置场景 3 条可见目标；自建场景从 `success_criteria` 反解析 | 不改 26 个种子、不改表、不覆盖用户自建场景 |
+| `review/goal_checklist` | 3 条目标自评，`done`/`todo` 写回 `review_json.goalResults` | 不做分数、不做模型判定、不改 `correction` 表 |
+| `scenario/warmup_page` | 3 句核心表达、TTS 朗读、关键词弱判定 | 不打分、不创建会话、不阻塞「开始练习」 |
+
+### 12.3 表字段（`schemaVersion = 3`）
+
+| 表 | 字段 |
+|---|---|
+| `review_item` | `id` PK、`source_type`（`correction` / `phrase` / `segment`）、`source_id`、`text_en`、`text_zh`、`due_at`、`stage`、`streak`、`consolidated`、`last_passed`、`created_at` |
+
+`onUpgrade`：`from < 2` 建二期 3 张表，`from < 3` 只 `createTable(reviewItemRows)`；不 `ALTER` / `DROP` / 回填。`clearAll` 先删 `review_item`。复盘扩展字段（中式成因、日常/正式两版、适用场合、`takeawayText`、`goalResults`）全部走已有 `session.review_json`，`correction` 表保持原 8 列不变；旧 JSON 缺键时解码为默认值。
+
+### 12.4 配置项（追加）
+
+| Key | 默认 | 界面位置 |
+|---|---|---|
+| `review.speakPassThreshold` | `80` | 练习卡「判分规则」行（与 `dictation.passThreshold` 解耦） |
+| `review.dailyLimit` | `5` | 复练中心到期筛选的每日上限，当前不在设置页暴露 |
+
+> 已知差异：这两项只落在 `defaults.dart` 与练习卡/复练中心文案，**未进设置页**（§3 要求「设置页文案」）。判分规则对使用者可见；若后续要做可调，补设置页分组。
+
+### 12.5 UI → Flutter 映射（§6.3 增补）
+
+| 页面 | 路由 | 组件 |
+|---|---|---|
+| 首页「今天练这个」 | `/home` 内卡片 | `TodayPracticeCard`，不新增 Tab |
+| 复练中心 | `/retention` | `TakeawayPracticeCard`、队列行、页面级反馈横幅 |
+| 场景详情目标区 | `/scenario/:id` 内 | 3 条编号目标行 + `SecondaryButton` 热身入口 |
+| 课前热身 | `/scenario/:id/warmup` | 3 段进度条、听一遍、弱判定反馈、跳过 |
+| 自定义场景编辑器 | `/custom-scenario/new`、`/custom-scenario/:id/edit` | 顶部「一句话生成场景卡」 |
+| 复盘页 | `/review/:id` 内 | 改法卡扩展信息块、`GoalChecklistCard` |
+
+### 12.6 已知差异与未复验项
+
+- Q5 原口径写「26 个内置场景 `success_criteria` 统一改写为 3 条编号清单、靠启动幂等 upsert 生效」；实现改为独立常量表 `kBuiltinGoals` + `scenarioGoals()`。行为等价（内置 3 条、自建从 `success_criteria` 反解析），但零改种子、零改表，且避免 upsert 覆盖用户自建 / 历史数据。
+- 热身完成后跳回 `/scenario/:id`，由用户点「开始练习」进对话；未直接创建 session，以免改 `ConversationController` 主状态机（三期隔离原则第 2 条）。
+- 一句话生成场景只在填完表单后由用户显式保存；生成失败回退手填，不落半成品。成功路径需真实模型密钥，Web 走查未端到端覆盖。
+- Web 端只用于页面走查：ASR 按麦复述、TTS 朗读、覆盖安装 v2→v3 以 Android 真机为准；Edge TTS 在受限网络下 WebSocket 403，热身页已验证降级不崩。
+- 三期新增组件的视觉规格见 UI 设计规范 §3.4，包含 M9 复练组件的补登记。
+
+### 12.7 M11 增补（3 分钟轻量模式与进步轨迹）
+
+| 项 | 落点 |
+|---|---|
+| 目录 | `features/quick/quick_page.dart`（3 步离线向导）、`features/me/metrics.dart`（纯函数）、`features/me/trend_section.dart`（折线 + 口径说明） |
+| 路由 | `/quick`，挂在 `ShellRoute` 外；首页「今天练这个」卡下一枚 `SecondaryButton` 进入，≤2 次点击开始 |
+| 会话标记 | 轻量会话写 `session` 表：`durationSec=180`、`turnCount=3`、`status=completed`、`model_name='quick-3min'`（常量 `quickSessionTag`，**零改表**）。首页 `homeDataProvider` 集中过滤：轻量计入今日分钟、不计入 `weekSessions`；新增 `HomeData.quickWeekSessions` 与一行可见口径说明 |
+| 趋势数据 | `trendsProvider` 从 `session` / `correction` / `message` 三张既有表聚合，传入纯函数 `computeTrends(TrendInput)`；近 4 周按周一分桶，全部本地计算、不联网、不调模型；`model_name='quick-3min'` 的轻量会话不进趋势，与「不计入主指标」口径一致 |
+| 两条指标 | 提示使用率 = 已完成会话 `sum(hintCount) / sum(turnCount)`；改法复现率 = 前几周改法在后续用户消息里命中 ≥2 个关键词的条数 ÷ 可追踪改法条数。样本不足返回 `null`，界面留空不补 0 |
+| 展示门槛 | 每周至少 2 次已完成练习才画点；`canDrawTrend(series)` 要求至少一条趋势能连出两个周点，否则整区显示 `EmptyState`，避免单次练习出现「0%」假趋势 |
+| 单测 | `test/milestone11_test.dart`（分桶、关键词、空态、两条指标、样本不足与折线门槛） |
+
+已知差异：清单写「用 `targetMinutes=3` 区分粒度」，实现改为复用 `model_name` 标记（避免再改表结构与全局设置）；需求 §3.2 的「每次 ≥8 分钟」过滤仍未纳入 `weekSessions`，本轮只把轻量会话排除，历史口径保持不变。趋势区只给事实折线与口径说明，无总分 / 等级 / 目标线。
+
+### 12.8 M12 增补（主对话防脚本化与话题深一层）
+
+| 项 | 落点 |
+|---|---|
+| 目录 | `features/chat/learner_profile.dart`（`LearnerProfile` / `LearnerProfileInput` / `buildLearnerProfile` 纯函数、加压指令常量） |
+| 数据 | `learnerProfileProvider`（`app/providers.dart`）只从 `session` / `correction` / `review_item` / `phrase` / `scenario` 既有表的**文本字段**聚合：1–2 类常犯错误（`correction.reasonZh` 归类）、最多 3 条已掌握表达（已巩固复练项 + 已掌握表达本）、上次话题；只取尾部 6 次会话、排除当前会话；不读 `session.review_json` 全文、不读表达本音频、不调模型、不写回业务表 |
+| 长度口径 | 单条 ≤48 字符、整块 ≤420 字符；固定 3 类信息；开关关闭时聚合返回 `null` |
+| 主对话提示词 | `PromptBuilder.chatSystem(scenario, level, {profile, pressure})`：`profile != null` 时追加只读档案块 + 防重复提问 / 深挖一层 / 仍 ≤2 句只问 1 个问题的规则；两者都为空时返回值与 M8 原文逐字一致。`chatMessages` 只多两个可选参数，历史窗口仍是尾部 16 条 |
+| 旁路隔离 | `SessionContext` 与 `hintMessages` / `improveMessages` 一行未改；档案绝不进入旁路快照（需求 §0.3 第 7 条） |
+| 一键加压 | 对话页输入区两枚 `_ModeChip`（换个角度追问 / 提高难度）→ `ConversationController.setPressure(key)` 只记 `pendingPressureKey`；`sendText` 消费成 `_inFlightPressure` 并只在那一次 `chatMessages` 里生效，成功回复后清空；不自动发送、不改已发消息；「取消」可撤销 |
+| 设置 | `SettingsKeys.learnerProfileEnabled` / `defaultSettings['practice.learnerProfileEnabled'] = 'true'`；设置 → 练习 →「学习者档案」`Switch`。关闭后档案为 null、加压入口隐藏，对话行为回到 M8 |
+| 单测 | `test/milestone12_test.dart`（关闭一致性、字段范围与超窗截断、旁路隔离、历史窗口、一次性加压）；`test/prompt_builder_test.dart` 原有断言不失败 |
+
+已知差异：清单写「一键加压作为下一回合的显式指令」，实现也把两枚入口挂在同一个开关下——关闭学习者档案时一并隐藏，以保证「对话行为与 M8 结束时完全一致」；若要让加压独立可用，需另加设置项并先改设置页文案。

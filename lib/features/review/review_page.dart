@@ -10,6 +10,9 @@ import '../../app/widgets/common.dart';
 import '../../core/errors.dart';
 import '../../core/formatters.dart';
 import '../../domain/models/models.dart';
+import '../retention/practice_card.dart';
+import '../retention/review_item.dart';
+import 'goal_checklist.dart';
 import '../../services/llm/cost_estimator.dart';
 import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
@@ -112,6 +115,12 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         });
         return;
       }
+      final takeawayText = result.corrections
+              .where((e) => e.improved.trim().isNotEmpty)
+              .firstOrNull
+              ?.improved
+              .trim() ??
+          result.phrases.where((e) => e.trim().isNotEmpty).firstOrNull?.trim();
       result = ReviewResult(
         highlight: result.highlight,
         corrections: result.corrections,
@@ -119,6 +128,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         nextTip: result.nextTip,
         promptCount: session.hintCount,
         degraded: false,
+        takeawayText: takeawayText,
       );
       // 纠错入库：尽量回链到原文所在的用户消息。
       final now = DateTime.now().microsecondsSinceEpoch;
@@ -149,6 +159,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         status: 'completed',
       );
       await ref.read(sessionRepositoryProvider).saveSession(updated);
+      await _enqueueTakeaway(session.id, result);
       ref.invalidate(homeDataProvider);
       ref.invalidate(recentSessionsProvider);
       ref.invalidate(correctionsForSessionProvider(session.id));
@@ -172,6 +183,29 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         _error = '生成复盘失败：$e';
       });
     }
+  }
+
+  /// 把本次复盘的一条重点放进待复练队列（同一会话只入队一次）。
+  Future<void> _enqueueTakeaway(String sessionId, ReviewResult result) async {
+    final text = result.takeawayText;
+    if (text == null || text.trim().isEmpty) return;
+    final store = ref.read(localStoreProvider);
+    final items = await store.reviewItems();
+    if (ReviewScheduler.hasSource(items, 'correction', sessionId)) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await store.upsertReviewItem(
+      ReviewScheduler.create(
+        id: 'rv_${sessionId}_$now',
+        sourceType: 'correction',
+        sourceId: sessionId,
+        textEn: text.trim(),
+        textZh: result.corrections.firstOrNull?.reasonZh,
+        nowMs: now,
+      ),
+    );
+    ref.invalidate(reviewItemsProvider);
+    ref.invalidate(dueReviewItemsProvider);
+    ref.invalidate(todayPlanProvider);
   }
 
   /// 试听改进后的说法。
@@ -239,6 +273,9 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final takeaway = ref.watch(reviewItemsProvider).asData?.value
+        .where((e) => e.sourceType == 'correction' && e.sourceId == _session?.id)
+        .firstOrNull;
     return PageScaffold(
       title: '本次复盘',
       showBack: true,
@@ -312,6 +349,18 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                         onPlayCorrection: _playCorrection,
                         onSavePhrase: _savePhrase,
                       ),
+                    if (_scenario != null && _result != null) ...[
+                      const SizedBox(height: 14),
+                      GoalChecklistCard(
+                        session: _session!,
+                        result: _result!,
+                        scenario: _scenario!,
+                      ),
+                    ],
+                    if (takeaway != null) ...[
+                      const SizedBox(height: 14),
+                      TakeawayPracticeCard(item: takeaway),
+                    ],
                     const SizedBox(height: 18),
                     _TranscriptCard(messages: _messages),
                   ],
@@ -450,13 +499,26 @@ class _ReviewContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 纠错以数据库为准（删除后不再出现）；老会话没有入库记录时回退到解析结果。
+    // 数据库为准（删除后不再出现）；扩展字段从 review_json 按原句回填，
+    // 这样不改 correction 表也能显示中式成因与两种语体。
+    final parsedByOriginal = <String, ReviewCorrection>{
+      for (final item in result.corrections)
+        item.original.trim().toLowerCase(): item,
+    };
     final items = corrections.isNotEmpty
         ? corrections
-            .map((e) => ReviewCorrection(
-                  original: e.original,
-                  improved: e.improved,
-                  reasonZh: e.reasonZh,
-                ))
+            .map((e) {
+              final parsed = parsedByOriginal[e.original.trim().toLowerCase()];
+              return ReviewCorrection(
+                original: e.original,
+                improved: e.improved,
+                reasonZh: e.reasonZh,
+                causeZh: parsed?.causeZh,
+                casual: parsed?.casual,
+                formal: parsed?.formal,
+                registerNote: parsed?.registerNote,
+              );
+            })
             .toList()
         : result.corrections;
     return Column(
@@ -581,6 +643,42 @@ class _ReviewContent extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 22),
                 child: Text(item.reasonZh, style: AppText.caption.copyWith(height: 1.5)),
               ),
+              if (item.causeZh != null ||
+                  item.casual != null ||
+                  item.formal != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryWash,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (item.causeZh != null)
+                        Text('为什么会这么说：${item.causeZh}',
+                            style: AppText.caption.copyWith(height: 1.5)),
+                      if (item.casual != null) ...[
+                        const SizedBox(height: 4),
+                        Text('日常说法：${item.casual}',
+                            style: AppText.bodySecondary.copyWith(height: 1.5)),
+                      ],
+                      if (item.formal != null) ...[
+                        const SizedBox(height: 4),
+                        Text('正式说法：${item.formal}',
+                            style: AppText.bodySecondary.copyWith(height: 1.5)),
+                      ],
+                      if (item.registerNote != null) ...[
+                        const SizedBox(height: 4),
+                        Text(item.registerNote!,
+                            style: AppText.caption.copyWith(height: 1.5)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [

@@ -38,6 +38,8 @@ class SettingsPage extends ConsumerWidget {
         (settings[SettingsKeys.dictationNumberEquivalent] ?? 'true') == 'true';
     final dictationSpeed =
         double.tryParse(settings[SettingsKeys.dictationSpeed] ?? '1.0') ?? 1.0;
+    final learnerProfileEnabled =
+        settings[SettingsKeys.learnerProfileEnabled] != 'false';
 
     Future<void> set(String key, String value) =>
         ref.read(settingsControllerProvider.notifier).set(key, value);
@@ -198,6 +200,20 @@ class SettingsPage extends ConsumerWidget {
                     options: const ['¥ 0', '¥ 20', '¥ 50', '¥ 100'],
                     current: '¥ $budget',
                     onPick: (value) => set(SettingsKeys.monthlyBudget, value.replaceAll('¥ ', '')),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.psychology_alt_outlined,
+                  title: '学习者档案',
+                  subtitle: '主对话参考最近的常犯错误、已掌握表达与上次话题，避免重复提问；关闭后回到原始对话',
+                  trailing: Switch(
+                    value: learnerProfileEnabled,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (value) => set(
+                      SettingsKeys.learnerProfileEnabled,
+                      value ? 'true' : 'false',
+                    ),
                   ),
                 ),
               ],

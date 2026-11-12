@@ -10,6 +10,7 @@ import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
 import '../../services/llm/cost_estimator.dart';
+import 'trend_section.dart';
 
 class MePage extends ConsumerWidget {
   const MePage({super.key});
@@ -157,6 +158,8 @@ class MePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              const TrendSection(),
+              const SizedBox(height: 12),
               SectionTitle(title: '设置'),
               const SizedBox(height: 8),
               AppCard(

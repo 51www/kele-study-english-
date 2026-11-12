@@ -186,8 +186,13 @@ class _HintResult extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(c.hintText ?? '', style: AppText.body.copyWith(height: 1.5)),
+          const SizedBox(height: 8),
+          _HintPlayPill(
+            playing: c.hintPlaying,
+            onTap: () => c.playHint(),
+          ),
           if (c.hintTextZh != null && c.hintTextZh!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               c.hintTextZh!,
               style: AppText.caption.copyWith(color: AppColors.inkSecondary, height: 1.5),
@@ -196,6 +201,51 @@ class _HintResult extends StatelessWidget {
           const SizedBox(height: 6),
           Text('仅作参考，不会替你发送；请自己开口或点发送。', style: AppText.caption),
         ],
+      ),
+    );
+  }
+}
+
+/// 参考答案朗读小按钮：沿用「试听 / 存入表达本」同款胶囊规格，不新增色值。
+class _HintPlayPill extends StatelessWidget {
+  const _HintPlayPill({required this.playing, required this.onTap});
+
+  final bool playing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: playing ? '停止朗读参考答案' : '朗读参考答案',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                playing ? Icons.stop_rounded : Icons.volume_up_rounded,
+                size: 12,
+                color: AppColors.primaryDeep,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                playing ? '停止' : '朗读',
+                style: AppText.caption.copyWith(
+                  fontSize: 10,
+                  color: AppColors.primaryDeep,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,9 +1,10 @@
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
+import '../../features/retention/review_item.dart';
 
 /// 本地持久化门面。
 ///
-/// - Android / 桌面：Drift + SQLite（12 张表，schemaVersion = 2；v1 → v2 只建二期 3 张新表）。
+/// - Android / 桌面：Drift + SQLite（13 张表，schemaVersion = 3；v1 → v2 建二期 3 张表，v2 → v3 建三期 1 张表）。
 /// - Web：SharedPreferences（localStorage）上的 JSON 集合，字段与表结构一致，
 ///   仅作为本轮浏览器验证的等价实现（Android 待真机确认）。
 abstract class LocalStore {
@@ -59,6 +60,12 @@ abstract class LocalStore {
   Future<List<DictationAttempt>> attempts(String materialId);
   Future<List<DictationAttempt>> allAttempts();
   Future<void> upsertAttempt(DictationAttempt attempt);
+
+  // 三期：待复练队列（复盘改法 / 表达 / 错句共用）。
+  Future<List<ReviewItem>> reviewItems();
+  Future<void> upsertReviewItem(ReviewItem item);
+  Future<void> deleteReviewItem(String id);
+  Future<void> deleteReviewItemsForSource(String sourceType, String sourceId);
 
   Future<void> clearAll();
 }

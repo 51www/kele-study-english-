@@ -17,6 +17,7 @@ import '../../services/tts/tts_engine.dart';
 import 'answer_actions.dart';
 import 'chat_widgets.dart';
 import 'conversation_controller.dart';
+import 'learner_profile.dart';
 import 'reward_burst.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -69,6 +70,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       tts: ref.read(ttsRouterProvider),
     )..addListener(_onUpdate);
     _controller.init();
+    unawaited(_loadLearnerProfile());
+  }
+
+  /// 只读档案异步聚合，失败也不影响对话；关闭开关时 Provider 返回 null。
+  Future<void> _loadLearnerProfile() async {
+    try {
+      final profile =
+          await ref.read(learnerProfileProvider(widget.sessionId).future);
+      if (mounted && _controller.learnerProfileEnabled) {
+        _controller.learnerProfile = profile;
+      }
+    } catch (e) {
+      AppLogger.warn('learner profile unavailable: $e');
+    }
   }
 
   void _onUpdate() {
@@ -598,6 +613,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           controller: c,
                           onUse: _applyWantToSay,
                         ),
+                        onPressure: c.setPressure,
+                        onClearPressure: c.clearPressure,
                       ),
                     ],
                   ),
@@ -1199,6 +1216,8 @@ class _TalkComposer extends StatelessWidget {
     required this.onSend,
     required this.onHint,
     required this.onWantToSay,
+    required this.onPressure,
+    required this.onClearPressure,
   });
 
   final ConversationController controller;
@@ -1206,6 +1225,8 @@ class _TalkComposer extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onHint;
   final VoidCallback onWantToSay;
+  final ValueChanged<String> onPressure;
+  final VoidCallback onClearPressure;
 
   @override
   Widget build(BuildContext context) {
@@ -1272,6 +1293,52 @@ class _TalkComposer extends StatelessWidget {
               mode: c.translateMode,
               onChanged: (mode) => c.setTranslateMode(mode),
             ),
+            if (c.learnerProfileEnabled) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  for (final entry in kPressureOptions.entries) ...[
+                    _ModeChip(
+                      icon: entry.key == 'angle'
+                          ? Icons.alt_route_rounded
+                          : Icons.trending_up_rounded,
+                      label: entry.value,
+                      onTap: () => onPressure(entry.key),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Text(
+                      c.pendingPressureLabel == null
+                          ? '只影响下一回合，不会自动发送'
+                          : '下一回合：${c.pendingPressureLabel}（可取消）',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption.copyWith(
+                        fontSize: 10,
+                        color: AppColors.inkMuted,
+                      ),
+                    ),
+                  ),
+                  if (c.pendingPressureLabel != null)
+                    TextButton(
+                      onPressed: onClearPressure,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        '取消',
+                        style: AppText.caption.copyWith(
+                          fontSize: 10,
+                          color: AppColors.primaryDeep,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 6),
             if (voiceMode) _TalkZone(controller: c) else _TextRow(
               controller: textController,

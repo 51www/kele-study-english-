@@ -24,6 +24,7 @@ import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
 import '../../services/tts/tts_engine.dart';
 import '../../services/tts/tts_router.dart';
+import 'learner_profile.dart';
 
 /// 回合状态机：空闲 / 录音 / 识别 / 思考 / 朗读 / 错误。
 enum TurnState { idle, recording, transcribing, thinking, speaking, error }
@@ -76,6 +77,9 @@ class ConversationController extends ChangeNotifier {
   String? asrNotice;
   String? playingMessageId;
   String? playingOriginalId;
+
+  /// 参考答案朗读播放态：只由提示面板里的按钮展示与切换。
+  bool hintPlaying = false;
   bool loading = true;
   bool asrAvailable = false;
   bool asrChecking = true;
@@ -84,6 +88,18 @@ class ConversationController extends ChangeNotifier {
   String inputMode = 'voice';
   int elapsedSec = 0;
   int recordingMs = 0;
+
+  /// M12：只读学习者档案，只进主对话 `chatSystem`，绝不写回业务表。
+  /// 设置里关闭开关后为 null，提示词回到 M8 原文。
+  LearnerProfile? learnerProfile;
+  bool learnerProfileEnabled = true;
+
+  /// 一键加压：只记住「下一回合」的显式指令，不自动发送、不改已发消息。
+  String? pendingPressureKey;
+  String? _inFlightPressure;
+
+  String? get pendingPressureLabel =>
+      pendingPressureKey == null ? null : kPressureOptions[pendingPressureKey];
 
   /// 翻译三态：off（默认，不显示中文）/ tap（点气泡）/ always（常开字幕）。
   String translateMode = 'off';
@@ -266,6 +282,13 @@ class ConversationController extends ChangeNotifier {
   void _readSettings() {
     inputMode = settings.getString(SettingsKeys.inputMode, 'voice');
     if (inputMode != 'text' && inputMode != 'voice') inputMode = 'voice';
+    learnerProfileEnabled =
+        settings.getString(SettingsKeys.learnerProfileEnabled, 'true') != 'false';
+    if (!learnerProfileEnabled) {
+      learnerProfile = null;
+      pendingPressureKey = null;
+      _inFlightPressure = null;
+    }
     _voice = settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural');
     _rate = settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0).clamp(0.7, 1.3).toDouble();
     _autoPlay = settings.getBool(SettingsKeys.ttsAutoPlay, fallback: true);
@@ -584,6 +607,20 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 一键加压：只记住下一回合的显式指令。
+  /// 不自动发送、不改动 `messages`、不新建会话；用户仍要自己开口或点发送。
+  void setPressure(String key) {
+    if (!learnerProfileEnabled || !kPressureInstructions.containsKey(key)) return;
+    pendingPressureKey = key;
+    notifyListeners();
+  }
+
+  void clearPressure() {
+    if (pendingPressureKey == null) return;
+    pendingPressureKey = null;
+    notifyListeners();
+  }
+
   // ---------------------------------------------------------------- 对话
 
   Future<void> sendText(
@@ -613,6 +650,11 @@ class ConversationController extends ChangeNotifier {
     wantToSayError = null;
     resumeText = null;
     needsReplyRecovery = false;
+    // 加压只在这一回合消费一次；失败重试仍沿用 _inFlightPressure。
+    _inFlightPressure = pendingPressureKey == null
+        ? null
+        : kPressureInstructions[pendingPressureKey];
+    pendingPressureKey = null;
     _turnStartedAt = DateTime.now();
     _firstAudioMs = null;
     _firstTokenMs = null;
@@ -679,6 +721,8 @@ class ConversationController extends ChangeNotifier {
         scenario: currentScenario,
         level: settings.getString(SettingsKeys.level, 'B1'),
         history: messages,
+        profile: learnerProfileEnabled ? learnerProfile : null,
+        pressure: _inFlightPressure,
       );
       final promptChars = history.fold<int>(0, (sum, m) => sum + m.content.length);
 
@@ -724,6 +768,8 @@ class ConversationController extends ChangeNotifier {
       );
       messages = [...messages, assistant];
       await sessions.saveMessage(assistant);
+      // 指令已在这一回合生效，后续回合不再携带。
+      _inFlightPressure = null;
       final current = session;
       if (current != null) {
         session = current.copyWith(modelName: config.model);
@@ -1412,6 +1458,33 @@ class ConversationController extends ChangeNotifier {
 
   // ---------------------------------------------------------------- 播放
 
+  /// 参考答案朗读：只读英文原句，不复述中文对照；与其它朗读互斥，
+  /// 再点一次即停止。失败只提示，不打断面板，也不自动发送。
+  Future<void> playHint() async {
+    final text = hintText?.trim() ?? '';
+    if (text.isEmpty) return;
+    final wasPlaying = hintPlaying;
+    await stopPlayback();
+    if (wasPlaying) {
+      if (!_disposed) notifyListeners();
+      return;
+    }
+    hintPlaying = true;
+    notifyListeners();
+    try {
+      await audioSession.preparePlayback();
+      await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
+    } on TtsException catch (e) {
+      AppLogger.warn('hint tts failed: ${e.error.detail}');
+      ttsWarning = '朗读暂不可用，已显示文字';
+    } finally {
+      if (!_disposed && hintPlaying) {
+        hintPlaying = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> playMessage(MessageRecord message) async {
     final text = message.textEn.trim();
     if (text.isEmpty) return;
@@ -1447,6 +1520,7 @@ class ConversationController extends ChangeNotifier {
     _ttsToken++;
     playingMessageId = null;
     playingOriginalId = null;
+    hintPlaying = false;
     resumeText = null;
     _currentSpokenText = null;
     try {
