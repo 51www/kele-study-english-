@@ -344,8 +344,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    return GradientBackground(
-      child: Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (_, __) => _back(),
+      child: GradientBackground(
+        child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
           bottom: false,
@@ -624,6 +627,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
         ),
       ),
+    ),
     );
   }
 
