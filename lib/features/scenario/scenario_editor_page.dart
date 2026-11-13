@@ -9,10 +9,12 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
+import '../../data/db/seeds.dart';
 import '../../domain/models/models.dart';
 import '../../services/llm/llm_models.dart';
 import '../../services/tts/tts_engine.dart';
 import 'scenario_goals.dart';
+import 'scenario_visual.dart';
 
 /// 自定义场景：新建 / 编辑 / 删除，数据在对话页与内置场景表现完全一致。
 ///
@@ -29,9 +31,23 @@ class ScenarioEditorPage extends ConsumerStatefulWidget {
 }
 
 class _ScenarioEditorPageState extends ConsumerState<ScenarioEditorPage> {
-  static const _categories = <String>['日常', '工作', '旅行', '社交', '健康', '观点'];
   static const _levels = <String>['A2', 'B1', 'B2'];
   static const _turns = <int>[8, 10, 12];
+
+  /// 分类从实际场景数据派生，内置分类按既定顺序，用户自建的分类补在末尾。
+  List<String> get _categories {
+    final fromLibrary = ref
+            .read(scenarioLibraryProvider)
+            .asData
+            ?.value
+            .scenarios
+            .map((scenario) => scenario.category) ??
+        const <String>[];
+    return scenarioCategoriesOf(<String>[
+      ...builtinScenarios.map((scenario) => scenario.category),
+      ...fromLibrary,
+    ]).where((category) => category != '全部').toList();
+  }
 
   final _titleZh = TextEditingController();
   final _titleEn = TextEditingController();
@@ -178,7 +194,7 @@ Learner describes a situation in Chinese: $brief
 
 Return this JSON:
 {"title_zh":"<short Chinese name>","title_en":"<short English title>",
-"category":"<one of 日常/工作/旅行/社交/健康/观点>","level":"<A2|B1|B2>",
+"category":"<one of ${_categories.join('/')}>","level":"<A2|B1|B2>",
 "ai_role":"<who the AI plays, in English>","user_goal":"<learner goal, in English>",
 "opening_line":"<one short English opening line the AI says first>",
 "target_phrases":["<3 to 5 useful English phrases>"],
@@ -341,6 +357,7 @@ goals must be three small things the learner can actually tick off, not vague ai
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(scenarioLibraryProvider);
     if (_loadError != null) {
       return PageScaffold(
         title: '编辑场景',

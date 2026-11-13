@@ -7,6 +7,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import '../path/path_providers.dart';
 import '../scenario/scenario_goals.dart';
 
 /// 复盘里的「本场目标」自评卡。
@@ -67,6 +68,8 @@ class _GoalChecklistCardState extends ConsumerState<GoalChecklistCard> {
       await ref.read(sessionRepositoryProvider).saveSession(
             widget.session.copyWith(reviewJson: updated.encode()),
           );
+      // 3 件小事的达成情况会汇进阶段进度，勾选后立刻重算。
+      ref.invalidate(pathPlanProvider);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

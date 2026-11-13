@@ -231,6 +231,8 @@ features ──▶ domain/usecases ──▶ services（接口）
 | `SessionRepository.ensureStarterPhrases` | data | 首次访问表达本时幂等写入初始表达 | `LocalStore.meta/setMeta`、`starterPhrases` | `phrase.starter.v1` 标记 |
 
 > 实现说明：复盘生成逻辑目前内联在 `features/review/review_page.dart`（含一次自动重试与 `ReviewParser` 容错解析），尚未抽出独立 `ReviewService` 类；`PromptBuilder` 位于 `services/llm/`（不是早期规划的 `services/prompt/`）。
+>
+> 2026-11-13 复盘生成稳定性：`ReviewPage._generate` 走 `streamChat` 流式优先（SSE 只收 `delta.content`，思考内容不进正文），接口不支持流式或流里没有正文时用一次非流式 `chat()` 兜底（禁用 `reasoning_content` 兜底）。单次生成整体上限 `Timeouts.review = 60s`，`chat()` / `streamChat()` 都传 `maxRetries: 0`，不再叠加客户端自动重试；15s 给慢提示，用户可随时 `CancelToken.cancel()`，页面销毁也取消。仅格式解析失败才退避 2s 自动重试一次；网络 / 超时失败给手动重试，会话记录已保存不阻塞。
 
 ### 2.3 依赖注入
 
@@ -360,9 +362,9 @@ dio / plugin 异常
 
 | 字段 | 类型 | 可空 | 说明 |
 |---|---|---|---|
-| id | TEXT PK | 否 | `cafe_order` / `meeting_clarify` / `airport_checkin` …（26 个稳定 ID） |
+| id | TEXT PK | 否 | `cafe_order` / `meeting_clarify` / `airport_checkin` …（稳定 ID，数量以 `builtinScenarios` 实际条目为准，不复用） |
 | title_zh / title_en | TEXT | 否 | 显示名 |
-| category | TEXT | 否 | 日常/工作/旅行/社交/健康/观点（场景库 Chip 与 `scenario_visual.dart` 图标映射用） |
+| category | TEXT | 否 | 以场景数据的 `category` 为准；`scenario_visual.dart` 的 `scenarioCategoryOrder` 只决定展示顺序与图标，未登记的分类自动补在末尾 |
 | level | TEXT | 否 | A2/B1/B2 |
 | ai_role | TEXT | 否 | 英文角色描述，进 prompt |
 | user_goal | TEXT | 否 | 用户目标 |
@@ -372,9 +374,9 @@ dio / plugin 异常
 | success_criteria | TEXT | 否 | 进 prompt |
 | branch_hint | TEXT | 是 | 1–2 个意外分支 |
 | is_builtin | INTEGER | 否 | 1/0 |
-| sort_order | INTEGER | 否 | 场景库与首页排序（0–25） |
+| sort_order | INTEGER | 否 | 场景库与首页排序；内置场景用递增整数（数值范围随实际数据变化），自建场景由 `nextSortOrder()` 取更大值 |
 
-> 场景库扩容（2026-11-10）只往 `seeds.dart` 追加 `Scenario` 常量，**不改表、不改字段、不需要 build_runner 或迁移**；启动按 `id` 幂等 upsert（SQLite `INSERT OR REPLACE`，Web 按 id 覆盖）。练过次数不落表，由 `scenarioLibraryProvider` 从 `session.scenario_id` 聚合。
+> 场景库扩容只往 `seeds.dart` 末尾追加 `Scenario` 常量，**不改表、不改字段、不需要 build_runner 或迁移**；已有条目的 id 与字段保持不动。启动按 `id` 幂等 upsert（SQLite `INSERT OR REPLACE`，Web 按 id 覆盖），自建场景不参与该流程。新增 id 必须在 `scenario_goals.dart` 补 3 条可勾选目标，测试按 `builtinScenarios` 逐 id 校验，不写死数量。练过次数不落表，由 `scenarioLibraryProvider` 从 `session.scenario_id` 聚合。
 
 **session**
 
@@ -462,7 +464,7 @@ dio / plugin 异常
 - 索引：`message(session_id, seq)` 唯一；`session(started_at)`；`phrase(created_at)`；`tts_cache(last_used_at)`。
 - 外键：`message.session_id`、`correction.session_id` 级联删除。
 - `schemaVersion = 1`；每次结构变更必须提供迁移，禁止 `destructiveMigration`。
-- 种子数据：首次启动插入 **26 个内置场景**（幂等：按 `id` upsert；见 §4.2 与里程碑 §12）。追加场景只改 `seeds.dart`，**不需要迁移**。
+- 种子数据：首次启动按 `id` 幂等 upsert `builtinScenarios` 的全部条目（数量以实际数据为准；见 §4.2 与里程碑 §12）。追加场景只改 `seeds.dart`，**不需要迁移**。
 - 会话续练（§3.1.1）同样**不需要迁移**：`status` 取值从 `draft/completed/aborted` 调整为 `draft/in_progress/completed`，`ended_at` 允许清空，都是既有字段的语义变化。
 
 ---
@@ -483,7 +485,7 @@ dio / plugin 异常
 | `practice.correctionMode` | setting | `gentle` | `gentle`；`strict` 仅占位 | 选 strict 时提示"暂未开放" |
 | `practice.translateDefault` | setting | `off` | `off`/`tap`/`always`；对话页可临时切换并写回 | 回落 `off` |
 | `cost.monthlyBudget` | setting | `50` | ¥0/20/50/100；月度累计 ≥ 预算时「我的」提示 | 回落 50 |
-| 超时表 | `core/timeouts.dart` | 见文件 | 连接 10s / 响应 25s / 首字 6s / 慢网提示 15s / 旁路 25s（思考型模型先产出 reasoning，15s 会误判超时） | 统一引用，不在业务层写死 |
+| 超时表 | `core/timeouts.dart` | 见文件 | 连接 10s / 响应 25s / 首字 6s / 慢网提示 15s / 旁路 25s / 复盘 60s（整体，流式优先；格式解析失败退避 2s 后重试 1 次） | 统一引用，不在业务层写死 |
 | `practice.inputMode` | setting | `voice` | `voice`/`text` | 回落 `voice` |
 | `practice.targetMinutes` | setting | `10` | 5/10/15 | 回落 10 |
 | `data.cacheLimitMb` | setting | `80` | 20–300 | 钳制 |
@@ -560,7 +562,7 @@ dio / plugin 异常
 
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
-| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 26 个」→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
+| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 N 个」（N 由实际数据计算）→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
 | 自定义场景 `/custom-scenario/new`、`/:id/edit` | `ScenarioEditorPage` | `AppTextField` 表单（场景名 / 英文标题 / AI 角色 / 练习目标 / 目标表达 / 开场白 / 完成标准）、`_ChoiceChip`（分类 / 难度 / 轮数）、`_OpeningPreview`（开场白实时预览 + 试听）、底部「删除 / 保存」按钮行 |
@@ -588,7 +590,7 @@ dio / plugin 异常
 | 7 | 里程碑 §10 写 8 条文章，`articles.json` 实际 7 条 | 以数据文件 `count=7` 为准；后续新增文章只替换 JSON，不做服务端接口 |
 | 8 | 里程碑 T2.7 端侧 Whisper | 可选项，当前不启用；识别链路为独立 ASR 接口 → 系统识别 → 实验性对话模型识别，不引入端侧推理依赖 |
 | 9 | 早期规划的记录详情页 `SessionDetailPage` | 详情复用 `/review/:id` 的只读转写与纠错展开，未新增独立页面 |
-| 10 | 原型 v0.1 只有 4 个场景（2 个可练、2 个「即将上线」），App 现有 26 个 | 原型保留为 v0.1 交互参考，其「分类 Chip + 场景卡 + N 个可练计数」的版面骨架被 `ScenarioLibraryPage` 沿用；原型里的「机场值机」「和新同事闲聊」已在 App 中作为正式场景开放，但原型未补它们的完整对话脚本，**不回写原型**。是否需要把原型同步到 26 个场景，需用户确认 |
+| 10 | 原型 v0.1 只有 4 个场景（2 个可练、2 个「即将上线」），App 内置场景按实际数据展示 | 原型保留为 v0.1 交互参考，其「分类 Chip + 场景卡 + N 个可练计数」的版面骨架被 `ScenarioLibraryPage` 沿用；原型里的「机场值机」「和新同事闲聊」已在 App 中作为正式场景开放，但原型未补它们的完整对话脚本，**不回写原型**（2026-11-13 用户再次确认保持 4 个场景） |
 | 11 | 原型里提示是底部 Sheet、表达本只有收藏 / 移出，且 README 旧版写「不做自定义场景」 | 按 2026-11-11 用户决策，Flutter 端已改为 `InlineHintPanel` 页内展开、表达本支持手工新建、场景库支持自建场景；原型仍留作 v0.1 交互参考不回写，README 与需求 / 开发 / UI 文档已同步 |
 
 ---
@@ -762,7 +764,7 @@ lib/
    │  └─ retention_page.dart             复练中心（队列 / 反馈横幅 / 来源补充）
    ├─ review/goal_checklist.dart         本场目标自评，结果写回 session.review_json
    └─ scenario/
-      ├─ scenario_goals.dart             26 个内置场景的 3 条目标 + 解析/序列化
+      ├─ scenario_goals.dart             内置场景（逐 id 对齐）的 3 条目标 + 解析/序列化
       ├─ scenario_editor_page.dart       一句话生成场景卡（LLM 生成后填表，不直接落库）
       ├─ scenario_page.dart              「本场 3 件小事」+ 热身入口
       └─ warmup_page.dart                课前 60 秒热身（听 → 跟读弱判定 → 开练）
@@ -776,7 +778,7 @@ test/{review_retention,dictation_migration,milestone10}_test.dart
 | `retention/review_item` | 纯 Dart 固定阶梯排程、到期筛选、确定性选取、来源去重 | 不联网、不用模型、不做完整 SM-2 / 难度系数 |
 | `retention/practice_card` | ASR 复述或键盘输入 → `DictationScorer.score` 判对 → 写回队列 | 不打分、不评级、不新增 `/chat/completions` 请求 |
 | `app/providers` 三期部分 | 首页推荐纯规则聚合、孤儿复习项过滤、表达本 / 错句本入队 | 不读其它会话内容进 prompt（M12 解锁前） |
-| `scenario/scenario_goals` | 内置场景 3 条可见目标；自建场景从 `success_criteria` 反解析 | 不改 26 个种子、不改表、不覆盖用户自建场景 |
+| `scenario/scenario_goals` | 内置场景 3 条可见目标（按 id 与 `builtinScenarios` 对齐）；自建场景从 `success_criteria` 反解析 | 不改内置种子、不改表、不覆盖用户自建场景 |
 | `review/goal_checklist` | 3 条目标自评，`done`/`todo` 写回 `review_json.goalResults` | 不做分数、不做模型判定、不改 `correction` 表 |
 | `scenario/warmup_page` | 3 句核心表达、TTS 朗读、关键词弱判定 | 不打分、不创建会话、不阻塞「开始练习」 |
 
@@ -844,3 +846,59 @@ test/{review_retention,dictation_migration,milestone10}_test.dart
 | 单测 | `test/milestone12_test.dart`（关闭一致性、字段范围与超窗截断、旁路隔离、历史窗口、一次性加压）；`test/prompt_builder_test.dart` 原有断言不失败 |
 
 已知差异：清单写「一键加压作为下一回合的显式指令」，实现也把两枚入口挂在同一个开关下——关闭学习者档案时一并隐藏，以保证「对话行为与 M8 结束时完全一致」；若要让加压独立可用，需另加设置项并先改设置页文案。
+
+---
+
+## 13. 四期模块（2026-11-13 补）：学习路径
+
+> 对应需求 §0.4 / F16、里程碑 M14、技术设计 §12。本节只写增量；§1–§12 的既有结构与表清单不变。
+
+### 13.1 目录结构（新增）
+
+```text
+lib/features/path/
+  path_model.dart        # 状态 / 安排 / 阶段模板 / 计划视图模型，手写 JSON
+  path_plan.dart         # 四阶段纯函数：起点、生成、重排、完成判定、下一步
+  path_providers.dart    # KV 读写 + learningPathProvider / pathPlanProvider
+  path_page.dart         # 路径页：三问 / 梯度条 / 阶段安排 / 阶段回顾
+  path_setup_page.dart   # 起点 3 问与改目标
+  next_step_card.dart    # 首页「下一步」卡 + 复盘「下一次练这个」紧凑卡
+```
+
+### 13.2 模块职责与依赖
+
+- `path_model.dart` 不 import 任何业务表模型，只描述路径自身状态；`path_plan.dart` 是纯函数，输入快照由 `path_providers.dart` 从既有 Provider 聚合。
+- `pathPlanProvider` 组合 `homeDataProvider` / `recentSessionsProvider` / `reviewItemsProvider` / `dueReviewItemsProvider` / `phrasesProvider` / `trendsProvider` / `materialLibraryProvider` / `settingsControllerProvider`；全部本地读取，不联网、不调模型。
+- 写入统一走 `writePath(WidgetRef, state)`：写 `app_meta` 后集中失效 `learningPathProvider` / `pathPlanProvider` / `todayPlanProvider` / `homeDataProvider` / `scenarioLibraryProvider`，避免某个入口显示旧进度。
+- 首页卡片仍复用 `TodayPracticeCard` 类名与无参构造（`features/retention/today_card.dart`），改读 `pathPlanProvider`；未配置路径时回落到原 `todayPlanProvider` 规则，保证老用户升级不空白。
+
+### 13.3 状态字段（`app_meta` 单键，零改表）
+
+| 键 | 内容 |
+|---|---|
+| `learningPath.v1` | JSON：`configured / goal / specificGoal / level / targetMinutes / sessionsPerWeek / stage / items[] / alternativeIndex / confidence / createdAt / updatedAt / reviewedOn`；`items[]` 每条含 `id / kind / scenarioId / title / reason / status / skippedOn / updatedAt` |
+
+解码全部可空兜底 + try/catch，坏值或未配置时返回 `LearningPathState.empty()`；不新增 `SettingsKeys`、不改 `defaultSettings`、`clearAll()` 两端既有清单已包含 `app_meta`。`data_settings_page.dart` 的失效清单补 `learningPathProvider` / `pathPlanProvider`。
+
+### 13.4 配置项（不新增）
+
+- 沿用 `practice.level` / `practice.targetMinutes`；开口复述阈值 `review.speakPassThreshold` 与每日待复练上限 `review.dailyLimit` 原先只有默认值、无界面入口，本轮在设置 → 练习补两行 `SettingRow`（可读、可选、带口径说明）。
+- 路径自身的每周次数、目标场合、具体诉求、自评「敢开口」存 `learningPath.v1`，不进 `setting` 表，避免与全局设置互相覆盖。
+
+### 13.5 UI → Flutter 映射（§6.3 增补）
+
+| 页面 / 组件 | 落点 |
+|---|---|
+| `/path`、`/path/setup` | `app/app.dart` 新增两条 `GoRoute`，挂在 `ShellRoute` 外，静态路由排在 `/materials/:id` 之前 |
+| 路径页 | `PageScaffold` + `ListView`；三问卡、阶段梯度条、阶段安排清单、阶段回顾卡；入口来自首页卡、设置行与「我的」 |
+| 首页「下一步」卡 | `features/retention/today_card.dart` 内升级，理由含到期复练数 / 上次提示次数 / 本阶段剩余条数；附「换一个 / 今天先跳过 / 查看学习路径」 |
+| 复盘末尾 | `features/review/review_page.dart` 在目标自评卡之后插入紧凑卡；`goal_checklist.dart` 勾选后失效路径 Provider |
+| 场景库 | `scenario_library_page.dart` 的 `_ScenarioTile` 增加「适合当前阶段」标记，只提示不筛选 |
+| 设置 | `settings_page.dart` 练习分组加 1 行路径入口 + 2 行阈值说明 |
+
+### 13.6 已知差异与未复验项
+
+- 清单写「每周回顾」，实现为**每次打开路径页时按最近数据即时回顾**，不新增定时任务与本地通知；阶段结束判定同样即时计算，避免引入后台行为。
+- 「改过的说法在后续对话里用对」沿用 `computeTrends` 的「改法复现率」作为证据，样本不足时该条显示「样本不足」，不补 0、不造假趋势。
+- 阶段梯度条 4 段都可点，但点击只切换当前阶段，不回滚已完成安排；与需求「不解锁」一致。
+- 待复验：Android 真机覆盖安装后 `app_meta` 路径态保留、断网 / 无密钥下路径页、清空数据后的空态。

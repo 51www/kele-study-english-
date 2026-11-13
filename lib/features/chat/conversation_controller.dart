@@ -1603,16 +1603,41 @@ class ConversationController extends ChangeNotifier {
   /// 用户显式点「结束并复盘」：只有这条路径会把会话标成 completed。
   Future<SessionRecord?> endSession() async {
     final current = session;
-    if (current == null) return null;
+    if (current == null || _finished) return session;
     _finished = true;
     _ticker?.cancel();
-    await stopPlayback();
-    await cancelRecording();
-    await sessions.finishSession(current, durationSec: elapsedSec);
-    final updated = await sessions.byId(sessionId);
-    session = updated ?? current;
-    notifyListeners();
+    // 先落库：系统 TTS / 录音插件的 stop、cancel 偶发不返回，不能让写库
+    // 排在清理后面，否则「结束」会一直转圈，会话也没标成已完成。
+    try {
+      await sessions.finishSession(current, durationSec: elapsedSec);
+    } catch (e) {
+      // 写库失败要允许重试，否则 _finished 守卫会让第二次点击跳过落库。
+      _finished = false;
+      rethrow;
+    }
+    await _cleanupAfterEnd(stopPlayback, 'stop playback');
+    await _cleanupAfterEnd(cancelRecording, 'cancel recording');
+    try {
+      final updated = await sessions.byId(sessionId);
+      session = updated ?? current;
+    } catch (e) {
+      AppLogger.warn('reload session on end failed: $e');
+    }
+    if (!_disposed) notifyListeners();
     return session;
+  }
+
+  /// 收尾清理只做尽力而为：单个插件卡住最多等 2 秒，失败只记日志，
+  /// 不再阻塞结束流程和跳转复盘页。
+  Future<void> _cleanupAfterEnd(
+    Future<void> Function() action,
+    String label,
+  ) async {
+    try {
+      await action().timeout(const Duration(seconds: 2));
+    } catch (e) {
+      AppLogger.warn('$label on end failed: $e');
+    }
   }
 
   /// 半路退出 / 系统返回 / 进程切后台：保存为可续练状态，不生成复盘。

@@ -17,7 +17,7 @@ class ScenarioVisual {
   final Color accent;
 }
 
-/// 分类 Chip 的固定顺序；「全部」永远在首位。
+/// 分类 Chip 的固定顺序；「全部」永远在首位，数据里出现的未知分类补在末尾。
 const scenarioCategoryOrder = <String>[
   '全部',
   '日常',
@@ -26,6 +26,12 @@ const scenarioCategoryOrder = <String>[
   '社交',
   '健康',
   '观点',
+  '居住家政',
+  '政务金融',
+  '校园学习',
+  '数码线上',
+  '关系情绪',
+  '消费服务',
 ];
 
 /// 按固定顺序取实际存在的分类，未知分类补在末尾，避免出现空 Chip。
@@ -77,6 +83,42 @@ ScenarioVisual scenarioVisual(String? category) {
         icon: Icons.lightbulb_outline_rounded,
         tint: AppColors.yellow.withValues(alpha: 0.20),
         accent: AppColors.primaryDeep,
+      );
+    case '居住家政':
+      return ScenarioVisual(
+        icon: Icons.home_outlined,
+        tint: AppColors.pink.withValues(alpha: 0.10),
+        accent: AppColors.orange,
+      );
+    case '政务金融':
+      return ScenarioVisual(
+        icon: Icons.account_balance_outlined,
+        tint: AppColors.mint.withValues(alpha: 0.28),
+        accent: AppColors.success,
+      );
+    case '校园学习':
+      return ScenarioVisual(
+        icon: Icons.school_outlined,
+        tint: AppColors.yellow.withValues(alpha: 0.20),
+        accent: AppColors.warning,
+      );
+    case '数码线上':
+      return const ScenarioVisual(
+        icon: Icons.wifi_rounded,
+        tint: AppColors.primaryTint,
+        accent: AppColors.primaryDeep,
+      );
+    case '关系情绪':
+      return ScenarioVisual(
+        icon: Icons.favorite_border_rounded,
+        tint: AppColors.pink.withValues(alpha: 0.10),
+        accent: AppColors.primaryDeep,
+      );
+    case '消费服务':
+      return const ScenarioVisual(
+        icon: Icons.shopping_bag_outlined,
+        tint: AppColors.primaryWash,
+        accent: AppColors.orange,
       );
     default:
       return const ScenarioVisual(

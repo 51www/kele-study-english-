@@ -1,11 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kele_speak/data/db/seeds.dart';
 import 'package:kele_speak/features/scenario/scenario_goals.dart';
 import 'package:kele_speak/services/llm/prompt_builder.dart';
 
 void main() {
   group('场景目标清单（T10.2）', () {
-    test('26 个内置场景各有 3 条可勾选目标', () {
-      expect(kBuiltinGoals.length, 26);
+    test('每个内置场景各有 3 条可勾选目标', () {
+      final ids = builtinScenarios.map((scenario) => scenario.id).toList();
+      expect(ids.toSet().length, ids.length, reason: '内置场景 id 不应重复');
+      expect(kBuiltinGoals.length, ids.length);
+      for (final id in ids) {
+        expect(kBuiltinGoals.containsKey(id), isTrue, reason: '$id 缺少目标清单');
+      }
       for (final entry in kBuiltinGoals.entries) {
         expect(entry.value.length, 3, reason: '${entry.key} 应有 3 条目标');
         for (final goal in entry.value) {

@@ -14,6 +14,8 @@ import '../features/dictation/pages/wrong_segments_page.dart';
 import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/me/me_page.dart';
+import '../features/path/path_page.dart';
+import '../features/path/path_setup_page.dart';
 import '../features/phrasebook/phrasebook_page.dart';
 import '../features/quick/quick_page.dart';
 import '../features/retention/retention_page.dart';
@@ -166,6 +168,17 @@ final router = GoRouter(
       path: '/quick',
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, _) => _slide(const QuickPracticePage()),
+    ),
+    // 四期 M14：学习路径，挂在 ShellRoute 外，不改底部 4 Tab。
+    GoRoute(
+      path: '/path/setup',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const PathSetupPage()),
+    ),
+    GoRoute(
+      path: '/path',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, _) => _slide(const PathPage()),
     ),
     GoRoute(path: '/', redirect: (_, __) => '/home'),
   ],

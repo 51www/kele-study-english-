@@ -40,6 +40,10 @@ class SettingsPage extends ConsumerWidget {
         double.tryParse(settings[SettingsKeys.dictationSpeed] ?? '1.0') ?? 1.0;
     final learnerProfileEnabled =
         settings[SettingsKeys.learnerProfileEnabled] != 'false';
+    final speakThreshold =
+        int.tryParse(settings[SettingsKeys.reviewSpeakPassThreshold] ?? '80') ?? 80;
+    final dailyLimit =
+        int.tryParse(settings[SettingsKeys.reviewDailyLimit] ?? '5') ?? 5;
 
     Future<void> set(String key, String value) =>
         ref.read(settingsControllerProvider.notifier).set(key, value);
@@ -186,6 +190,48 @@ class SettingsPage extends ConsumerWidget {
                     options: const ['5 分钟', '10 分钟', '15 分钟', '20 分钟'],
                     current: '$targetMinutes 分钟',
                     onPick: (value) => set(SettingsKeys.targetMinutes, value.replaceAll(' 分钟', '')),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.map_outlined,
+                  title: '学习路径',
+                  subtitle: '阶段计划、进度与下一步建议；可随时改目标、换阶段',
+                  value: '查看',
+                  onTap: () => context.push('/path'),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.mic_none_rounded,
+                  title: '开口复述通过阈值',
+                  subtitle: '90 秒开口练习按词级匹配判定，与听写阈值独立',
+                  value: '$speakThreshold%',
+                  onTap: () => _pick(
+                    context,
+                    title: '开口复述通过阈值',
+                    options: const ['70%', '75%', '80%', '85%', '90%'],
+                    current: '$speakThreshold%',
+                    onPick: (value) => set(
+                      SettingsKeys.reviewSpeakPassThreshold,
+                      value.replaceAll('%', ''),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.format_list_bulleted_rounded,
+                  title: '每日待复练上限',
+                  subtitle: '每天最多提醒 N 条到期复练，超出顺延到第二天',
+                  value: '$dailyLimit 条',
+                  onTap: () => _pick(
+                    context,
+                    title: '每日待复练上限',
+                    options: const ['3 条', '5 条', '8 条', '10 条'],
+                    current: '$dailyLimit 条',
+                    onPick: (value) => set(
+                      SettingsKeys.reviewDailyLimit,
+                      value.replaceAll(' 条', ''),
+                    ),
                   ),
                 ),
                 const Divider(height: 1, color: AppColors.divider),

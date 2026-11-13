@@ -476,7 +476,7 @@ Container(
 | 分类图标块 | 只用 Material 线性图标 + 既有辅助色浅底（`primaryWash` / `primaryTint` / `mint` 28% / `warning` 10% / `pink` 10% / `yellow` 20%）；强调色只用 `primaryDeep` / `orange` / `success` / `warning`；图标 24，不用 3D 插画的替代色块，不引入新色值 |
 | 空态 | 复用 `EmptyState`（88 圆形 `primaryWash` + 38 图标 + H2 标题 + `bodySecondary` 说明），用于筛选/搜索无结果；文案说明如何清除筛选 |
 
-场景库页沿用「一屏一个主色实心 CTA」约束：本页不设 CTA；分类 Chip 与卡片不使用第二种高饱和辅助色作为大面积底色，辅助色只出现在 46 × 46 图标块内。首页「场景练习」区块保持 1 张主推大卡 + 1 张紧凑卡，右侧文字按钮改为「全部 N 个」（`SectionTitle` 的 `actionLabel`，12/600 主色），不把 26 张卡堆进首屏。
+场景库页沿用「一屏一个主色实心 CTA」约束：本页不设 CTA；分类 Chip 与卡片不使用第二种高饱和辅助色作为大面积底色，辅助色只出现在 46 × 46 图标块内。首页「场景练习」区块保持 1 张主推大卡 + 1 张紧凑卡，右侧文字按钮改为「全部 N 个」（`SectionTitle` 的 `actionLabel`，12/600 主色，N 由实际场景数据计算），不把所有场景卡堆进首屏。分类数量随数据增长，Chip 组仍保持横向单行滚动，不改为多行或新增组件。
 
 #### 会话续练新增组件规格（先改规范再落代码）
 
@@ -539,6 +539,22 @@ Container(
 | 学习者档案设置开关 | 「设置 → 练习」分组内新增一行 `SettingRow`（`Icons.psychology_alt_outlined`），标题「学习者档案」，`subtitle` 说明用途与「关闭后回到原始对话」，`trailing` 用原生 `Switch`（`activeTrackColor = primary`）；沿用既有 `Divider` 与 4/8 网格间距 |
 
 三期组件仍只用既有色值 Token、字号 Token 与 4/8 网格间距；「已达成 N/3」「第 1 / 3 句」是真实进度，不作装饰；任何反馈位都不使用分数、等级、星级、排行榜或勋章图形。
+
+#### M14 学习路径新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 首页「下一步」卡 | 由「今天练这个」升级：仍复用 `AppCard`（24 圆角 / 16 内边距 / `AppShadows.card`）；首行 `Icons.today_rounded` 18 `primary` + `AppText.cardTitle`「下一步」+ 右侧 `AppTag`（`primaryWash` 底 + `primaryDeep` 字）显示阶段名；下方 `AppText.section` 推荐标题 + `AppText.caption` 一句可核对的理由；底部通栏 `PrimaryButton`「开始」；其下一行 3 个 `TextButton`（11/500 `primaryDeep`）：「换一个」「今天先跳过」「查看学习路径」。不新增第二个主色实心 CTA，不出现分数 / 百分比 / 等级 / 星级 / 锁图标 |
+| 路径页「三问」卡 | `AppCard`；三行 `AppText.caption`(11/500 `inkMuted`) 标签 + `AppText.body` 值，行距 8：「我在哪」「走到哪了」「接下来做什么」；「走到哪了」下方 3 px 线性进度（轨道 `line`、进度 `primary`），旁边只写「已完成 N / M 条」，不写百分比、不画目标线 |
+| 阶段梯度条 | 复用 §3.4「进度 → 分步」规格：4 个 10 圆点 + 2 px 连线，已完成 `primary`、当前 `primaryTint` 描边、未到 `line`；下方 11/500 阶段名；4 段都可点（可跳、可退），**不出现锁形图标、不置灰不可点、不显示「未解锁」** |
+| 阶段安排清单行 | `AppCard` 内一行，卡间距 8；左 20 × 20 圆角 6 `primaryWash` 序号块（`AppText.caption` 11 `primaryDeep`），中间 `AppText.bodySecondary` 标题 + `AppText.caption` 一句理由，右 `AppTag`（未开始 / 已完成 / 待巩固 / 今天跳过：只用 `primaryDeep` / `success` / `warning` / `inkMuted`）；整行可点直达对应练习；一个阶段 5–7 行，序号是真实推荐顺序 |
+| 阶段回顾卡 | `AppCard`；标题 `AppText.cardTitle` + `AppText.caption`「可以往前走了 / 再稳一轮」；三条证据各占一行，`success` 12% 底 10 圆角块、`AppText.caption`；下方 3 枚 `SecondaryButton`（进入下一阶段 / 再巩固一轮 / 换目标重排）竖排间距 8；本页已有「下一步」主 CTA，回顾卡不再放主色实心按钮 |
+| 复盘「下一次练这个」卡 | `AppCard`，紧跟 3 条目标自评卡之后；首行 `Icons.arrow_forward_rounded` 18 `primary` + `AppText.cardTitle`；下方 `AppText.section` 下一次内容 + `AppText.caption` 理由；**只放一枚 `SecondaryButton`**，因为复盘页底部操作栏已有主按钮 |
+| 场景库阶段标记 | 场景列表卡第三行元信息末尾追加 `AppTag('适合当前阶段', color: primaryDeep, background: primaryWash)`；不新增色值、不隐藏其它场景、不与「自建 / 练过 N 次」冲突；只是提示，不是筛选条件 |
+| 设置「学习路径」行 | 「练习」分组内 1 行 `SettingRow`（`Icons.map_outlined`）跳路径页；同分组补 2 行 `SettingRow` 展示既有但原先无入口的「开口复述通过阈值」「每日待复练上限」，`subtitle` 用一句人话说明口径；沿用既有 `Divider`、开关与 `_pick` Sheet，不新增组件 |
+| 起点 3 问页 | `PageScaffold` + `ListView`；4 组 `SectionTitle` + `SegmentedControl` / `AppTextField`（目标场合、具体诉求、水平、每次时长 / 每周次数）；底部固定通栏 `PrimaryButton`「生成我的路径」；未配置时路径页用 `EmptyState`（88 圆形 `primaryWash` + 38 图标）引导进入本页 |
+
+M14 只用既有色值 Token、`AppText` 字号与 4/8 网格间距；「已完成 N / M」「第 1 / 4 阶段」是真实进度，不作装饰；任何位置都不出现分数、CEFR 等级、能力雷达、热力图、勋章、连胜或推送。路径是导航层，不改变首页 4 Tab 与「一屏一个主色实心 CTA」约束。
 
 #### 页面头部
 

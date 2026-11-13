@@ -185,11 +185,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void dispose() {
     _controller.removeListener(_onUpdate);
     // 系统返回键 / 侧滑手势不会走 _back()，这里兜底把会话存成可续练状态。
-    unawaited(_controller.pauseSession());
+    // 落库失败只记日志，不能变成未捕获的异步异常。
+    unawaited(_pauseOnDispose());
     _controller.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _pauseOnDispose() async {
+    try {
+      await _controller.pauseSession();
+    } catch (e) {
+      AppLogger.warn('pause on dispose failed: $e');
+    }
   }
 
   void _refreshSessions() {
@@ -307,17 +316,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
     if (!ok || !mounted) return;
     setState(() => _ending = true);
-    final session = await _controller.endSession();
-    if (!mounted) return;
-    _refreshSessions();
-    if (session == null) {
-      context.go('/home');
-      return;
+    var navigated = false;
+    try {
+      final session = await _controller.endSession();
+      if (!mounted) return;
+      _refreshSessions();
+      navigated = true;
+      if (session == null) {
+        context.go('/home');
+      } else {
+        context.pushReplacement('/review/${session.id}');
+      }
+    } catch (e) {
+      AppLogger.warn('end session failed: $e');
+      if (mounted) showAppToast(context, '结束失败，请再试一次', error: true);
+    } finally {
+      // 失败时恢复「结束」按钮；成功跳转后旧页面即将销毁，不再 setState。
+      if (mounted && !navigated) setState(() => _ending = false);
     }
-    context.pushReplacement('/review/${session.id}');
   }
 
   Future<void> _back() async {
+    // 结束流程中不要再弹「保存并退出」，否则会覆盖已完成状态或删除会话。
+    if (!mounted || _ending) return;
     if (_controller.state == TurnState.thinking) {
       showAppToast(context, '正在等待回复，请稍后再退出');
       return;
@@ -346,7 +367,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final c = _controller;
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (_, __) => _back(),
+      onPopInvokedWithResult: (didPop, _) {
+        // 只处理被拦截的返回（系统返回键 / 侧滑）。应用内主动 pop、结束对话后
+        // 的路由替换会以 didPop=true 回调，此时再走一次 _back() 会重复弹确认、
+        // 甚至再 pop 掉上一页，页面看起来就像卡死。
+        if (!didPop && !_ending) unawaited(_back());
+      },
       child: GradientBackground(
         child: Scaffold(
         backgroundColor: Colors.transparent,

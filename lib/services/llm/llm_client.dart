@@ -53,6 +53,9 @@ class LlmClient {
     int maxTokens = 700,
     double temperature = 0.8,
     CancelToken? cancelToken,
+    Duration? receiveTimeout,
+    int maxRetries = 2,
+    bool allowReasoningFallback = true,
   }) async {
     final started = DateTime.now();
     final watch = Stopwatch()..start();
@@ -71,12 +74,14 @@ class LlmClient {
               'temperature': temperature,
               'max_tokens': maxTokens,
             },
-            options: _options(config),
+            options: receiveTimeout == null
+                ? _options(config)
+                : _options(config).copyWith(receiveTimeout: receiveTimeout),
             cancelToken: cancelToken,
           );
         } on DioException catch (e) {
           final mapped = mapDioError(e);
-          if (mapped.retryable && attempt < 2 && e.type != DioExceptionType.cancel) {
+          if (mapped.retryable && attempt < maxRetries && e.type != DioExceptionType.cancel) {
             attempt++;
             AppLogger.warn('chat retry #$attempt after ${e.type}');
             await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
@@ -85,7 +90,7 @@ class LlmClient {
           rethrow;
         }
         final status = response.statusCode ?? 0;
-        if ((status == 429 || status >= 500) && attempt < 2) {
+        if ((status == 429 || status >= 500) && attempt < maxRetries) {
           attempt++;
           AppLogger.warn('chat retry #$attempt after HTTP $status');
           await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
@@ -102,7 +107,10 @@ class LlmClient {
           statusCode: status,
         );
       }
-      final text = _contentOf(response.data);
+      final text = _contentOf(
+        response.data,
+        allowReasoningFallback: allowReasoningFallback,
+      );
       if (text.isEmpty) {
         final reason = _finishReason(response.data);
         throw AppError(
@@ -138,6 +146,7 @@ class LlmClient {
     int maxTokens = 700,
     double temperature = 0.8,
     CancelToken? cancelToken,
+    int maxRetries = 2,
   }) async* {
     try {
       late Response<ResponseBody> response;
@@ -166,7 +175,7 @@ class LlmClient {
           );
         } on DioException catch (e) {
           final mapped = mapDioError(e);
-          if (mapped.retryable && attempt < 2 && e.type != DioExceptionType.cancel) {
+          if (mapped.retryable && attempt < maxRetries && e.type != DioExceptionType.cancel) {
             attempt++;
             AppLogger.warn('stream retry #$attempt after ${e.type}');
             await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
@@ -175,7 +184,7 @@ class LlmClient {
           rethrow;
         }
         final code = response.statusCode ?? 0;
-        if ((code == 429 || code >= 500) && attempt < 2) {
+        if ((code == 429 || code >= 500) && attempt < maxRetries) {
           attempt++;
           AppLogger.warn('stream retry #$attempt after HTTP $code');
           await Future<void>.delayed(Timeouts.retryBackoff[attempt - 1]);
@@ -306,7 +315,10 @@ class LlmClient {
   /// `message.content`（字符串或 content 数组）、`delta.content`、
   /// `choices[0].text`；思考模型还可能在预算不足时只给
   /// `reasoning_content`。这里依次兜底，避免误判为「模型没返回内容」。
-  String _contentOf(Map<String, dynamic>? data) {
+  String _contentOf(
+    Map<String, dynamic>? data, {
+    bool allowReasoningFallback = true,
+  }) {
     final choices = data?['choices'];
     if (choices is! List || choices.isEmpty) return '';
     final first = choices.first;
@@ -315,7 +327,7 @@ class LlmClient {
     final message = first['message'];
     if (message is Map) {
       text = _textOf(message['content']);
-      if (text.isEmpty) {
+      if (text.isEmpty && allowReasoningFallback) {
         text = _textOf(message['reasoning_content']);
         if (text.isNotEmpty) {
           AppLogger.debug('chat content empty, fallback to reasoning_content');
@@ -326,7 +338,9 @@ class LlmClient {
       final delta = first['delta'];
       if (delta is Map) {
         text = _textOf(delta['content']);
-        if (text.isEmpty) text = _textOf(delta['reasoning_content']);
+        if (text.isEmpty && allowReasoningFallback) {
+          text = _textOf(delta['reasoning_content']);
+        }
       }
     }
     if (text.isEmpty) text = _textOf(first['text']);

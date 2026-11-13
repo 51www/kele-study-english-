@@ -8,6 +8,7 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import '../path/path_providers.dart';
 import 'scenario_visual.dart';
 
 /// 场景库：分类 Chip + 搜索 + 场景列表 +「练过 N 次」。
@@ -68,6 +69,8 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(scenarioLibraryProvider);
+    final stageScope = ref.watch(pathPlanProvider).asData?.value.scopeScenarioIds ??
+        const <String>{};
     return PageScaffold(
       title: '场景库',
       actions: [
@@ -87,12 +90,12 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
             onRetry: () => ref.invalidate(scenarioLibraryProvider),
           ),
         ),
-        data: (data) => _body(data),
+        data: (data) => _body(data, stageScope),
       ),
     );
   }
 
-  Widget _body(ScenarioLibraryData data) {
+  Widget _body(ScenarioLibraryData data, Set<String> stageScope) {
     final categories = scenarioCategoriesOf(data.scenarios.map((e) => e.category));
     final customCount = data.scenarios.where((e) => !e.isBuiltin).length;
     final activeCategory = categories.contains(_category) ? _category : '全部';
@@ -159,6 +162,7 @@ class _ScenarioLibraryPageState extends ConsumerState<ScenarioLibraryPage> {
           child: _ScenarioTile(
             scenario: scenario,
             practiced: data.practiceCounts[scenario.id] ?? 0,
+            inStage: stageScope.contains(scenario.id),
             onEdit: () => _openEditor(scenario.id),
             onDelete: () => _deleteCustom(scenario),
           ),
@@ -296,12 +300,14 @@ class _ScenarioTile extends StatelessWidget {
   const _ScenarioTile({
     required this.scenario,
     required this.practiced,
+    required this.inStage,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Scenario scenario;
   final int practiced;
+  final bool inStage;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -356,11 +362,24 @@ class _ScenarioTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${scenario.category} · ${scenario.level} · ${scenario.expectedTurns} 轮 · ${scenario.estimatedMinutes}',
-                  style: AppText.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${scenario.category} · ${scenario.level} · ${scenario.expectedTurns} 轮 · ${scenario.estimatedMinutes}',
+                        style: AppText.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (inStage) ...[
+                      const SizedBox(width: 6),
+                      const AppTag(
+                        label: '适合当前阶段',
+                        color: AppColors.primaryDeep,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

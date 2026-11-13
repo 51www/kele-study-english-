@@ -182,6 +182,13 @@ class MePage extends ConsumerWidget {
                     ),
                     const Divider(height: 1, color: AppColors.divider),
                     SettingRow(
+                      icon: Icons.map_outlined,
+                      title: '学习路径',
+                      subtitle: '阶段计划、进度与下一步建议',
+                      onTap: () => context.push('/path'),
+                    ),
+                    const Divider(height: 1, color: AppColors.divider),
+                    SettingRow(
                       icon: Icons.storage_rounded,
                       title: '数据与存储',
                       onTap: () => context.push('/settings/data'),

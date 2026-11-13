@@ -9,6 +9,7 @@ import '../../data/db/defaults.dart';
 import '../../data/repositories/repositories.dart';
 import '../../domain/models/models.dart';
 import '../dictation/providers.dart';
+import '../path/path_providers.dart';
 
 /// 数据与存储：`/settings/data`。
 ///
@@ -127,6 +128,10 @@ class DataSettingsPage extends ConsumerWidget {
                 ref.invalidate(scenarioLibraryProvider);
                 ref.invalidate(materialLibraryProvider);
                 ref.invalidate(wrongSegmentsProvider);
+                // app_meta 被清空后路径回到未配置空态，避免显示旧进度。
+                ref.invalidate(learningPathProvider);
+                ref.invalidate(pathPlanProvider);
+                ref.invalidate(todayPlanProvider);
                 if (context.mounted) showAppToast(context, '已清空，回到首次启动状态');
               },
             ),

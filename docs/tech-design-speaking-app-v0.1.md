@@ -322,7 +322,7 @@ lib/
 | LLM 整段 | 30s（非流式）/ 45s（流式） | 2 次 | 1s / 2s | 401/403/404/400 |
 | TTS 首包 | 4s | 1 次 | 500ms | 连续 2 次失败 → 切系统 TTS |
 | 翻译 | 10s | 1 次 | 1s | 主链路已结束则可放弃 |
-| 复盘生成 | 30s | 1 次 | 2s | 失败时给"重试生成"，不阻塞保存会话 |
+| 复盘生成 | 60s（整体；流式优先 / 非流式兜底） | 1 次（仅格式解析失败） | 2s | 网络 / 超时失败与用户取消不自动重试；失败时给"重试生成"，不阻塞保存会话 |
 
 **重试必须可取消**：用户点"取消"或再次按住说话时，所有在途请求立即 `CancelToken.cancel()`，避免"旧回复盖新回复"。
 
@@ -571,7 +571,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 |---|---|---|
 | id | TEXT PK | 稳定 ID（如 `cafe_order`） |
 | title_zh / title_en | TEXT | 显示名 |
-| category | TEXT | 分类：日常 / 工作 / 旅行 / 社交 / 健康 / 观点（场景库 Chip 与图标用） |
+| category | TEXT | 分类，以场景数据实际取值为准；场景库 Chip 与 `scenario_visual.dart` 图标按实际分类生成，可继续新增 |
 | level | TEXT | A2 / B1 / B2 |
 | ai_role | TEXT | AI 扮演的角色（英文描述，进 prompt） |
 | user_goal | TEXT | 用户要达成的目标 |
@@ -585,7 +585,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 
 > 场景内容用 JSON 字段而不是拆表：场景数量少、结构会变，拆表收益低。
 
-> **2026-11-10 场景库扩容（需求 §0.1）**：内置场景由 2 个扩到 26 个（新增 24 个）。**表结构、`schemaVersion`、`LocalStore` 接口与 SQL 全部不变**：种子按 `id` 幂等 upsert，老设备覆盖安装后下次启动自动获得新场景，不需要迁移。`category` 由场景库 Chip 与分类图标映射消费；`target_phrases` 追加进 `chatSystem` 作为自然引导（不列出、不测验、不强制）；「练过次数」由 `session.scenario_id` 在 `scenarioLibraryProvider` 中派生聚合，不新增冗余字段。新增 `/scenarios` 全屏页（`ScenarioLibraryPage`），首页只保留 2 张推荐卡 +「全部 26 个」入口。详见 `docs/research-practice-scenarios-2026-11.md`。
+> **场景库扩容口径（需求 §0.1、§0.1.1）**：内置场景数量与分类均不设上限，以 `builtinScenarios` 实际数据为准，界面上的数量文案由数据计算。**表结构、`schemaVersion`、`LocalStore` 接口与 SQL 全部不变**：种子按 `id` 幂等 upsert，老设备覆盖安装后下次启动自动获得新场景，不需要迁移；追加只加新 id，已有条目不动。`category` 由场景库 Chip 与分类图标映射按实际数据生成，未登记分类自动补在末尾；`target_phrases` 追加进 `chatSystem` 作为自然引导（不列出、不测验、不强制）；「练过次数」由 `session.scenario_id` 在 `scenarioLibraryProvider` 中派生聚合，不新增冗余字段。`/scenarios` 全屏页（`ScenarioLibraryPage`）沿用既有组件规格，首页只保留 2 张推荐卡 +「全部 N 个」入口。
 
 #### `session` 会话
 
@@ -1067,7 +1067,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 - 两个场景各完整跑 3 次，无阻塞性问题。
 - 所有"失败路径"都能在 15s 内给用户一个明确下一步。
 
-> 2026-11-10 补充：本节「两个场景各跑 3 次」是 M4 当时的验收口径，保持原样不改写；后续场景库扩容到 26 个属于 M4 之后的收尾项（里程碑 §12），不改变 M0–M4 的验收标准。
+> 2026-11-10 补充：本节「两个场景各跑 3 次」是 M4 当时的验收口径，保持原样不改写；后续场景库扩容属于 M4 之后的收尾项（里程碑 §12），不改变 M0–M4 的验收标准。当前场景数量以 `builtinScenarios` 实际数据为准，见需求 §0.1.1。
 
 ---
 
@@ -1179,3 +1179,20 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 **新增配置项**：`dictation.passThreshold` / `dictation.contractionEquivalent` / `dictation.numberEquivalent` / `dictation.speed`，默认值见开发文档 §11 与技术补充 §4。
 
 **验证记录（2026-11-11）**：`flutter analyze` 0 error / 0 warning；`flutter test` 19 个测试全通过（字幕解析、切句、判分、二期数据库 CRUD 与级联删除、v1→v2 覆盖安装迁移老数据保留、链接导入下载+解析落库及空字幕报错）；`flutter build web --release --no-web-resources-cdn` 与 `flutter build apk --debug` 均通过。Android 真机逐条验收见 [真机验收清单](device-acceptance-checklist-v0.1.md)。
+
+---
+
+## 12. 四期补充（2026-11-13）：学习路径
+
+> 本节只登记四期 M14 的**增量**，§1–§11 的既有结论全部保持不变。产品依据见[需求 §0.4](requirements-speaking-app-v0.2.md)，功能方案见[学习路径设计](design-learning-path-v0.1.md)，任务与验收见[四期里程碑清单](milestones-phase4-learning-path-v0.1.md)。
+
+| 本文条目 | 四期增量 | 结论 |
+|---|---|---|
+| §2 技术选型与依赖 | 不新增任何依赖、不新增引擎、不新增模型接口 | 阶段生成、完成判定、下一步推荐全部是纯 Dart 规则，无网络请求、无 `/chat/completions` 调用 |
+| §3.2 模块边界 | 新增 `features/path/`（`path_model.dart` / `path_plan.dart` / `path_providers.dart` / `path_page.dart` / `path_setup_page.dart` / `next_step_card.dart`） | 只读既有 `session` / `scenario` / `phrase` / `review_item` / `material` / `setting` / `app_meta`；不改主对话状态机、不改复盘主流程、不改 `LocalStore` 抽象 |
+| §4 语音链路 | 完全不涉及 | 路径只提供「去哪练」的入口，不产生新的录音 / 播放 / 识别链路 |
+| §6 数据模型 | **零改表**：路径状态 JSON 存 `app_meta` 单键，手写 `toJson/fromJson` 并宽容解码 | `schemaVersion` 保持 3；`onUpgrade`、生成文件、drift / web 双端实现、`clearAll` 均不动；清空数据后回到未配置空态 |
+| §7 UI 结构 | 新增 `/path`、`/path/setup`，均挂在 `ShellRoute` 外；首页「今天练这个」升级为「下一步」卡；复盘、场景库、设置各插入一处入口 | 底部 4 Tab 不变；组件规格见 UI 设计规范 §3.4「M14 学习路径新增组件规格」 |
+| §9.1 技术风险 | 计划状态集中在单一 KV，需防旧值 / 坏值导致页面崩溃 | 解码全部可空兜底 + try/catch；Provider 失效清单补齐；无新表因此无迁移风险 |
+
+**不做**：CEFR 测评与分数、能力雷达、课程大纲、解锁式关卡、每日推送、AI Agent 生成训练计划、账号 / 云同步。水平口径统一为「设置里的水平 + 场景难度标签 + 最近几次练习表现」，不引入新的定级体系。

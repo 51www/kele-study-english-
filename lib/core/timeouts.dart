@@ -50,6 +50,13 @@ class Timeouts {
   /// 与 `receive` 对齐到 25s，超时仍由统一文案提示并可重试。
   static const sideRequest = Duration(seconds: 25);
 
+  /// 复盘生成：单次请求上限（思考型模型会先产出 reasoning，30s 常不够）。
+  /// 复盘不叠加客户端自动重试，等待期间给慢提示并允许取消。
+  static const review = Duration(seconds: 60);
+
+  /// 复盘格式解析失败后自动重试前的退避（技术设计 §4.4）。
+  static const reviewRetryBackoff = Duration(seconds: 2);
+
   /// 可重试错误的退避序列：最多重试 2 次。
   static const List<Duration> retryBackoff = [
     Duration(milliseconds: 1200),
