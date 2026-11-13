@@ -160,6 +160,7 @@ lib/
 | F8 坚持机制（极简） | `features/home` | `session` 聚合查询 | M3 |
 | F9 自定义场景（已提前启用，见需求 §0.3） | `features/scenario`（`scenario_editor_page`、`scenario_library_page`） | `scenario` 表、`ScenarioRepository.saveCustom/deleteCustom/nextSortOrder`、路由 `/custom-scenario/*` | 交互优化收尾（里程碑 §14） |
 | F10 发音反馈（P2） | — | — | 不做 |
+| F17 每日打卡（P0） | `features/checkin`、`features/home`（`CheckinCard`）、`features/history`（「接着练」区块） | `daily_checkin` 表（裸 SQL + `CheckinRepository`）、`checkinRepositoryProvider`/`todayCheckinProvider`/`checkinMonthProvider`、路由 `/checkin` | M15 |
 
 ### 1.3 模块边界
 
@@ -351,6 +352,7 @@ dio / plugin 异常
 | `message` | 会话内消息 | `SessionRepository` | 对话页、记录详情、复盘 |
 | `correction` | 纠错条目 | `ReviewService` 落库 | 复盘页、记录详情 |
 | `phrase` | 表达本 | `PhraseRepository` | 表达本页、首页"上次卡住" |
+| `daily_checkin` | 每日打卡手动补记（App 外学习：背单词 / 影子跟读 / 其它），断网可记 | `CheckinRepository`（裸 SQL upsert/delete） | 首页今日卡、日历页 `/checkin` |
 | `llm_profile` | 接口配置（不含 Key 明文） | `LlmProfileRepository` | 设置页、LlmClient |
 | `setting` | 键值设置 | `SettingsRepository` | 全局 |
 | `tts_cache` | 语音缓存索引 | `TtsCache` | TtsRouter、设置页清理 |
@@ -463,7 +465,8 @@ dio / plugin 异常
 
 - 索引：`message(session_id, seq)` 唯一；`session(started_at)`；`phrase(created_at)`；`tts_cache(last_used_at)`。
 - 外键：`message.session_id`、`correction.session_id` 级联删除。
-- `schemaVersion = 1`；每次结构变更必须提供迁移，禁止 `destructiveMigration`。
+- `schemaVersion = 4`（v1→v2 二期三表、v2→v3 三期 `review_item`、v3→v4 新增 `daily_checkin`）；每次结构变更必须提供迁移，禁止 `destructiveMigration`。
+- `daily_checkin` 用裸 SQL（`beforeOpen` 的 `CREATE TABLE IF NOT EXISTS`）建表，不注册到 Drift `tables`、不触碰生成代码 `.g.dart`、不跑 `build_runner`；老表一律不 ALTER / 不 DROP / 不回填，保证覆盖安装零数据丢失。
 - 种子数据：首次启动按 `id` 幂等 upsert `builtinScenarios` 的全部条目（数量以实际数据为准；见 §4.2 与里程碑 §12）。追加场景只改 `seeds.dart`，**不需要迁移**。
 - 会话续练（§3.1.1）同样**不需要迁移**：`status` 取值从 `draft/completed/aborted` 调整为 `draft/in_progress/completed`，`ended_at` 允许清空，都是既有字段的语义变化。
 
@@ -562,7 +565,8 @@ dio / plugin 异常
 
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
-| 首页 `home` | `HomePage` | `HomeHeader`（头像+问候+设置）、`WhitePanel`、`QuickStartCard`、`MiniStats`、`RecallCard`、2 张场景推荐卡 + `SectionTitle.actionLabel`「全部 N 个」（N 由实际数据计算）→ `/scenarios`、`_ResumeCard`（`继续上次` → `/chat/:id`，无续练会话时显示「最近练习」`_LastSessionCard`）、`HomeFoot` |
+| 首页 `home`（重组） | `HomePage` | `CheckinCard`（今日主卡：打卡状态 + 连续天数 + 学习构成 chip + 目标进度 + 入口）、`TodayPracticeCard`（下一步）、`_PracticeGrid`（场景练习 / 复盘复练 / 3 分钟轻量，一行三卡等宽，2026-11-13 用户拍板）、`_TipsEntry`；场景推荐卡已移除（与练习入口重复）；「卡在哪 / 继续 / 最近」已移入 `history` 页「接着练」区块；底部 4 Tab 不变 |
+| 打卡日历 `/checkin` | `CheckinCalendarPage` | `PageScaffold`、顶部三块 `AppCard` 统计（本月打卡 / 当前连续 / 最长连续）、`GridView.count`（7 列月历，主色圆点亮已打卡天、今天加描边）、`_DaySheet`（`showAppSheet`：自动活动只读 + 手动补记 `FilterChip` + 备注） |
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
 | 自定义场景 `/custom-scenario/new`、`/:id/edit` | `ScenarioEditorPage` | `AppTextField` 表单（场景名 / 英文标题 / AI 角色 / 练习目标 / 目标表达 / 开场白 / 完成标准）、`_ChoiceChip`（分类 / 难度 / 轮数）、`_OpeningPreview`（开场白实时预览 + 试听）、底部「删除 / 保存」按钮行 |
@@ -571,7 +575,7 @@ dio / plugin 异常
 | 设置 `settings` | `SettingsPage` | 语音 / 练习设置项 + `SettingRow`（数据与存储入口 → `/settings/data`） |
 | 数据与存储 `/settings/data` | `DataSettingsPage` | 说明文案、`SettingRow`（语音缓存 / 清空练习数据）、`showConfirmDialog` |
 | 模型配置（设置内区块） | `ModelProfileSheet` / `ModelProfilePage` | `AppField`×3、`FetchModelsButton`、`ConnResult`、`SaveButton` |
-| 记录列表 | `HistoryPage` | `_HistoryCard`（未完成卡追加「点按继续这段对话」，跳 `/chat/:id`；已完成卡跳 `/review/:id`）、`Dismissible` 删除、`EmptyState` |
+| 记录列表 | `HistoryPage` | `_quickResume`（「接着练」区块：承接首页移出的卡在哪 / 继续 / 最近，含 `_StuckCard`/`_ResumeCard`/`_LastSessionCard`）、`_HistoryCard`（未完成卡追加「点按继续这段对话」，跳 `/chat/:id`；已完成卡跳 `/review/:id`）、`Dismissible` 删除、`EmptyState` |
 | 记录详情 | `SessionDetailPage` | `MessageList(readOnly)`、`CorrectionList` |
 | 表达本 | `PhrasebookPage` | 页头「添加表达」+ 展开的新建 / 编辑表单、`_PhraseCard`（朗读 / 编辑 / 标记已掌握 / 删除）、`EmptyState`（一键添加 + 查看记录 + 3 条常用表达快捷添加）、`ErrorBanner` |
 | 技巧列表 `/tips` | `TipsPage` | 分类筛选 Chip、文章卡、`EmptyState`、`ErrorBanner` |

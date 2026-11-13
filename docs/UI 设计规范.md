@@ -504,11 +504,21 @@ Container(
 
 本次新增组件仍只使用既有 Token 与 4/8 网格间距；动效不引入第三方动画库或资源文件。
 
+#### 每日打卡新增组件规格（M15，先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 首页「今日」主卡 `CheckinCard` | 主色→主色深渐变底、24 圆角、`AppShadows.card`；顶部「今日打卡」标题 + 右侧「连续 N 天」pill（半透明白底 + `local_fire_department` 14 白）；中部状态大字（已打卡 / 待打卡，白字 `AppText.h2`）；学习构成 Wrap Chip（口语 / 轻量 / 听写 / 背单词 / 影子跟读 / 其它，已做的白底主色字、未做的白 12% 底 + 白色描边；手动类型点按切换补记）；底部今日分钟/目标进度条（白底 25% 轨 + 白填充）+ 入口（未打卡 `SecondaryButton`「开始今日学习」；已打卡 `TextButton` 白字「查看打卡日历」→ `/checkin`）；一屏只有一个主色实心 CTA（归「下一步」卡） |
+| 打卡日历页 `/checkin` | `PageScaffold` 标题「打卡日历」；顶部三块 `AppCard` 统计（本月打卡 / 当前连续 / 最长连续，值 `AppText.h2` 主色深）；7 列月历 `GridView.count`（`NeverScrollableScrollPhysics` 嵌 `ListView`），已打卡天主色圆底白字、今天加 2px 主色深描边、其余灰字；点击某天 `showAppSheet`（标题=该天日期）展示明细 |
+| 日历单日明细 `_DaySheet` | 顶部右对齐 `AppTag`（已打卡 / 未打卡，主色深 / `inkSecondary`）；自动活动（口语 / 轻量 / 听写）只读 `Chip`（图标 14 主色深）；手动补记 `FilterChip`（背单词 / 影子跟读 / 其它，选中主色）即时 `toggleType`；备注 `TextField`（`AppRadius.md` 圆角）+ `SecondaryButton`「保存备注」；不出现第二个主色实心 CTA |
+
+本次新增组件仍只使用既有 Token 与 4/8 网格间距；渐变主色卡、白字与 12% 白底沿用首页既有视觉，不引入新色值、新字号或新阴影层级。
+
 #### 二期听写新增组件规格（先改规范再落代码）
 
 | 组件 | 规格 |
 |---|---|
-| 首页「听写教材」栏目 | 与「方法 / 技巧」同构：`SectionTitle` + 单张 `AppCard`（24 圆角 / 16 内边距），左 42 × 42 圆角 12 `primaryWash` 图标块 + `Icons.hearing_outlined` 22 `primaryDeep`，中间 `AppText.cardTitle` 标题 + `AppText.caption` 副标题，右 `chevron_right_rounded`；不新增 Tab、不新增第二个主色实心 CTA |
+| 首页「听写教材」栏目 | 与「方法 / 技巧」同构：`SectionTitle` + 单张 `AppCard`（24 圆角 / 16 内边距），左 42 × 42 圆角 12 `primaryWash` 图标块 + `Icons.hearing_outlined` 22 `primaryDeep`，中间 `AppText.cardTitle` 标题 + `AppText.caption` 副标题，右 `chevron_right_rounded`；不新增 Tab、不新增第二个主色实心 CTA（注：教材导入 UI 暂隐藏，此栏目首页入口不展示，见 2026-11-13） |
 | 教材卡 | 复用 `AppCard`（24 圆角 / 16 内边距 / `AppShadows.card`），卡间距 12；第一行 `AppText.cardTitle` 标题 + 右侧 `AppTag`（`primaryWash` 底 + `primaryDeep` 字）显示「N 句」；第二行 `AppText.caption` 元信息「时长 · 已练 X 句 · 正确率 Y%」；第三行 3 px 线性进度（轨道 `line`、进度 `primary`），只用 4/8 网格间距 |
 | 句子行 | `AppCard` 内一行：左 28 宽序号 `AppText.caption`（`inkMuted`），中间最多 2 行 `AppText.bodySecondary`（英文），右侧 8 圆点状态点（未练 `inkMuted` / 已通过 `success` / 有错 `warning`）+ `AppText.caption` 时间轴；无描边、无第二层卡片；长按/菜单提供合并、拆分、微调，菜单沿用既有 10/600 胶囊小按钮规格 |
 | 片段播放控制条 | 听写页唯一的主视觉：`AppCard`（`primaryWash` 底、无阴影、16 内边距）；上方一行 `AppText.caption`「第 07 / 62 句」+ 右侧词数弱提示；中间 44 圆形 `primary` 播放键（28 图标，白字）+ 左右各 32 圆形白底小键（0.75x / 复听），间距 12；下方 3 px 线性进度（`line` / `primary`）；不出现字幕原文、不出现视频画面 |

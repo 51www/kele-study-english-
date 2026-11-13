@@ -18,7 +18,8 @@ class HistoryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(recentSessionsProvider);
-    final scenarios = ref.watch(homeDataProvider).asData?.value.scenarios ?? const <Scenario>[];
+    final home = ref.watch(homeDataProvider);
+    final scenarios = home.asData?.value.scenarios ?? const <Scenario>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -34,6 +35,7 @@ class HistoryPage extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
+        _quickResume(home.asData?.value),
         Expanded(
           child: async.when(
             loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -186,6 +188,183 @@ class _HistoryCard extends StatelessWidget {
                     style: AppText.caption.copyWith(color: AppColors.primaryDeep),
                   ),
                 ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
+        ],
+      ),
+    );
+  }
+}
+
+  /// 顶部「接着练」区块：承接从首页移出的卡在哪 / 继续上次 / 最近练习，
+  /// 让历史页成为唯一记录入口，缩短回练路径。
+  Widget _quickResume(HomeData? data) {
+    if (data == null) return const SizedBox.shrink();
+    final blocks = <Widget>[];
+    if (data.lastStuck != null) {
+      blocks.add(_StuckCard(correction: data.lastStuck!));
+    }
+    if (data.resumableSession != null) {
+      blocks.add(_ResumeCard(
+        session: data.resumableSession!,
+        scenarios: data.scenarios,
+      ));
+    } else if (data.lastSession != null) {
+      blocks.add(_LastSessionCard(
+        session: data.lastSession!,
+        scenarios: data.scenarios,
+      ));
+    }
+    if (blocks.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle(title: '接着练'),
+          const SizedBox(height: 10),
+          ...blocks,
+        ],
+      ),
+    );
+  }
+
+class _StuckCard extends StatelessWidget {
+  const _StuckCard({required this.correction});
+
+  final Correction correction;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, size: 16, color: AppColors.warning),
+              const SizedBox(width: 6),
+              Text('上次这句可以换个说法',
+                  style: AppText.caption.copyWith(color: AppColors.inkSecondary)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            correction.original,
+            style: AppText.bodySecondary,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(correction.improved, style: AppText.body.copyWith(color: AppColors.primaryDeep)),
+          const SizedBox(height: 6),
+          Text(correction.reasonZh, style: AppText.caption),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumeCard extends StatelessWidget {
+  const _ResumeCard({required this.session, required this.scenarios});
+
+  final SessionRecord session;
+  final List<Scenario> scenarios;
+
+  @override
+  Widget build(BuildContext context) {
+    final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
+    return AppCard(
+      onTap: () => context.push('/chat/${session.id}'),
+      color: AppColors.primaryWash,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.mint.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.play_arrow_rounded, color: AppColors.success, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  scenario?.titleZh ?? '自由对话',
+                  style: AppText.cardTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '进行中 · ${session.turnCount} 轮 · ${formatDate(session.startedDate)}',
+                  style: AppText.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const AppTag(
+            label: '继续练习',
+            color: AppColors.primaryDeep,
+            background: AppColors.surface,
+            icon: Icons.play_arrow_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LastSessionCard extends StatelessWidget {
+  const _LastSessionCard({required this.session, required this.scenarios});
+
+  final SessionRecord session;
+  final List<Scenario> scenarios;
+
+  @override
+  Widget build(BuildContext context) {
+    final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
+    final completed = session.status == 'completed';
+    return AppCard(
+      onTap: () => context.push(completed ? '/review/${session.id}' : '/chat/${session.id}'),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.mint.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              completed ? Icons.check_rounded : Icons.play_arrow_rounded,
+              color: AppColors.success,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(scenario?.titleZh ?? '自由对话', style: AppText.cardTitle),
+                const SizedBox(height: 2),
+                Text(
+                  '${completed ? '已完成' : '未完成'} · ${formatDate(session.startedDate)} · ${session.turnCount} 轮 · ${formatMinutes(session.durationSec)}',
+                  style: AppText.caption,
+                ),
               ],
             ),
           ),

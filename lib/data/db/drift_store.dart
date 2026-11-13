@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/models/checkin_models.dart';
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 import '../../features/retention/review_item.dart';
@@ -420,9 +421,43 @@ class DriftStore implements LocalStore {
     );
   }
 
+  // ── 每日打卡（App 外学习活动手动补记）──────────────────────────────────
+
+  @override
+  Future<DailyCheckin?> checkin(String date) async {
+    final rows = await _query(
+      'SELECT * FROM daily_checkin WHERE date = ? LIMIT 1',
+      [date],
+    );
+    if (rows.isEmpty) return null;
+    return DailyCheckin.fromMap(rows.first);
+  }
+
+  @override
+  Future<void> upsertCheckin(DailyCheckin checkin) async {
+    final m = checkin.toMap();
+    await _exec(
+      'INSERT OR REPLACE INTO daily_checkin (date, extra_types, note, updated_at) '
+      'VALUES (?,?,?,?)',
+      [m['date'], m['extra_types'], m['note'], m['updated_at']],
+    );
+  }
+
+  @override
+  Future<void> deleteCheckin(String date) async {
+    await _exec('DELETE FROM daily_checkin WHERE date = ?', [date]);
+  }
+
+  @override
+  Future<List<DailyCheckin>> allCheckins() async {
+    final rows = await _query('SELECT * FROM daily_checkin ORDER BY date DESC');
+    return rows.map(DailyCheckin.fromMap).toList();
+  }
+
   @override
   Future<void> clearAll() async {
     for (final table in [
+      'daily_checkin',
       'review_item',
       'dictation_attempt',
       'material_segment',

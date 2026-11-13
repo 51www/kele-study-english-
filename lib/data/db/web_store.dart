@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../domain/models/checkin_models.dart';
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 import '../../features/retention/review_item.dart';
@@ -361,9 +362,33 @@ class WebStore implements LocalStore {
         (row) => row['source_type'] == sourceType && row['source_id'] == sourceId,
       );
 
+  // ── 每日打卡（App 外学习活动手动补记）──────────────────────────────────
+
+  static const _checkinKey = 'store.daily_checkin';
+
+  @override
+  Future<DailyCheckin?> checkin(String date) async {
+    final rows = _read(_checkinKey).where((e) => e['date'] == date);
+    if (rows.isEmpty) return null;
+    return DailyCheckin.fromMap(rows.first);
+  }
+
+  @override
+  Future<void> upsertCheckin(DailyCheckin checkin) =>
+      _upsert(_checkinKey, 'date', checkin.toMap());
+
+  @override
+  Future<void> deleteCheckin(String date) =>
+      _delete(_checkinKey, (e) => e['date'] == date);
+
+  @override
+  Future<List<DailyCheckin>> allCheckins() async =>
+      _read(_checkinKey).map(DailyCheckin.fromMap).toList();
+
   @override
   Future<void> clearAll() async {
     for (final key in [
+      _checkinKey,
       _reviewItemKey,
       _materialKey,
       _segmentKey,

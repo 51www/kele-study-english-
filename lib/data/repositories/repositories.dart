@@ -1,3 +1,4 @@
+import '../../domain/models/checkin_models.dart';
 import '../../domain/models/models.dart';
 import '../db/local_store.dart';
 import '../db/seeds.dart';
@@ -293,6 +294,58 @@ class SessionRepository {
   Future<void> clearCache(List<String> paths) async {
     for (final path in paths) {
       await _store.deleteTtsCache(path);
+    }
+  }
+}
+
+class CheckinRepository {
+  CheckinRepository(this._store);
+
+  final LocalStore _store;
+
+  Future<DailyCheckin?> get(String date) => _store.checkin(date);
+
+  Future<List<DailyCheckin>> all() => _store.allCheckins();
+
+  Future<Set<String>> manualDates() async =>
+      (await all()).map((e) => e.date).toSet();
+
+  Future<void> save({
+    required String date,
+    required List<String> extraTypes,
+    String? note,
+  }) async {
+    await _store.upsertCheckin(DailyCheckin(
+      date: date,
+      extraTypes: extraTypes,
+      note: note,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    ));
+  }
+
+  /// 切换某类型勾选；若勾选后无任何手动类型且无备注，则删除该日记录。
+  Future<void> toggleType(String date, String type) async {
+    final existing = await get(date);
+    final set = <String>{...?existing?.extraTypes};
+    if (set.contains(type)) {
+      set.remove(type);
+    } else {
+      set.add(type);
+    }
+    if (set.isEmpty && (existing?.note == null || existing!.note!.isEmpty)) {
+      await _store.deleteCheckin(date);
+    } else {
+      await save(date: date, extraTypes: set.toList(), note: existing?.note);
+    }
+  }
+
+  Future<void> setNote(String date, String? note) async {
+    final existing = await get(date);
+    final types = existing?.extraTypes ?? const <String>[];
+    if (types.isEmpty && (note == null || note.isEmpty)) {
+      await _store.deleteCheckin(date);
+    } else {
+      await save(date: date, extraTypes: types, note: note);
     }
   }
 }

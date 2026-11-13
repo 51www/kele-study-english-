@@ -10,6 +10,7 @@ import '../providers.dart';
 import '../repository/material_repository.dart';
 
 /// 二期教材库（`/materials`）：首页栏目进入，不新增底部 Tab。
+/// 注：教材「导入」入口暂隐藏（功能保留，路由仍在），UI 只暴露查看与练习。
 class MaterialLibraryPage extends ConsumerWidget {
   const MaterialLibraryPage({super.key});
 
@@ -18,16 +19,6 @@ class MaterialLibraryPage extends ConsumerWidget {
     final async = ref.watch(materialLibraryProvider);
     return PageScaffold(
       title: '听写教材',
-      actions: [
-        IconButton(
-          tooltip: '导入教材',
-          icon: const Icon(Icons.add_rounded, color: AppColors.primaryDeep),
-          onPressed: () async {
-            await context.push('/materials/import');
-            ref.invalidate(materialLibraryProvider);
-          },
-        ),
-      ],
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
@@ -57,9 +48,7 @@ class MaterialLibraryPage extends ConsumerWidget {
                   child: EmptyState(
                     icon: Icons.hearing_outlined,
                     title: '还没有教材',
-                    message: '选一份本地音视频和对应的 .srt / .vtt 字幕，就能开始逐句听写。',
-                    action: () => context.push('/materials/import'),
-                    actionLabel: '导入教材',
+                    message: '教材导入功能暂未开放，已导入的教材仍可在「听写教材」里练习。',
                   ),
                 );
               }

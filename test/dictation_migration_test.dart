@@ -5,10 +5,10 @@ import 'package:kele_speak/data/db/drift_store.dart';
 import 'package:kele_speak/features/retention/review_item.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// 覆盖安装回归：v1 老库升到 v3 时只新增表（二期 3 张 + 三期 1 张），
-/// 老表与老数据保持原样；v2 老库升到 v3 同理。
+/// 覆盖安装回归：v1 老库升到 v4 时只新增表（二期 3 张 + 三期 1 张 + 四期 1 张），
+/// 老表与老数据保持原样；v2 老库升到 v4 同理。
 void main() {
-  test('v1 → v3 只建二期与三期表，老表数据不丢', () async {
+  test('v1 → v4 只建二期、三期、四期表，老表数据不丢', () async {
     final raw = sqlite3.openInMemory();
     raw.execute(
       'CREATE TABLE setting ("key" TEXT NOT NULL, "value" TEXT NOT NULL, '
@@ -44,12 +44,13 @@ void main() {
         'material_segment',
         'dictation_attempt',
         'review_item',
+        'daily_checkin',
       ]),
       isTrue,
     );
 
     final versionRows = await db.customSelect('PRAGMA user_version').get();
-    expect(versionRows.first.read<int>('user_version'), 3);
+    expect(versionRows.first.read<int>('user_version'), 4);
 
     // 老表内容没被改写，新表可写。
     final phraseRows = await db.customSelect('SELECT text_en FROM phrase').get();
@@ -60,7 +61,7 @@ void main() {
     await db.close();
   });
 
-  test('v2 → v3 只建三期表，老数据不丢且新表可读写', () async {
+  test('v2 → v4 只建三期、四期表，老数据不丢且新表可读写', () async {
     final raw = sqlite3.openInMemory();
     raw.execute(
       'CREATE TABLE setting ("key" TEXT NOT NULL, "value" TEXT NOT NULL, '
@@ -79,10 +80,10 @@ void main() {
     final tableRows =
         await db.customSelect("SELECT name FROM sqlite_master WHERE type = 'table'").get();
     final names = tableRows.map((row) => row.read<String>('name')).toSet();
-    expect(names.contains('review_item'), isTrue);
+    expect(names.containsAll(<String>['review_item', 'daily_checkin']), isTrue);
 
     final versionRows = await db.customSelect('PRAGMA user_version').get();
-    expect(versionRows.first.read<int>('user_version'), 3);
+    expect(versionRows.first.read<int>('user_version'), 4);
 
     final now = DateTime.now().millisecondsSinceEpoch;
     await store.upsertReviewItem(
@@ -98,6 +99,18 @@ void main() {
         'Could I get a flat white, please?');
     await store.deleteReviewItem('rv_1');
     expect(await store.reviewItems(), isEmpty);
+
+    // 四期表（daily_checkin，裸 SQL 建表）在迁移后存在且可写。
+    await db.customStatement(
+      "INSERT INTO daily_checkin (date, extra_types) VALUES ('2026-11-13', 'memo_words')",
+    );
+    final dc = await db.customSelect(
+      "SELECT extra_types FROM daily_checkin WHERE date = '2026-11-13'",
+    ).get();
+    expect(dc.single.read<String>('extra_types'), 'memo_words');
+    await db.customStatement(
+      "DELETE FROM daily_checkin WHERE date = '2026-11-13'",
+    );
 
     final settingRows = await db.customSelect('SELECT value FROM setting').get();
     expect(settingRows.single.read<String>('value'), 'demo-model');

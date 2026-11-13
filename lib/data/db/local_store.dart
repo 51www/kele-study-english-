@@ -1,3 +1,4 @@
+import '../../domain/models/checkin_models.dart';
 import '../../domain/models/dictation_models.dart';
 import '../../domain/models/models.dart';
 import '../../features/retention/review_item.dart';
@@ -66,6 +67,12 @@ abstract class LocalStore {
   Future<void> upsertReviewItem(ReviewItem item);
   Future<void> deleteReviewItem(String id);
   Future<void> deleteReviewItemsForSource(String sourceType, String sourceId);
+
+  // 每日打卡：App 外学习活动（背单词 / 影子跟读 / 其它）手动补记。
+  Future<DailyCheckin?> checkin(String date);
+  Future<void> upsertCheckin(DailyCheckin checkin);
+  Future<void> deleteCheckin(String date);
+  Future<List<DailyCheckin>> allCheckins();
 
   Future<void> clearAll();
 }

@@ -91,4 +91,4 @@
 |---|---|---|---|---|
 | 批次 1 先解迷茫 | T14.1 / T14.2 / T14.3 / T14.4 | 已完成 | Web 走查：3 问生成 → `/#/path` 阶段 2；首页「下一步」卡；控制台 0 error；`docs/shortscreen/M14/01`–`04` | — |
 | 批次 2 阶段闭环 | T14.3 / T14.5 | 已完成 | Web 走查：三问卡 0/6、四阶段可点、阶段回顾三条证据、断档 / 低能量日入口、`docs/shortscreen/M14/05`；跳过顺延经单测与浏览器双验 | 复盘末尾卡待有密钥环境补走查 |
-| 批次 3 持续校准 | T14.2 / T14.5 / T14.6 | 已完成 | `flutter analyze` 0 error / 0 warning；`flutter test` 全量 79 项通过（M14 新增 11 项）；Web release + Android debug 构建通过；场景库阶段标记 / 设置入口见 `06`、`07` | 真机覆盖安装、断网无密钥、清空数据空态 |
+| 批次 3 持续校准 | T14.2 / T14.5 / T14.6 | 已完成 | `flutter analyze` 0 error / 0 warning；`flutter test` 全量 79 项通过（M14 新增 11 项）；Web release + Android debug 构建通过；场景库阶段标记 / 设置入口见 `06`、`07` | 复盘末尾卡待有密钥环境补走查 |

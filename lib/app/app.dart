@@ -18,6 +18,7 @@ import '../features/path/path_page.dart';
 import '../features/path/path_setup_page.dart';
 import '../features/phrasebook/phrasebook_page.dart';
 import '../features/quick/quick_page.dart';
+import '../features/checkin/checkin_calendar_page.dart';
 import '../features/retention/retention_page.dart';
 import '../features/review/review_page.dart';
 import '../features/scenario/scenario_editor_page.dart';
@@ -116,6 +117,11 @@ final router = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, state) =>
           _slide(TipsDetailPage(articleId: state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/checkin',
+      parentNavigatorKey: rootNavigatorKey,
+      pageBuilder: (_, __) => _slide(const CheckinCalendarPage()),
     ),
     // 二期：教材库 / 导入 / 详情，全部在 ShellRoute 外，不改底部 4 Tab。
     GoRoute(

@@ -15,6 +15,7 @@
 | 参考报告（非决策依据） | `docs/research-speaking-app-optimization-v0.1.md` | 同类产品调研、瓶颈诊断、借鉴清单与分级路线、待拍板问题 | 讨论下一步优化方向时；判断「要不要加功能」之前 |
 | 学习路径方案（已采纳） | `docs/design-learning-path-v0.1.md` | 阶段性学习计划、阶段目标 / 范围 / 顺序 / 完成标准、进度追踪与下一步指引、拍板口径 | 讨论学习路径、阶段计划、进度追踪与「下一步练什么」时 |
 | 里程碑清单（四期） | `docs/milestones-phase4-learning-path-v0.1.md` | M14 学习路径的任务、隔离原则、验收标准与实现状态 | 判断 M14「算不算做完」、安排四期任务前 |
+| 里程碑清单（M15 每日打卡） | `docs/milestones-m15-daily-checkin-v0.1.md` | M15 每日打卡的任务、隔离原则、验收标准与实现状态 | 判断 M15「算不算做完」、安排打卡任务前 |
 
 > 该报告中「场景库规模已经够了、不应继续扩容」的结论已于 2026-11-13 被用户拍板覆盖（见需求文档 §0.1.1）：场景数量与分类不设上限，界面按实际数据展示。报告原文保留为历史参考，不参与范围与验收判定。
 
@@ -58,3 +59,18 @@
 - 文档一律用 Markdown，放 `docs/`；文件名沿用现有 `类型-主题-版本.md` 格式。
 - 中间产物（临时脚本、调试输出、构建产物、缓存）不入 `docs/`，也不提交到仓库。
 - 交付给用户看的成品（文档、报告、演示页）用 `computer://` 链接引用；源码与现有文件用 `file:///` 链接。
+
+## 5. 常用服务与工具路径
+
+环境里**没有把 Android SDK 加入 `PATH`**（也没设 `ANDROID_HOME` / `ANDROID_SDK_ROOT`），所以 `adb` 直接打命令找不到，每次都要手动定位。已确认的固定路径如下：
+
+- **Android SDK 根目录**：`E:\android-sdk`
+- **adb 可执行文件**：`E:\android-sdk\platform-tools\adb.exe`
+  - 调用示例（PowerShell）：`& 'E:\android-sdk\platform-tools\adb.exe' -s <device> <cmd>`
+- **Flutter 会自动识别该 SDK**（无需环境变量），`flutter devices` / `flutter run` / `flutter build` 无需额外配置。
+- 真机走查时优先用 `adb` 驱动（单步 `input tap` / `input swipe` + `screencap` + `pull` 截图对照），比盲猜屏幕坐标更可靠；`uiautomator dump` 在 Flutter 语义树下不稳定，以截图为准。
+
+### 已连接真机
+
+- 设备型号/序列号：`PKC110` / `HMQO4DPJC6MZXOZD`（Android 17，分辨率 1080×2376，密度 480）。
+- 该机已装 `com.kele.saylo`（release 签名，versionCode 2001）；想装本仓库 debug 包时，因版本号更低 + 签名不一致无法 `install -r` 覆盖，需先 `adb -s HMQO4DPJC6MZXOZD uninstall com.kele.saylo`（会清空该 App 本地数据）。

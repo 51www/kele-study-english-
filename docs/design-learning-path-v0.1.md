@@ -198,4 +198,4 @@
 - 技术设计 §12、开发文档 §13、UI 设计规范 §3.4「M14 学习路径新增组件规格」、`AGENTS.md` 索引与优先级已同步；组件规格先于代码落盘。
 - 实现约束落地：路径状态存既有 `app_meta` 单键（零改表、双端零改动）、纯本地规则（无模型调用）、底部 4 Tab 不变、不解锁不打分不推送。
 - 与方案的两处**已知差异**（已在开发文档 §13.6 登记）：①「每周回顾」实现为打开路径页时即时回顾，不引入定时任务与通知；②「改过的说法在后续对话里用对」沿用既有「改法复现率」趋势作为证据，样本不足时显示「样本不足」不补 0。
-- 验证：`flutter analyze` 0 error / 0 warning；`flutter test` 全量 79 项通过（M14 新增 11 项）；Web release 与 Android debug 构建通过；Web 走查截图 `docs/shortscreen/M14/01`–`07`、工作记录 `.logs/milestone-14.md`。未复验项（需真实会话 / 真机）见工作记录。
+- 验证：`flutter analyze` 0 error / 0 warning；`flutter test` 全量 79 项通过（M14 新增 11 项）；Web release 与 Android debug 构建通过；Web 走查截图 `docs/shortscreen/M14/01`–`07`；Android 真机（PKC110 / Android 17）走查路径生成、阶段切换、首页下一步、换一个 / 跳过顺延、场景库阶段标记与低能量日入口，无 Flutter 异常，截图 `docs/shortscreen/M14/device-01`–`12`；工作记录 `.logs/milestone-14.md`。未复验项（需真实会话 / 有密钥环境）见工作记录。

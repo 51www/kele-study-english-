@@ -9,9 +9,8 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
-import '../scenario/scenario_visual.dart';
+import '../checkin/checkin_card.dart';
 import '../retention/today_card.dart';
-import '../../domain/models/models.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -32,7 +31,7 @@ class HomePage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TopBar(streak: async.asData?.value.streakDays ?? 0),
+                const _TopBar(),
                 const SizedBox(height: 22),
                 async.when(
                   loading: () => const Padding(
@@ -61,9 +60,7 @@ class HomePage extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.streak});
-
-  final int streak;
+  const _TopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -77,16 +74,6 @@ class _TopBar extends StatelessWidget {
               Text('${greetingForNow()}，', style: AppText.bodySecondary.copyWith(fontSize: 14)),
               const SizedBox(height: 2),
               Text('今天想开口说点什么？', style: AppText.h1.copyWith(fontSize: 22)),
-              if (streak > 0) ...[
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    const Icon(Icons.local_fire_department_rounded, size: 13, color: AppColors.orange),
-                    const SizedBox(width: 3),
-                    Text('连续练习 $streak 天', style: AppText.caption.copyWith(fontSize: 10)),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -114,126 +101,96 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final target = data.targetMinutes;
-    final progress = (data.todayMinutes / target).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _GoalCard(
-          minutes: data.todayMinutes,
-          turns: data.todayTurns,
-          weekSessions: data.weekSessions,
-          target: target,
-          progress: progress.toDouble(),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '本周 ${data.weekSessions} 次有效练习 · 3 分钟轻量 ${data.quickWeekSessions} 次'
-          '（轻量计入今日分钟，不计入每周 3 次，每次需 ≥8 分钟）',
-          style: AppText.caption,
-        ),
+        const CheckinCard(),
         const SizedBox(height: 20),
         const TodayPracticeCard(),
-        const SizedBox(height: 12),
-        SecondaryButton(
-          label: '只有 3 分钟？来一轮轻量练习',
-          icon: Icons.bolt_rounded,
-          onPressed: () => context.push('/quick'),
-        ),
-        const SizedBox(height: 26),
-        SectionTitle(
-          title: '场景练习',
-          actionLabel: data.scenarios.isEmpty ? null : '全部 ${data.scenarios.length} 个',
-          onAction: () => context.push('/scenarios'),
-        ),
-        const SizedBox(height: 12),
-        if (data.scenarios.isEmpty)
-          AppCard(
-            child: EmptyState(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: '还没有场景',
-              message: '内置场景尚未加载，请稍后重试。',
-            ),
-          )
-        else
-          ...data.scenarios.take(2).toList().asMap().entries.map((entry) {
-            final index = entry.key;
-            final scenario = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: index == 0
-                  ? _FeatureScenarioCard(scenario: scenario)
-                  : _ScenarioCard(scenario: scenario),
-            );
-          }),
-        if (data.lastStuck != null) ...[
-          const SizedBox(height: 22),
-          SectionTitle(
-            title: '上次卡在哪',
-            actionLabel: '看复盘',
-            onAction: () => context.push('/review/${data.lastStuck!.sessionId}'),
-          ),
-          const SizedBox(height: 10),
-          _StuckCard(correction: data.lastStuck!),
-        ],
-        if (data.resumableSession != null) ...[
-          const SizedBox(height: 14),
-          SectionTitle(
-            title: '继续上次',
-            actionLabel: '全部记录',
-            onAction: () => context.go('/history'),
-          ),
-          const SizedBox(height: 10),
-          _ResumeCard(session: data.resumableSession!, scenarios: data.scenarios),
-        ] else if (data.lastSession != null) ...[
-          const SizedBox(height: 14),
-          SectionTitle(
-            title: '最近练习',
-            actionLabel: '全部记录',
-            onAction: () => context.go('/history'),
-          ),
-          const SizedBox(height: 10),
-          _LastSessionCard(session: data.lastSession!, scenarios: data.scenarios),
-        ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+        _PracticeGrid(scenarioCount: data.scenarios.length),
+        const SizedBox(height: 16),
         const _TipsEntry(),
-        const SizedBox(height: 24),
-        const _DictationEntry(),
       ],
     );
   }
 }
 
-class _StuckCard extends StatelessWidget {
-  const _StuckCard({required this.correction});
+/// 练习入口一行三卡：场景练习 / 复盘复练 / 3 分钟轻量。
+/// 收纳原首页散落的轻量按钮与听写栏目，统一形态、缩短操作路径。
+class _PracticeGrid extends StatelessWidget {
+  const _PracticeGrid({required this.scenarioCount});
 
-  final Correction correction;
+  final int scenarioCount;
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _entryCard(
+            context,
+            icon: Icons.chat_bubble_outline_rounded,
+            tint: AppColors.primaryDeep,
+            title: '场景练习',
+            subtitle: '$scenarioCount 个内置场景',
+            route: '/scenarios',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _entryCard(
+            context,
+            icon: Icons.refresh_rounded,
+            tint: AppColors.mint,
+            title: '复盘复练',
+            subtitle: '把说错的练熟',
+            route: '/retention',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _entryCard(
+            context,
+            icon: Icons.bolt_rounded,
+            tint: AppColors.orange,
+            title: '3 分钟轻量',
+            subtitle: '碎片时间也能练',
+            route: '/quick',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _entryCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color tint,
+    required String title,
+    required String subtitle,
+    required String route,
+  }) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      onTap: () => context.push(route),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.edit_note_rounded, size: 16, color: AppColors.warning),
-              const SizedBox(width: 6),
-              Text('上次这句可以换个说法', style: AppText.caption.copyWith(color: AppColors.inkSecondary)),
-            ],
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: tint, size: 18),
           ),
-          const SizedBox(height: 10),
-          Text(
-            correction.original,
-            style: AppText.bodySecondary,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Text(correction.improved, style: AppText.body.copyWith(color: AppColors.primaryDeep)),
-          const SizedBox(height: 6),
-          Text(correction.reasonZh, style: AppText.caption),
+          const SizedBox(height: 8),
+          Text(title, style: AppText.cardTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(subtitle,
+              style: AppText.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -284,441 +241,6 @@ class _TipsEntry extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 二期「听写教材」首页栏目：与「方法 / 技巧」同构，不新增 Tab、不加第二个主色 CTA。
-class _DictationEntry extends StatelessWidget {
-  const _DictationEntry();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionTitle(title: '听写教材'),
-        const SizedBox(height: 10),
-        AppCard(
-          onTap: () => context.push('/materials'),
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryWash,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.hearing_outlined, color: AppColors.primaryDeep, size: 22),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('用自己的素材逐句精听', style: AppText.cardTitle),
-                    SizedBox(height: 3),
-                    Text('本地音视频 + 字幕 · 错句集中复练', style: AppText.caption),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GoalCard extends StatelessWidget {
-  const _GoalCard({
-    required this.minutes,
-    required this.turns,
-    required this.weekSessions,
-    required this.target,
-    required this.progress,
-  });
-
-  final int minutes;
-  final int turns;
-  final int weekSessions;
-  final int target;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDeep],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.primary,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                '今日练习',
-                style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Text(
-                  '目标 $target 分钟',
-                  style: AppText.tag.copyWith(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$minutes',
-                style: AppText.display.copyWith(
-                  color: Colors.white,
-                  fontSize: 44,
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 5),
-                child: Text(
-                  '分钟',
-                  style: AppText.body.copyWith(color: Colors.white.withValues(alpha: 0.9)),
-                ),
-              ),
-              const Spacer(),
-              _GoalMetric(label: '本周', value: '$weekSessions 次'),
-              const SizedBox(width: 16),
-              _GoalMetric(label: '开口轮次', value: '$turns'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.22),
-              valueColor: const AlwaysStoppedAnimation(Colors.white),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            progress >= 1 ? '今天的练习目标达成啦，真不错。' : '今天再练 ${(target - minutes).clamp(0, target)} 分钟就达成目标。',
-            style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.78)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GoalMetric extends StatelessWidget {
-  const _GoalMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          value,
-          style: AppText.h2.copyWith(color: Colors.white, fontSize: 22),
-        ),
-        Text(
-          label,
-          style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.72)),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeatureScenarioCard extends StatelessWidget {
-  const _FeatureScenarioCard({required this.scenario});
-
-  final Scenario scenario;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/scenario/${scenario.id}'),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _ScenarioIcon(scenario: scenario),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(scenario.titleZh, style: AppText.cardTitle.copyWith(fontSize: 16)),
-                      const SizedBox(height: 2),
-                      Text(
-                        scenario.titleEn,
-                        style: AppText.caption.copyWith(color: AppColors.inkMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                AppTag(label: scenario.level, color: AppColors.primaryDeep),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              scenario.userGoal,
-              style: AppText.bodySecondary.copyWith(height: 1.55),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _Meta(icon: Icons.schedule_rounded, text: scenario.estimatedMinutes),
-                const SizedBox(width: 14),
-                _Meta(icon: Icons.forum_outlined, text: '${scenario.expectedTurns} 轮对话'),
-                const Spacer(),
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primaryWash,
-                  ),
-                  child: const Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.primaryDeep),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScenarioCard extends StatelessWidget {
-  const _ScenarioCard({required this.scenario});
-
-  final Scenario scenario;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: () => context.push('/scenario/${scenario.id}'),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          _ScenarioIcon(scenario: scenario, tint: AppColors.surfaceTint),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        scenario.titleZh,
-                        style: AppText.cardTitle,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    AppTag(label: scenario.level, color: AppColors.inkSecondary, background: AppColors.surfaceTint),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${scenario.titleEn} · ${scenario.estimatedMinutes}',
-                  style: AppText.caption,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScenarioIcon extends StatelessWidget {
-  const _ScenarioIcon({required this.scenario, this.tint = AppColors.primaryWash});
-
-  final Scenario scenario;
-  final Color tint;
-
-  @override
-  Widget build(BuildContext context) {
-    final visual = scenarioVisual(scenario.category);
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: tint,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Icon(visual.icon, color: visual.accent, size: 24),
-    );
-  }
-}
-
-class _Meta extends StatelessWidget {
-  const _Meta({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppColors.inkMuted),
-        const SizedBox(width: 4),
-        Text(text, style: AppText.caption),
-      ],
-    );
-  }
-}
-
-/// 首页「继续上次」：只指向还能接着聊的会话，点击直接回对话页。
-class _ResumeCard extends StatelessWidget {
-  const _ResumeCard({required this.session, required this.scenarios});
-
-  final SessionRecord session;
-  final List<Scenario> scenarios;
-
-  @override
-  Widget build(BuildContext context) {
-    final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
-    return AppCard(
-      onTap: () => context.push('/chat/${session.id}'),
-      color: AppColors.primaryWash,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.mint.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.play_arrow_rounded, color: AppColors.success, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  scenario?.titleZh ?? '自由对话',
-                  style: AppText.cardTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '进行中 · ${session.turnCount} 轮 · ${formatDate(session.startedDate)}',
-                  style: AppText.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const AppTag(
-            label: '继续练习',
-            color: AppColors.primaryDeep,
-            background: AppColors.surface,
-            icon: Icons.play_arrow_rounded,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LastSessionCard extends StatelessWidget {
-  const _LastSessionCard({required this.session, required this.scenarios});
-
-  final SessionRecord session;
-  final List<Scenario> scenarios;
-
-  @override
-  Widget build(BuildContext context) {
-    final scenario = scenarios.where((e) => e.id == session.scenarioId).firstOrNull;
-    final completed = session.status == 'completed';
-    return AppCard(
-      onTap: () => context.push(completed ? '/review/${session.id}' : '/chat/${session.id}'),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.mint.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              completed ? Icons.check_rounded : Icons.play_arrow_rounded,
-              color: AppColors.success,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(scenario?.titleZh ?? '自由对话', style: AppText.cardTitle),
-                const SizedBox(height: 2),
-                Text(
-                  '${completed ? '已完成' : '未完成'} · ${formatDate(session.startedDate)} · ${session.turnCount} 轮 · ${formatMinutes(session.durationSec)}',
-                  style: AppText.caption,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
-        ],
-      ),
     );
   }
 }

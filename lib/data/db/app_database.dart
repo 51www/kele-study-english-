@@ -272,10 +272,12 @@ class AppDatabase extends _$AppDatabase {
     return AppDatabase(NativeDatabase.createInBackground(file));
   }
 
-  /// v1 → v2 只新增二期三张表；v2 → v3 只新增三期一张表。
+  /// v1 → v2 只新增二期三张表；v2 → v3 只新增三期一张表；v3 → v4 新增每日打卡补记表。
   /// 老表一律不 ALTER / 不 DROP / 不回填，保证覆盖安装零数据丢失。
+  /// `daily_checkin` 用裸 SQL 建表（不注册到 Drift tables，避免触碰生成代码），
+  /// 由 beforeOpen 的 CREATE TABLE IF NOT EXISTS 统一保证存在。
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -294,6 +296,13 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
+          await customStatement(
+            'CREATE TABLE IF NOT EXISTS daily_checkin ('
+            'date TEXT PRIMARY KEY, '
+            'extra_types TEXT NOT NULL DEFAULT "", '
+            'note TEXT, '
+            'updated_at INTEGER NOT NULL DEFAULT 0)',
+          );
         },
       );
 }

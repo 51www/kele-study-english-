@@ -11,6 +11,7 @@ import '../features/tips/tips_repository.dart';
 import '../data/repositories/repositories.dart';
 import '../data/secure/key_store.dart';
 import '../domain/models/models.dart';
+import '../domain/models/checkin_models.dart';
 import '../services/asr/system_asr_engine.dart';
 import '../services/audio/audio_player.dart';
 import '../services/audio/audio_recorder.dart';
@@ -158,7 +159,7 @@ final homeDataProvider = FutureProvider<HomeData>((ref) async {
   var todayTurns = 0;
   var weekSessions = 0;
   var quickWeekSessions = 0;
-  // 连续天数只算「有效练习」：≥5 分钟，按自然日去重。
+  // 连续天数口径 = 打卡：有效练习（≥5 分钟）∪ 手动补记，按自然日去重。
   final activeDays = <String>{};
   for (final session in sessions) {
     if (session.durationSec >= 300) activeDays.add(_dayKey(session.startedDate));
@@ -175,16 +176,9 @@ final homeDataProvider = FutureProvider<HomeData>((ref) async {
       }
     }
   }
-  // 今天还没练时从昨天起算，避免上午打开 App 就把连续天数清零。
-  var cursor = today;
-  if (!activeDays.contains(_dayKey(cursor))) {
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
-  var streak = 0;
-  while (activeDays.contains(_dayKey(cursor))) {
-    streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
+  // 手动补记（背单词 / 影子跟读 / 其它）同样计入连续天数。
+  activeDays.addAll(await ref.watch(checkinRepositoryProvider).manualDates());
+  final streak = _computeStreaks(activeDays).$1;
   Correction? lastStuck;
   for (final session in sessions.where((e) => e.status == 'completed').take(3)) {
     final rows = await sessionRepo.corrections(session.id);
@@ -210,6 +204,114 @@ final homeDataProvider = FutureProvider<HomeData>((ref) async {
 });
 
 String _dayKey(DateTime time) => '${time.year}-${time.month}-${time.day}';
+
+/// 基于「已打卡自然日」集合计算当前连续与最长连续。
+/// 今天还没练时从昨天起算，避免上午打开 App 就把连续天数清零。
+(int, int) _computeStreaks(Set<String> activeDays) {
+  if (activeDays.isEmpty) return (0, 0);
+  var cursor = DateTime.now();
+  if (!activeDays.contains(_dayKey(cursor))) {
+    cursor = cursor.subtract(const Duration(days: 1));
+  }
+  var current = 0;
+  while (activeDays.contains(_dayKey(cursor))) {
+    current++;
+    cursor = cursor.subtract(const Duration(days: 1));
+  }
+  final sorted = activeDays.map((d) {
+    final p = d.split('-').map(int.parse).toList();
+    return DateTime(p[0], p[1], p[2]);
+  }).toList()..sort();
+  var longest = 0;
+  var run = 0;
+  DateTime? prev;
+  for (final d in sorted) {
+    run = (prev != null && d.difference(prev).inDays == 1) ? run + 1 : 1;
+    if (run > longest) longest = run;
+    prev = d;
+  }
+  return (current, longest);
+}
+
+// ── 每日打卡 ─────────────────────────────────────────────────────────────
+
+final checkinRepositoryProvider = Provider<CheckinRepository>((ref) {
+  return CheckinRepository(ref.watch(localStoreProvider));
+});
+
+/// 今日打卡聚合：自动活动（口语 / 轻量 / 听写）+ 手动补记。
+final todayCheckinProvider = FutureProvider<TodayCheckin>((ref) async {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final todayStart = today.millisecondsSinceEpoch;
+  final date = _dayKey(today);
+  final sessions = await ref.watch(sessionRepositoryProvider).list();
+  final activity = <String>{};
+  for (final s in sessions) {
+    if (s.startedAt >= todayStart) {
+      activity.add(s.modelName == quickSessionTag ? 'quick' : 'spoken');
+    }
+  }
+  final attempts = await ref.watch(localStoreProvider).allAttempts();
+  if (attempts.any((a) => a.createdAt >= todayStart)) activity.add('dictation');
+  final manual = await ref.watch(checkinRepositoryProvider).get(date);
+  return TodayCheckin(date: date, activityTypes: activity, manual: manual);
+});
+
+/// 某月打卡数据 + 连续统计，供日历页使用。key 形如 '2026-11'。
+final checkinMonthProvider =
+    FutureProvider.family<CheckinMonth, String>((ref, key) async {
+  final parts = key.split('-').map(int.parse).toList();
+  final year = parts[0];
+  final month = parts[1];
+  final monthStart = DateTime(year, month, 1);
+  final monthEnd =
+      DateTime(year, month + 1, 1).subtract(const Duration(milliseconds: 1));
+  final startMs = monthStart.millisecondsSinceEpoch;
+  final endMs = monthEnd.millisecondsSinceEpoch;
+
+  final sessions = await ref.watch(sessionRepositoryProvider).list();
+  final attempts = await ref.watch(localStoreProvider).allAttempts();
+  final manual = await ref.watch(checkinRepositoryProvider).all();
+  final manualByDate = <String, DailyCheckin>{for (final c in manual) c.date: c};
+
+  final days = <int, DayCheckin>{};
+  for (final s in sessions) {
+    if (s.startedAt >= startMs && s.startedAt <= endMs) {
+      final day = DateTime.fromMillisecondsSinceEpoch(s.startedAt).day;
+      days.putIfAbsent(day, () => DayCheckin()).types
+          .add(s.modelName == quickSessionTag ? 'quick' : 'spoken');
+    }
+  }
+  for (final a in attempts) {
+    if (a.createdAt >= startMs && a.createdAt <= endMs) {
+      final day = DateTime.fromMillisecondsSinceEpoch(a.createdAt).day;
+      days.putIfAbsent(day, () => DayCheckin()).types.add('dictation');
+    }
+  }
+  manualByDate.forEach((date, c) {
+    final p = date.split('-');
+    if (p[0] == '$year' && p[1] == '$month') {
+      final day = int.parse(p[2]);
+      final existing = days[day];
+      days[day] = DayCheckin(types: existing?.types ?? <String>{}, manual: c);
+    }
+  });
+
+  final activeDays = <String>{};
+  for (final s in sessions) {
+    if (s.durationSec >= 300) activeDays.add(_dayKey(s.startedDate));
+  }
+  activeDays.addAll(manual.map((e) => e.date));
+  final streaks = _computeStreaks(activeDays);
+  return CheckinMonth(
+    year: year,
+    month: month,
+    days: days,
+    currentStreak: streaks.$1,
+    longestStreak: streaks.$2,
+  );
+});
 
 // ── 三期：待复练队列与「今天练这个」 ──────────────────────────────────────
 
