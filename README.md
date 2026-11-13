@@ -73,13 +73,7 @@ flutter build apk --debug
 adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
-### 正式包名与签名
-
-- **正式包名**：`com.kele.saylo`（`applicationId` 与 `namespace` 一致，`MainActivity` 包路径同步；发布后不可更改），版本 `1.0.0+1`。
-- **签名密钥**：`android/keystore/saylo-release.jks`，alias `saylo`，RSA 2048 / 有效期 10000 天，证书 `CN=Saylo, O=Kele, C=CN`。
-- **本地配置**：`android/key.properties`（模板 `android/key.properties.example`）保存密钥库与密钥密码。它与 `android/keystore/` 均已被 `.gitignore` 忽略，**绝不提交到仓库**。
-- **签名策略**：debug 与 release 共用这把正式密钥，真机覆盖安装不会再出现签名不匹配；缺少 `key.properties` 时 release 会退回 debug 签名并打印警告，不可用于发布。
-- 证书 SHA-256 指纹：`69:DE:37:69:EF:B9:19:42:5A:55:B3:B4:55:C3:48:7B:4A:47:19:4C:B6:63:AC:5B:A7:A8:75:4B:19:5C:C3:B8`。
+ 
 
 构建正式包：
 

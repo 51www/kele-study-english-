@@ -42,7 +42,7 @@ class HomePage extends ConsumerWidget {
                     message: '加载首页失败：$error',
                     onRetry: () => ref.invalidate(homeDataProvider),
                   ),
-                  data: (data) => _Body(data: data),
+                  data: (_) => const _Body(),
                 ),
                 if (profile != null && !profile.hasKey) ...[
                   const SizedBox(height: 16),
@@ -95,9 +95,7 @@ class _TopBar extends StatelessWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.data});
-
-  final HomeData data;
+  const _Body();
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +106,7 @@ class _Body extends StatelessWidget {
         const SizedBox(height: 20),
         const TodayPracticeCard(),
         const SizedBox(height: 20),
-        _PracticeGrid(scenarioCount: data.scenarios.length),
+        const _PracticeGrid(),
         const SizedBox(height: 16),
         const _TipsEntry(),
       ],
@@ -119,9 +117,7 @@ class _Body extends StatelessWidget {
 /// 练习入口一行三卡：场景练习 / 复盘复练 / 3 分钟轻量。
 /// 收纳原首页散落的轻量按钮与听写栏目，统一形态、缩短操作路径。
 class _PracticeGrid extends StatelessWidget {
-  const _PracticeGrid({required this.scenarioCount});
-
-  final int scenarioCount;
+  const _PracticeGrid();
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +129,6 @@ class _PracticeGrid extends StatelessWidget {
             icon: Icons.chat_bubble_outline_rounded,
             tint: AppColors.primaryDeep,
             title: '场景练习',
-            subtitle: '$scenarioCount 个内置场景',
             route: '/scenarios',
           ),
         ),
@@ -144,7 +139,6 @@ class _PracticeGrid extends StatelessWidget {
             icon: Icons.refresh_rounded,
             tint: AppColors.mint,
             title: '复盘复练',
-            subtitle: '把说错的练熟',
             route: '/retention',
           ),
         ),
@@ -155,7 +149,6 @@ class _PracticeGrid extends StatelessWidget {
             icon: Icons.bolt_rounded,
             tint: AppColors.orange,
             title: '3 分钟轻量',
-            subtitle: '碎片时间也能练',
             route: '/quick',
           ),
         ),
@@ -168,7 +161,6 @@ class _PracticeGrid extends StatelessWidget {
     required IconData icon,
     required Color tint,
     required String title,
-    required String subtitle,
     required String route,
   }) {
     return AppCard(
@@ -188,9 +180,6 @@ class _PracticeGrid extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(title, style: AppText.cardTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 2),
-          Text(subtitle,
-              style: AppText.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

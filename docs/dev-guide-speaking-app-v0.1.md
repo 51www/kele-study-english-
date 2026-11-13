@@ -565,7 +565,7 @@ dio / plugin 异常
 
 | 页面（原型 screen） | 根 Widget | 主要子组件 |
 |---|---|---|
-| 首页 `home`（重组） | `HomePage` | `CheckinCard`（今日主卡：打卡状态 + 连续天数 + 学习构成 chip + 目标进度 + 入口）、`TodayPracticeCard`（下一步）、`_PracticeGrid`（场景练习 / 复盘复练 / 3 分钟轻量，一行三卡等宽，2026-11-13 用户拍板）、`_TipsEntry`；场景推荐卡已移除（与练习入口重复）；「卡在哪 / 继续 / 最近」已移入 `history` 页「接着练」区块；底部 4 Tab 不变 |
+| 首页 `home`（重组） | `HomePage` | `CheckinCard`（今日主卡：打卡状态 + 连续天数 + 学习构成 chip + 目标进度 + 入口）、`TodayPracticeCard`（下一步）、`_PracticeGrid`（场景练习 / 复盘复练 / 3 分钟轻量，一行三卡等宽、仅图标 + 标题）、`_TipsEntry`；场景推荐卡已移除（与练习入口重复）；「卡在哪 / 继续 / 最近」已移入 `history` 页「接着练」区块；底部 4 Tab 不变 |
 | 打卡日历 `/checkin` | `CheckinCalendarPage` | `PageScaffold`、顶部三块 `AppCard` 统计（本月打卡 / 当前连续 / 最长连续）、`GridView.count`（7 列月历，主色圆点亮已打卡天、今天加描边）、`_DaySheet`（`showAppSheet`：自动活动只读 + 手动补记 `FilterChip` + 备注） |
 | 场景库 `/scenarios` | `ScenarioLibraryPage` | `PageScaffold`、`AppTextField`（搜索）、`_CategoryChip`（分类 Chip 横滑）、`_ScenarioTile`（`AppCard` + `AppTag`「练过 N 次」/「自建」+ 自建场景编辑 / 删除菜单）、`EmptyState`、`ErrorBanner`、右上角新建入口 |
 | 场景卡 `scene` | `ScenarioPage` | `TopBar`、`ScenarioHero`（角色/目标/难度/分类，`scenarioVisual` 图标）、`LevelTag`、`TargetPhraseList`（可试听）、`_StartBar`（有未完成会话时多一个 `SecondaryButton`「继续上次（N 轮）」，主按钮改「开始新练习」） |
