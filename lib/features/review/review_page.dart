@@ -175,6 +175,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         degraded: false,
         takeawayText: takeawayText,
         goalResults: result.goalResults,
+        rating: result.rating,
+        ratingReason: result.ratingReason,
       );
       // 纠错入库：尽量回链到原文所在的用户消息。
       final now = DateTime.now().microsecondsSinceEpoch;
@@ -431,7 +433,12 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   children: [
-                    _SummaryCard(session: _session!),
+                    _SummaryCard(
+                      session: _session!,
+                      result: _result,
+                      goalTotal:
+                          _scenario == null ? null : scenarioGoals(_scenario!).length,
+                    ),
                     const SizedBox(height: 18),
                     if (_error != null) ...[
                       ErrorBanner(message: _error!, onRetry: _generate),
@@ -463,6 +470,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                         session: _session!,
                         result: _result!,
                         scenario: _scenario!,
+                        onUpdated: (updated) => setState(() => _result = updated),
                       ),
                       const SizedBox(height: 14),
                       const ReviewNextStepCard(),
@@ -480,12 +488,34 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.session});
+  const _SummaryCard({
+    required this.session,
+    this.result,
+    this.goalTotal,
+  });
 
   final SessionRecord session;
 
+  /// 复盘结果：提供「本次表现」三档粗评与 3 件小事战报；未生成时为 null。
+  final ReviewResult? result;
+
+  /// 本场目标条数（自建场景也统一 3 条，但不写死）。
+  final int? goalTotal;
+
   @override
   Widget build(BuildContext context) {
+    final result = this.result;
+    final rating = result?.rating;
+    final ratingReason = result?.ratingReason ?? '';
+    final goals = result?.goalResults ?? const <String>[];
+    final goalDone = goals.where((e) => e == 'done').length;
+    final goalCount = goalTotal;
+    final total = (goalCount == null || goalCount == 0) ? goals.length : goalCount;
+    final goalLine = goals.isEmpty
+        ? ''
+        : goalDone >= total
+            ? '$total 件小事 全部办成 · '
+            : '$total 件小事 $goalDone/$total 达成 · ';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -512,6 +542,21 @@ class _SummaryCard extends StatelessWidget {
               ),
             ],
           ),
+          if (rating != null) ...[
+            const SizedBox(height: 16),
+            Text('本次表现',
+                style: AppText.caption
+                    .copyWith(color: Colors.white.withValues(alpha: 0.7))),
+            const SizedBox(height: 4),
+            Text(rating,
+                style: AppText.h2.copyWith(color: Colors.white, fontSize: 22)),
+            if (ratingReason.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(ratingReason,
+                  style: AppText.caption
+                      .copyWith(color: Colors.white.withValues(alpha: 0.82))),
+            ],
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -522,6 +567,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
+            '$goalLine'
             '有辅助 ${session.assistTurns} 回合 · 翻译 ${session.translateCount} 次'
             '${session.costEstimate == null ? '' : ' · 本次 ${CostEstimator.format(session.costEstimate!)}（估算）'}',
             style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.82)),

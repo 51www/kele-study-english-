@@ -41,6 +41,10 @@ class NextStepCard extends ConsumerWidget {
           Text(plan.nextTitle, style: AppText.section),
           const SizedBox(height: 6),
           Text(plan.nextReason, style: AppText.bodySecondary),
+          if (!compact) ...[
+            const SizedBox(height: 6),
+            Text(_progressLine(plan), style: AppText.caption),
+          ],
           const SizedBox(height: 14),
           if (compact)
             SecondaryButton(
@@ -92,6 +96,17 @@ class NextStepCard extends ConsumerWidget {
           child: Text(label),
         ),
       );
+}
+
+/// 常驻方向感：「第 N/4 阶段 · 本阶段还差 M 件」（M = 未开始 + 待巩固）。
+String _progressLine(PathPlan plan) {
+  final remaining = plan.items
+      .where((e) => e.status == 'pending' || e.status == 'consolidating')
+      .length;
+  final prefix = '第 ${plan.stage.index}/${kPathStages.length} 阶段';
+  return remaining > 0
+      ? '$prefix · 本阶段还差 $remaining 件'
+      : '$prefix · 本阶段安排都走过了';
 }
 
 /// 复盘末尾的「下一次」入口。未配置路径时也不空白，给一个设定入口。

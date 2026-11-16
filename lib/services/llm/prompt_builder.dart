@@ -178,13 +178,15 @@ Reply exactly in this format:
 - <one natural English phrase from or for this scenario>
 - <another phrase>
 下次: <one actionable tip in Chinese>
+表现: <顺畅|稳住|吃力> || <one short Chinese reason, max 20 words>
 $goalsFormat
 补充（可选，只为上面出现过的纠错填写）:
 1. <original sentence, exactly as above> || <why a Chinese speaker would say it this way> || <casual everyday version> || <formal business version> || <when to use which, in Chinese>
 
 Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes, still give 1 improvement.
 补充 may be omitted entirely. If present, each line has exactly 5 parts separated by ||, and part 1 must match a 原句 from 纠错.
-For casual daily scenarios the formal version may repeat the casual one. Keep each part under 25 words.$goalsRule
+For casual daily scenarios the formal version may repeat the casual one. Keep each part under 25 words.
+表现 is one holistic band, not a score: 顺畅 = mostly independent and coherent, goals largely met; 稳住 = finished but with some help or many stumbles; 吃力 = heavy reliance on help or could not finish. Output exactly "表现: <band> || <reason>", band must be one of 顺畅/稳住/吃力.$goalsRule
 '''),
     ];
   }
@@ -326,6 +328,39 @@ class ReviewParser {
     final goalResults = <String>[];
     final supplements = <String, List<String>>{};
     var section = '';
+    var rating = '';
+    var ratingReason = '';
+
+    // 三档粗评：只认三个刻度（含常见同义词），认不出就整段丢弃（不降级复盘）。
+    void parseRatingLine(String body) {
+      final parts = body.split('||').map(_strip).toList();
+      const bands = <String, String>{
+        '顺畅': '顺畅',
+        '顺利': '顺畅',
+        '流畅': '顺畅',
+        '轻松': '顺畅',
+        '稳住': '稳住',
+        '还行': '稳住',
+        '一般': '稳住',
+        '稳定': '稳住',
+        '吃力': '吃力',
+        '困难': '吃力',
+        '费力': '吃力',
+        '挣扎': '吃力',
+      };
+      final token = parts.isNotEmpty
+          ? parts.first.replaceAll(RegExp(r'[。．.!?！？]+$'), '')
+          : '';
+      final band = bands[token];
+      if (band != null) {
+        rating = band;
+        if (parts.length > 1 && parts[1].isNotEmpty) ratingReason = parts[1];
+      } else if (rating.isNotEmpty &&
+          ratingReason.isEmpty &&
+          body.trim().isNotEmpty) {
+        ratingReason = body.trim();
+      }
+    }
 
     for (final line in lines) {
       if (line.isEmpty) continue;
@@ -354,6 +389,12 @@ class ReviewParser {
       }
       if (normalized.startsWith('目标')) {
         section = 'goals';
+        continue;
+      }
+      if (normalized.startsWith('表现')) {
+        section = 'rating';
+        final body = normalized.split(':').skip(1).join(':');
+        if (_strip(body).isNotEmpty) parseRatingLine(_strip(body));
         continue;
       }
 
@@ -394,6 +435,8 @@ class ReviewParser {
             break;
           }
         }
+      } else if (section == 'rating') {
+        parseRatingLine(normalized);
       } else if (section == 'highlight') {
         highlight = '$highlight $normalized'.trim();
       } else if (section == 'tip') {
@@ -429,6 +472,8 @@ class ReviewParser {
         nextTip: nextTip.isEmpty ? '可以重试一次，或直接继续下次练习。' : nextTip,
         degraded: highlight.isEmpty || phrases.isEmpty,
         goalResults: goalResults,
+        rating: rating.isEmpty ? null : rating,
+        ratingReason: ratingReason.isEmpty ? null : ratingReason,
       );
     }
 
@@ -438,6 +483,8 @@ class ReviewParser {
       phrases: phrases.take(5).toList(),
       nextTip: nextTip.isEmpty ? '下次练习试着多用今天学到的表达。' : nextTip,
       goalResults: goalResults,
+      rating: rating.isEmpty ? null : rating,
+      ratingReason: ratingReason.isEmpty ? null : ratingReason,
     );
   }
 

@@ -20,11 +20,15 @@ class GoalChecklistCard extends ConsumerStatefulWidget {
     required this.session,
     required this.result,
     required this.scenario,
+    this.onUpdated,
   });
 
   final SessionRecord session;
   final ReviewResult result;
   final Scenario scenario;
+
+  /// 改勾后回调最新结果（战报卡的 N/3 需要同步刷新）。
+  final void Function(ReviewResult updated)? onUpdated;
 
   @override
   ConsumerState<GoalChecklistCard> createState() => _GoalChecklistCardState();
@@ -63,6 +67,8 @@ class _GoalChecklistCardState extends ConsumerState<GoalChecklistCard> {
       takeawayText: widget.result.takeawayText,
       goalResults:
           _done.map((done) => done ? 'done' : 'todo').toList(),
+      rating: widget.result.rating,
+      ratingReason: widget.result.ratingReason,
     );
     try {
       await ref.read(sessionRepositoryProvider).saveSession(
@@ -70,6 +76,7 @@ class _GoalChecklistCardState extends ConsumerState<GoalChecklistCard> {
           );
       // 3 件小事的达成情况会汇进阶段进度，勾选后立刻重算。
       ref.invalidate(pathPlanProvider);
+      widget.onUpdated?.call(updated);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

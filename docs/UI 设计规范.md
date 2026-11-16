@@ -557,7 +557,7 @@ Container(
 |---|---|
 | 首页「下一步」卡 | 由「今天练这个」升级：仍复用 `AppCard`（24 圆角 / 16 内边距 / `AppShadows.card`）；首行 `Icons.today_rounded` 18 `primary` + `AppText.cardTitle`「下一步」+ 右侧 `AppTag`（`primaryWash` 底 + `primaryDeep` 字）显示阶段名；下方 `AppText.section` 推荐标题 + `AppText.caption` 一句可核对的理由；底部通栏 `PrimaryButton`「开始」；其下一行 3 个 `TextButton`（11/500 `primaryDeep`）：「换一个」「今天先跳过」「查看学习路径」。不新增第二个主色实心 CTA，不出现分数 / 百分比 / 等级 / 星级 / 锁图标 |
 | 路径页「三问」卡 | `AppCard`；三行 `AppText.caption`(11/500 `inkMuted`) 标签 + `AppText.body` 值，行距 8：「我在哪」「走到哪了」「接下来做什么」；「走到哪了」下方 3 px 线性进度（轨道 `line`、进度 `primary`），旁边只写「已完成 N / M 条」，不写百分比、不画目标线 |
-| 阶段梯度条 | 复用 §3.4「进度 → 分步」规格：4 个 10 圆点 + 2 px 连线，已完成 `primary`、当前 `primaryTint` 描边、未到 `line`；下方 11/500 阶段名；4 段都可点（可跳、可退），**不出现锁形图标、不置灰不可点、不显示「未解锁」** |
+| 阶段梯度条 | 复用 §3.4「进度 → 分步」规格：4 个 10 圆点 + 2 px 连线，已完成 `primary`、当前 `primaryTint` 描边、未到 `line`；下方 11/500 阶段名；4 段都可点（可跳、可退），**不出现锁形图标、不置灰不可点、不显示「未解锁」**（M16 起由「学习路径旅程地图」替代，规格见 M16 表） |
 | 阶段安排清单行 | `AppCard` 内一行，卡间距 8；左 20 × 20 圆角 6 `primaryWash` 序号块（`AppText.caption` 11 `primaryDeep`），中间 `AppText.bodySecondary` 标题 + `AppText.caption` 一句理由，右 `AppTag`（未开始 / 已完成 / 待巩固 / 今天跳过：只用 `primaryDeep` / `success` / `warning` / `inkMuted`）；整行可点直达对应练习；一个阶段 5–7 行，序号是真实推荐顺序 |
 | 阶段回顾卡 | `AppCard`；标题 `AppText.cardTitle` + `AppText.caption`「可以往前走了 / 再稳一轮」；三条证据各占一行，`success` 12% 底 10 圆角块、`AppText.caption`；下方 3 枚 `SecondaryButton`（进入下一阶段 / 再巩固一轮 / 换目标重排）竖排间距 8；本页已有「下一步」主 CTA，回顾卡不再放主色实心按钮 |
 | 复盘「下一次练这个」卡 | `AppCard`，紧跟 3 条目标自评卡之后；首行 `Icons.arrow_forward_rounded` 18 `primary` + `AppText.cardTitle`；下方 `AppText.section` 下一次内容 + `AppText.caption` 理由；**只放一枚 `SecondaryButton`**，因为复盘页底部操作栏已有主按钮 |
@@ -566,6 +566,15 @@ Container(
 | 起点 3 问页 | `PageScaffold` + `ListView`；4 组 `SectionTitle` + `SegmentedControl` / `AppTextField`（目标场合、具体诉求、水平、每次时长 / 每周次数）；底部固定通栏 `PrimaryButton`「生成我的路径」；未配置时路径页用 `EmptyState`（88 圆形 `primaryWash` + 38 图标）引导进入本页 |
 
 M14 只用既有色值 Token、`AppText` 字号与 4/8 网格间距；「已完成 N / M」「第 1 / 4 阶段」是真实进度，不作装饰；任何位置都不出现分数、CEFR 等级、能力雷达、热力图、勋章、连胜或推送。路径是导航层，不改变首页 4 Tab 与「一屏一个主色实心 CTA」约束。
+
+#### M16 动机强化新增组件规格（先改规范再落代码）
+
+| 组件 | 规格 |
+|---|---|
+| 复盘战报卡（「练习完成」卡升级） | 渐变卡（`gradientPrimary → gradientSecondary`、`AppRadius.lg`）结构与白色半透明图标保持不变；标题行下新增「本次表现」块：`AppText.caption`（白 0.7）「本次表现」+ 档位大字（22/700 白，三档：顺畅 / 稳住 / 吃力）+ `AppText.caption`（白 0.82）一句依据（≤20 字）；三指标行（时长 / 开口 / 提示）与成本行保留；证据行句首追加「3 件小事 N/3」，全达成时改「3 件小事 全部办成」；模型缺档位时只省略「本次表现」块，其余不变；**任何位置不出现数字分、百分制、星级、雷达** |
+| 三档粗评刻度 | 只有三档文字（顺畅 / 稳住 / 吃力）三个刻度，无数字、无星、无百分比；渐变卡内一律白色系（0.7–1.0 白），不为档位引入新色值；判定失败即不显示，不显示「0 分」或占位符 |
+| 学习路径旅程地图（替代阶段梯度条） | 竖向蛇形路径（S 形曲线穿过节点，线宽 8、圆角端点；分段色：两端已完成 `primary`、含当前位置 `primaryTint`、其余 `line`）；阶段头 44 圆节点（当前 `primaryTint` 底 + 2px `primaryDeep` 描边 + `AppShadows.primary` 光晕；其余白底 `line` 描边）+ 旁侧 12px 阶段名与「n/m」；条目节点 34 圆（已完成 `primary` 实心 + 白对勾；待巩固 白底 2px `warning` 描边；今天跳过 白底 `line` 描边 `inkMuted` 图标；未开始 白底 `line` 描边 + 类型图标）；**下一步节点放大 38 圆加 `AppShadows.primary` 光晕（「你在这里」）**；节点标签 12px 单行省略、靠路径内侧排布；**全节点可点、不锁定、不置灰、无锁图标、无分数**；点条目进对应练习、点阶段头切换当前阶段；地图是总览，下方「阶段安排」清单保留 |
+| 下一步卡进度行 | 理由下 6 间距一行 `AppText.caption`：「第 N/4 阶段 · 本阶段还差 M 件」（M = 未开始 + 待巩固条数）；M = 0 时改「本阶段安排都走过了」；`compact` 形态不显示该行 |
 
 #### 页面头部
 

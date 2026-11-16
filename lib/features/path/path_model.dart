@@ -328,6 +328,22 @@ class PathSnapshot {
   final String levelSetting;
 }
 
+/// 旅程地图（M16）的一个阶段节点：阶段 + 该阶段的安排条目 + 是否当前阶段。
+/// 节点状态复用 PathItem.status，不引入新状态、不表示关卡或解锁。
+class JourneyStage {
+  const JourneyStage({
+    required this.stage,
+    required this.items,
+    required this.current,
+  });
+
+  final PathStage stage;
+  final List<PathItem> items;
+  final bool current;
+
+  int get doneCount => items.where((e) => e.status == 'done').length;
+}
+
 class StageEvaluation {
   const StageEvaluation({
     required this.complete,
@@ -355,6 +371,7 @@ class PathPlan {
     required this.weekSessions,
     required this.todayMinutes,
     this.next,
+    this.journey = const <JourneyStage>[],
   });
 
   final bool configured;
@@ -369,6 +386,9 @@ class PathPlan {
   final int dueCount;
   final int weekSessions;
   final int todayMinutes;
+
+  /// 全部 4 个阶段的地图数据（M16）；未配置时为空。
+  final List<JourneyStage> journey;
 
   int get doneCount => items.where((e) => e.status == 'done').length;
   int get pendingCount => items.where((e) => e.status == 'pending').length;

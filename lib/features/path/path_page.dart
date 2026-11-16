@@ -7,6 +7,7 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import 'next_step_card.dart';
+import 'path_map.dart';
 import 'path_model.dart';
 import 'path_plan.dart';
 import 'path_providers.dart';
@@ -94,7 +95,16 @@ class _PathBody extends ConsumerWidget {
       children: [
         _ThreeQuestions(plan: plan),
         const SizedBox(height: 16),
-        _StageBar(plan: plan),
+        // 旅程地图（M16）：替代表 4 点梯度条，全节点可点、不锁定。
+        PathJourneyMap(
+          stages: plan.journey,
+          nextItemId: plan.next?.id,
+          onItemTap: (item) => context.push(item.route),
+          onStageTap: (index) => updatePath(
+            ref,
+            (value) => changePathStage(value, index, DateTime.now()),
+          ),
+        ),
         const SizedBox(height: 20),
         SectionTitle(title: '第 ${plan.stage.index} 阶段 · ${plan.stage.name}'),
         const SizedBox(height: 8),
@@ -175,80 +185,6 @@ class _ThreeQuestions extends StatelessWidget {
           Expanded(
             child: Text(value, style: AppText.bodySecondary),
           ),
-        ],
-      );
-}
-
-class _StageBar extends ConsumerWidget {
-  const _StageBar({required this.plan});
-
-  final PathPlan plan;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < kPathStages.length; i++) ...[
-            if (i > 0)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Container(
-                    height: 2,
-                    color: i < plan.stage.index
-                        ? AppColors.primary
-                        : AppColors.line,
-                  ),
-                ),
-              ),
-            SizedBox(
-              width: 60,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => updatePath(
-                  ref,
-                  (value) => changePathStage(
-                    value,
-                    kPathStages[i].index,
-                    DateTime.now(),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i + 1 <= plan.stage.index
-                            ? AppColors.primary
-                            : AppColors.surface,
-                        border: Border.all(
-                          color: i + 1 <= plan.stage.index
-                              ? AppColors.primary
-                              : AppColors.line,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      kPathStages[i].name,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.caption.copyWith(
-                        fontSize: 10,
-                        color: i + 1 == plan.stage.index
-                            ? AppColors.primaryDeep
-                            : AppColors.inkMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ],
       );
 }

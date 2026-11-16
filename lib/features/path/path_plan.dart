@@ -273,37 +273,13 @@ PathPlan computePathPlan(LearningPathState state, PathSnapshot snap) {
   final today = dayKey(snap.now);
   final overrides = <String, PathItem>{for (final e in state.items) e.id: e};
 
-  final items = generated.map((base) {
-    final override = overrides[base.id];
-    if (override != null && override.status == 'skipped' && override.skippedOn == today) {
-      return base.copyWith(
-        status: 'skipped',
-        skippedOn: today,
-        updatedAt: override.updatedAt,
-      );
-    }
-    if (override != null && override.status == 'done') {
-      return base.copyWith(status: 'done', updatedAt: override.updatedAt);
-    }
-    // 完成状态由真实数据推导，不需要在会话结束时额外写库。
-    if (base.kind == 'scene') {
-      final at = snap.lastCompletedAtByScenario[base.scenarioId];
-      if (at != null && at >= state.updatedAt) {
-        return base.copyWith(status: 'done', updatedAt: at);
-      }
-    } else if (base.kind == 'review') {
-      if (snap.consolidatedCount > 0 && snap.dueCount == 0) {
-        return base.copyWith(status: 'done');
-      }
-      if (snap.dueCount > 0) return base.copyWith(status: 'consolidating');
-    } else if (base.kind == 'material' || base.kind == 'wrong') {
-      // 没练过教材时不算完成，避免「已完成」与真实进度不符。
-      if (snap.materialPracticedCount > 0) {
-        return base.copyWith(status: 'done');
-      }
-    }
-    return base;
-  }).toList();
+  final items = _applyItemStatuses(
+    generated,
+    overrides: overrides,
+    snap: snap,
+    state: state,
+    today: today,
+  );
 
   final ordered = reorderItems(items, snap);
   final selectable = ordered
@@ -345,7 +321,78 @@ PathPlan computePathPlan(LearningPathState state, PathSnapshot snap) {
     dueCount: snap.dueCount,
     weekSessions: snap.weekSessions,
     todayMinutes: snap.todayMinutes,
+    journey: computeJourneyStages(state, snap),
   );
+}
+
+/// 条目状态推导（与阶段无关）：覆盖项优先，其余由真实数据推导，
+/// 不需要在会话结束时额外写库。计划页与旅程地图共用同一套口径。
+List<PathItem> _applyItemStatuses(
+  List<PathItem> generated, {
+  required Map<String, PathItem> overrides,
+  required PathSnapshot snap,
+  required LearningPathState state,
+  required String today,
+}) {
+  return generated.map((base) {
+    final override = overrides[base.id];
+    if (override != null && override.status == 'skipped' && override.skippedOn == today) {
+      return base.copyWith(
+        status: 'skipped',
+        skippedOn: today,
+        updatedAt: override.updatedAt,
+      );
+    }
+    if (override != null && override.status == 'done') {
+      return base.copyWith(status: 'done', updatedAt: override.updatedAt);
+    }
+    if (base.kind == 'scene') {
+      final at = snap.lastCompletedAtByScenario[base.scenarioId];
+      if (at != null && at >= state.updatedAt) {
+        return base.copyWith(status: 'done', updatedAt: at);
+      }
+    } else if (base.kind == 'review') {
+      if (snap.consolidatedCount > 0 && snap.dueCount == 0) {
+        return base.copyWith(status: 'done');
+      }
+      if (snap.dueCount > 0) return base.copyWith(status: 'consolidating');
+    } else if (base.kind == 'material' || base.kind == 'wrong') {
+      // 没练过教材时不算完成，避免「已完成」与真实进度不符。
+      if (snap.materialPracticedCount > 0) {
+        return base.copyWith(status: 'done');
+      }
+    }
+    return base;
+  }).toList();
+}
+
+/// 旅程地图数据（M16）：4 个阶段的条目与状态。纯函数、离线可算；
+/// 全节点可点、不锁定——这里只产出数据，不产生任何「关卡 / 解锁」语义。
+List<JourneyStage> computeJourneyStages(LearningPathState state, PathSnapshot snap) {
+  if (!state.configured) return const <JourneyStage>[];
+  final today = dayKey(snap.now);
+  final overrides = <String, PathItem>{for (final e in state.items) e.id: e};
+  return <JourneyStage>[
+    for (final stage in kPathStages)
+      JourneyStage(
+        stage: stage,
+        current: stage.index == state.stage,
+        items: reorderItems(
+          _applyItemStatuses(
+            buildStageItems(
+              stage: stage.index,
+              snap: snap,
+              pool: stageScenarios(stage.index, state.goal, snap),
+            ),
+            overrides: overrides,
+            snap: snap,
+            state: state,
+            today: today,
+          ),
+          snap,
+        ),
+      ),
+  ];
 }
 
 /// 「今天先跳过」：只记覆盖项，跳过不锁后续、不补作业；次日自动恢复。

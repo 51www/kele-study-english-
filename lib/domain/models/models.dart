@@ -592,6 +592,8 @@ class ReviewResult {
     this.degraded = false,
     this.takeawayText,
     this.goalResults = const <String>[],
+    this.rating,
+    this.ratingReason,
   });
 
   final String highlight;
@@ -608,6 +610,11 @@ class ReviewResult {
   final String? takeawayText;
   final List<String> goalResults;
 
+  /// 三档粗评（M16）：顺畅 / 稳住 / 吃力 + 一句依据。不是分数，只有三个刻度；
+  /// 模型没判出来时为 null，界面不显示。旧 review_json 没有这两个键。
+  final String? rating;
+  final String? ratingReason;
+
   Map<String, Object?> toJson() => <String, Object?>{
         'highlight': highlight,
         'corrections': corrections.map((e) => e.toJson()).toList(),
@@ -617,6 +624,8 @@ class ReviewResult {
         if (degraded) 'degraded': true,
         if (takeawayText != null) 'takeawayText': takeawayText,
         if (goalResults.isNotEmpty) 'goalResults': goalResults,
+        if (rating != null) 'rating': rating,
+        if (ratingReason != null) 'ratingReason': ratingReason,
       };
 
   String encode() => jsonEncode(toJson());
@@ -634,6 +643,8 @@ class ReviewResult {
         goalResults: ((json['goalResults'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),
+        rating: json['rating'] as String?,
+        ratingReason: json['ratingReason'] as String?,
       );
 
   static ReviewResult? tryDecode(String? raw) {
