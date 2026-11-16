@@ -100,4 +100,43 @@ $base
       expect(result.corrections.single.formal, '正式');
     });
   });
+
+  group('复盘目标判定（T10.3）', () {
+    const base = '''
+亮点: 你把需求说清楚了
+纠错:
+1. I am convenient || It works for me || convenient 不用来形容人
+表达:
+- Sounds good
+下次: 多用完整句
+''';
+
+    test('目标段逐条解析 done/todo，容忍编号与中文同义词', () {
+      final result = ReviewParser.parse('''
+$base
+目标:
+1. done
+2. 待练
+3. done || 说清了杯型
+''');
+      expect(result.goalResults, ['done', 'todo', 'done']);
+      expect(result.corrections, hasLength(1));
+      expect(result.degraded, isFalse);
+    });
+
+    test('没有目标段或标记无效时 goalResults 为空，不影响原三列', () {
+      final plain = ReviewParser.parse(base);
+      expect(plain.goalResults, isEmpty);
+
+      final broken = ReviewParser.parse('''
+$base
+目标:
+1. maybe
+2.
+''');
+      expect(broken.goalResults, isEmpty);
+      expect(broken.corrections, hasLength(1));
+      expect(broken.phrases, ['Sounds good']);
+    });
+  });
 }

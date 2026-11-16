@@ -146,6 +146,34 @@ void main() {
     );
   });
 
+  test('主对话规则：不代说用户台词（防抢答），目标表达只引导不代说', () {
+    final system = PromptBuilder.chatSystem(_scenario(), 'B1');
+    expect(system, contains('Never speak for the user'));
+    expect(system, contains('never say them yourself'));
+    expect(system, isNot(contains('elicit or reuse')));
+  });
+
+  test('复盘 prompt：传入目标时逐条 done/todo 判定，不传则无目标段', () {
+    final withGoals = PromptBuilder.reviewMessages(
+      scenario: _scenario(),
+      history: [_msg('m1', 'user', 'I would like a cola.')],
+      goals: const ['点清饮品', '确认价格'],
+    );
+    expect(withGoals.last.content, contains('Session goals'));
+    expect(withGoals.last.content, contains('1. 点清饮品'));
+    expect(withGoals.last.content, contains('目标:'));
+    expect(withGoals.last.content, contains('from the learner\'s own turns'));
+    expect(withGoals.last.content, contains('never credit the AI\'s lines'));
+
+    final noGoals = PromptBuilder.reviewMessages(
+      scenario: _scenario(),
+      history: [_msg('m1', 'user', 'I would like a cola.')],
+    );
+    expect(noGoals.last.content, isNot(contains('Session goals')));
+    expect(noGoals.last.content, isNot(contains('目标:')));
+    expect(noGoals.length, 2);
+  });
+
   test('对照用例：同一句输入在不同会话语境下拼出不同的 prompt', () {
     final ordering = SessionContext(
       scenario: _scenario(),

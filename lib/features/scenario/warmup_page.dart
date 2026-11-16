@@ -10,8 +10,8 @@ import '../../domain/models/models.dart';
 
 /// 课前 60 秒「打基础」：3 句核心表达，听 → 跟读 → 进对话。
 ///
-/// 跟读只做「关键词是否说出」的弱判定，不打分、不评级；TTS 不可用时
-/// 降级为纯文字，随时可跳过，跳过不影响场景详情页直接开练。
+/// 跟读支持按麦语音识别或键盘输入，只做「关键词是否说出」的弱判定，不打分、
+/// 不评级；TTS 不可用时降级为纯文字，随时可跳过，跳过不影响场景详情页直接开练。
 class WarmupPage extends ConsumerStatefulWidget {
   const WarmupPage({super.key, required this.scenarioId});
 
@@ -29,6 +29,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
   bool? _lastOk;
   bool _loading = true;
   bool _speaking = false;
+  bool _listening = false;
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
 
   @override
   void dispose() {
+    if (_listening) ref.read(asrEngineProvider).cancel();
     _input.dispose();
     super.dispose();
   }
@@ -76,6 +78,45 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
       }
     } finally {
       if (mounted) setState(() => _speaking = false);
+    }
+  }
+
+  /// 按麦说一遍：识别文本追加进输入框；识别不可用 / 失败时降级为键盘输入。
+  Future<void> _toggleMic() async {
+    final engine = ref.read(asrEngineProvider);
+    if (_listening) {
+      try {
+        final text = await engine.stop();
+        if (text.isNotEmpty) {
+          final current = _input.text.trim();
+          _input.text = current.isEmpty ? text : '$current $text';
+        } else if (mounted) {
+          showAppToast(context, '没听清，直接用键盘接着写就行', error: true);
+        }
+      } on Object {
+        if (mounted) {
+          showAppToast(context, '识别失败，输入内容还在，改用键盘吧', error: true);
+        }
+      }
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    final available = await engine.initialize();
+    if (!available) {
+      if (mounted) {
+        showAppToast(context, '这台设备没有可用的语音识别，直接用键盘写就行', error: true);
+      }
+      return;
+    }
+    // 录音与朗读互斥：按下麦克风先停朗读。
+    await ref.read(ttsRouterProvider).stop();
+    try {
+      await engine.start();
+      if (mounted) setState(() => _listening = true);
+    } on Object {
+      if (mounted) {
+        showAppToast(context, '没能开始识别，改用键盘写吧', error: true);
+      }
     }
   }
 
@@ -169,35 +210,58 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                           const SizedBox(height: 8),
                           Text(_sentences[_index], style: AppText.body),
                           const SizedBox(height: 12),
-                          SecondaryButton(
-                            label: _speaking ? '播放中…' : '听一遍',
-                            icon: Icons.volume_up_rounded,
-                            onPressed: _speak,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SecondaryButton(
+                                  label: _speaking ? '播放中…' : '听一遍',
+                                  icon: Icons.volume_up_rounded,
+                                  onPressed: _speak,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SecondaryButton(
+                                  label: _listening ? '说完了' : '按麦说一遍',
+                                  icon: _listening
+                                      ? Icons.stop_rounded
+                                      : Icons.mic_rounded,
+                                  onPressed: _toggleMic,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
                           AppTextField(
                             controller: _input,
                             hint: '跟着说一遍，或把句子写出来',
+                            minLines: 2,
+                            maxLines: 2,
                           ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: PrimaryButton(
-                              label: _lastOk == true ? '说到了 · 下一句' : '检查这一遍',
-                              onPressed: () {
-                                if (_lastOk == true) {
-                                  _next();
-                                } else {
-                                  _check();
-                                }
-                              },
+                          if (_lastOk != true ||
+                              _index < _sentences.length - 1) ...[
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: PrimaryButton(
+                                label: _lastOk == true ? '说到了 · 下一句' : '检查这一遍',
+                                onPressed: () {
+                                  if (_lastOk == true) {
+                                    _next();
+                                  } else {
+                                    _check();
+                                  }
+                                },
+                              ),
                             ),
-                          ),
+                          ],
                           if (_lastOk != null) ...[
                             const SizedBox(height: 10),
                             Text(
                               _lastOk!
-                                  ? '听到了，接着下一句。'
+                                  ? (_index >= _sentences.length - 1
+                                      ? '听到了，全部练完了。'
+                                      : '听到了，接着下一句。')
                                   : '还没说全，再看一眼原句试一次。',
                               style: AppText.caption,
                             ),

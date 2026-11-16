@@ -94,7 +94,10 @@ class _GoalChecklistCardState extends ConsumerState<GoalChecklistCard> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('觉得办到了就勾上，没办到的下次再练一遍。',
+          Text(
+              widget.result.goalResults.isEmpty
+                  ? '觉得办到了就勾上，没办到的下次再练一遍。'
+                  : '按对话自动判了一遍，觉得不准可以自己改；没办到的下次再练一遍。',
               style: AppText.caption),
           const SizedBox(height: 10),
           for (var index = 0; index < _goals.length; index++)

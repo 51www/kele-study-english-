@@ -75,8 +75,9 @@ ${scenario.targetPhrases.isEmpty ? '' : 'Target phrases: ${scenario.targetPhrase
 
 Rules:
 - Reply in natural English only. Never use Chinese unless the user explicitly asks.
-- When it fits naturally, elicit or reuse the target phrases; never list them, quiz the user, or force them in.
-- Keep every reply to 1-2 short sentences, then ask exactly one question to keep the conversation going.
+- Play only your own role. Never speak for the user: never write, suggest or complete the learner's line, never answer your own question, never continue both sides of the dialogue, and never add hints like "you could say".
+- The target phrases are for the learner to say, not for you: elicit them with natural questions, never say them yourself, never list them, quiz the user, or force them in.
+- Keep every reply to 1-2 short sentences, then ask exactly one question and stop.
 - Use vocabulary and grammar at $level level. Do not correct the user inside the role-play.
 - Never mention that you are an AI, a model, or a prompt.
 - If the user is silent or unclear, gently prompt them with a simple question.
@@ -132,6 +133,7 @@ Rules:
   static List<LlmMessage> reviewMessages({
     required Scenario? scenario,
     required List<MessageRecord> history,
+    List<String> goals = const <String>[],
   }) {
     final transcript = StringBuffer();
     for (final message in history) {
@@ -139,6 +141,21 @@ Rules:
       if (message.isHint) continue;
       transcript.writeln('${message.role == 'user' ? 'User' : 'AI'}: ${message.textEn}');
     }
+    final goalsInput = goals.isEmpty
+        ? ''
+        : '\nSession goals (one per line, judge each done/todo at the end):\n'
+            '${goals.asMap().entries.map((e) => '${e.key + 1}. ${e.value}').join('\n')}\n';
+    final goalsFormat = goals.isEmpty
+        ? ''
+        : '\n目标:\n${[
+            for (var i = 0; i < goals.length; i++) '${i + 1}. <done|todo>'
+          ].join('\n')}\n';
+    final goalsRule = goals.isEmpty
+        ? ''
+        : '\nFor 目标 output exactly one line per Session goal in the same order, each "N. done" or '
+            '"N. todo". Judge by meaning from the learner\'s own turns (User lines) only: paraphrases '
+            'and small grammar or wording mistakes still count as done; never credit the AI\'s lines. '
+            'Mark todo only when the learner clearly did not get the goal across.';
     return [
       LlmMessage.system(
         'You are a strict but encouraging English speaking coach. '
@@ -148,7 +165,7 @@ Rules:
       LlmMessage.user('''
 Scenario: ${scenario?.titleZh ?? '自由对话'}
 Learner level: ${scenario?.level ?? 'B1'}
-
+$goalsInput
 Transcript:
 $transcript
 
@@ -161,13 +178,13 @@ Reply exactly in this format:
 - <one natural English phrase from or for this scenario>
 - <another phrase>
 下次: <one actionable tip in Chinese>
-
+$goalsFormat
 补充（可选，只为上面出现过的纠错填写）:
 1. <original sentence, exactly as above> || <why a Chinese speaker would say it this way> || <casual everyday version> || <formal business version> || <when to use which, in Chinese>
 
 Rules: at most 4 corrections, at most 5 phrases. If there are no clear mistakes, still give 1 improvement.
 补充 may be omitted entirely. If present, each line has exactly 5 parts separated by ||, and part 1 must match a 原句 from 纠错.
-For casual daily scenarios the formal version may repeat the casual one. Keep each part under 25 words.
+For casual daily scenarios the formal version may repeat the casual one. Keep each part under 25 words.$goalsRule
 '''),
     ];
   }
@@ -306,6 +323,7 @@ class ReviewParser {
     var nextTip = '';
     final corrections = <ReviewCorrection>[];
     final phrases = <String>[];
+    final goalResults = <String>[];
     final supplements = <String, List<String>>{};
     var section = '';
 
@@ -334,6 +352,10 @@ class ReviewParser {
         section = 'supplement';
         continue;
       }
+      if (normalized.startsWith('目标')) {
+        section = 'goals';
+        continue;
+      }
 
       if (section == 'corrections') {
         final cleaned = normalized.replaceFirst(RegExp(r'^\d+[\.\)、]\s*'), '');
@@ -353,6 +375,24 @@ class ReviewParser {
         final parts = cleaned.split('||').map(_strip).toList();
         if (parts.length >= 5 && parts[0].isNotEmpty) {
           supplements[parts[0].toLowerCase()] = parts;
+        }
+      } else if (section == 'goals') {
+        // 每行取第一个 done/todo 标记（容忍编号、中文同义词与行尾依据）。
+        const marks = <String, String>{
+          'done': 'done',
+          'todo': 'todo',
+          '已达成': 'done',
+          '达成': 'done',
+          '待练': 'todo',
+          '未达成': 'todo',
+        };
+        final cleaned = normalized.replaceFirst(RegExp(r'^\d+[\.\)、]\s*'), '');
+        for (final raw in cleaned.split(RegExp(r'[\s,，、|]+'))) {
+          final mark = marks[raw.trim().toLowerCase()];
+          if (mark != null) {
+            goalResults.add(mark);
+            break;
+          }
         }
       } else if (section == 'highlight') {
         highlight = '$highlight $normalized'.trim();
@@ -388,6 +428,7 @@ class ReviewParser {
         phrases: phrases.take(5).toList(),
         nextTip: nextTip.isEmpty ? '可以重试一次，或直接继续下次练习。' : nextTip,
         degraded: highlight.isEmpty || phrases.isEmpty,
+        goalResults: goalResults,
       );
     }
 
@@ -396,6 +437,7 @@ class ReviewParser {
       corrections: enrich(corrections.take(4).toList()),
       phrases: phrases.take(5).toList(),
       nextTip: nextTip.isEmpty ? '下次练习试着多用今天学到的表达。' : nextTip,
+      goalResults: goalResults,
     );
   }
 

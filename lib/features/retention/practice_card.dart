@@ -168,7 +168,7 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
             children: [
               Expanded(
                 child: SecondaryButton(
-                  label: _listening ? '说完了' : '按麦说一遍',
+                  label: _listening ? '说完了' : '按麦说话',
                   icon: _listening ? Icons.stop_rounded : Icons.mic_rounded,
                   onPressed: _toggleMic,
                 ),

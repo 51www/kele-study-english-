@@ -17,6 +17,7 @@ import '../../core/timeouts.dart';
 import '../../domain/models/models.dart';
 import '../path/next_step_card.dart';
 import '../path/path_providers.dart';
+import '../scenario/scenario_goals.dart';
 import '../retention/practice_card.dart';
 import '../retention/review_item.dart';
 import 'goal_checklist.dart';
@@ -138,7 +139,11 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         );
       }
       final config = LlmConfig(baseUrl: profile.baseUrl, apiKey: key, model: profile.model);
-      final prompt = PromptBuilder.reviewMessages(scenario: scenario, history: _messages);
+      final prompt = PromptBuilder.reviewMessages(
+        scenario: scenario,
+        history: _messages,
+        goals: scenario == null ? const <String>[] : scenarioGoals(scenario),
+      );
       final raw = await _requestReview(config, prompt, 0.4, token);
       if (token.isCancelled) return;
       var result = ReviewParser.parse(raw);
@@ -169,6 +174,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
         promptCount: session.hintCount,
         degraded: false,
         takeawayText: takeawayText,
+        goalResults: result.goalResults,
       );
       // 纠错入库：尽量回链到原文所在的用户消息。
       final now = DateTime.now().microsecondsSinceEpoch;

@@ -18,7 +18,8 @@ Scenario scenario() => const Scenario(
       successCriteria: '3 small goals',
     );
 
-/// M8 结束时的 chatSystem 原文，用于「关闭档案后行为完全一致」的逐字校验。
+/// 关闭档案时 chatSystem 的基线原文（规则有意调整时须同步更新本常量），
+/// 用于「关闭档案后行为完全一致」的逐字校验。
 const String m8ChatSystemBaseline = 'You are playing a role in an English speaking '
     'practice app. Stay in character at all times.\n'
     '\n'
@@ -31,10 +32,13 @@ const String m8ChatSystemBaseline = 'You are playing a role in an English speaki
     '\n'
     'Rules:\n'
     '- Reply in natural English only. Never use Chinese unless the user explicitly asks.\n'
-    '- When it fits naturally, elicit or reuse the target phrases; never list them, '
-    'quiz the user, or force them in.\n'
-    '- Keep every reply to 1-2 short sentences, then ask exactly one question to '
-    'keep the conversation going.\n'
+    '- Play only your own role. Never speak for the user: never write, suggest or '
+    'complete the learner\'s line, never answer your own question, never continue '
+    'both sides of the dialogue, and never add hints like "you could say".\n'
+    '- The target phrases are for the learner to say, not for you: elicit them with '
+    'natural questions, never say them yourself, never list them, quiz the user, or '
+    'force them in.\n'
+    '- Keep every reply to 1-2 short sentences, then ask exactly one question and stop.\n'
     '- Use vocabulary and grammar at B1 level. Do not correct the user inside the '
     'role-play.\n'
     '- Never mention that you are an AI, a model, or a prompt.\n'
@@ -91,7 +95,7 @@ void main() {
   final s = scenario();
 
   group('关闭学习者档案时行为一致', () {
-    test('chatSystem 与 M8 原文逐字相同', () {
+    test('chatSystem 与基线原文逐字相同', () {
       expect(PromptBuilder.chatSystem(s, 'B1'), m8ChatSystemBaseline);
       expect(
         PromptBuilder.chatSystem(s, 'B1', profile: null, pressure: null),

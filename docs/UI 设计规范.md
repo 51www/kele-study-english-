@@ -539,12 +539,13 @@ Container(
 | 复练中心反馈条 | 页面顶部通栏 12 圆角提示块，颜色同上；仅 `AppText.body` 一句话，无图标叠加、无动效；练习卡被刷新卸载后仍保留 |
 | 复盘补充信息块 | 改法卡内 10 圆角 `primaryWash` 块、10 内边距；「为什么会这么说」用 `AppText.caption`，日常 / 正式两版用 `AppText.bodySecondary`，适用场合用 `AppText.caption`；行距 4；不新增色值、不给两套说法加对比色标签 |
 | 场景目标清单 | `SectionTitle`「本场 3 件小事」下 3 行；左侧 20 × 20 圆角 6 `primaryWash` 序号块（`AppText.caption` 11 `primaryDeep`），右侧 `AppText.bodySecondary`；行间距 8；序号是真实目标顺序，不是装饰 |
-| 本场目标自评卡 | `AppCard`；左 `Icons.flag_outlined` 18 `primary` + 标题，右 `AppText.caption`「已达成 N/3」；每行 18 图标（达成 `success` 实心 / 未达成 `inkMuted` 空心）+ 目标文字；底部只有待练时才出现一枚 `SecondaryButton`；不使用勾选框组件、不显示百分比 |
+| 本场目标判定卡 | `AppCard`；左 `Icons.flag_outlined` 18 `primary` + 标题，右 `AppText.caption`「已达成 N/3」；每行 18 图标（达成 `success` 实心 / 未达成 `inkMuted` 空心）+ 目标文字；勾选初值按对话自动判定、可点按改勾（无判定结果时退回纯自评文案）；底部只有待练时才出现一枚 `SecondaryButton`；不使用勾选框组件、不显示百分比 |
 | 一句话生成场景卡 | 编辑器顶部 `AppCard`，结构同练习卡（标题 + 说明 + `AppTextField` + 通栏 `SecondaryButton`）；生成中只改按钮文案，不加遮罩或第二个 CTA；失败提示用既有 `showAppToast`，表单保持可手填 |
-| 课前 60 秒热身页 | `PageScaffold` + `ListView`；顶部 3 段 26 × 4 圆角 2 进度条（完成 `primary` / 未完成 `line`），间距 6；当前句 `AppCard` 内 `AppText.caption` 序号 + `AppText.body` 英文 + `SecondaryButton`「听一遍」+ `AppTextField` + 通栏 `PrimaryButton`；反馈仅一行 `AppText.caption`，不出现分数、星级或正确率；「跳过」放头部 `actions`，底部再给一枚 `SecondaryButton`，二者都不阻塞开练 |
+| 课前 60 秒热身页 | `PageScaffold` + `ListView`；顶部 3 段 26 × 4 圆角 2 进度条（完成 `primary` / 未完成 `line`），间距 6；当前句 `AppCard` 内 `AppText.caption` 序号 + `AppText.body` 英文 + 两枚等宽 `SecondaryButton`（听一遍 / 按麦说一遍，间距 10；录音中改「说完了」）+ 两行 `AppTextField` + 通栏 `PrimaryButton`（末句判定通过后不再显示「下一句」，由底部「去开练」收尾）；反馈仅一行 `AppText.caption`，不出现分数、星级或正确率；「跳过」放头部 `actions`，底部再给一枚 `SecondaryButton`，二者都不阻塞开练 |
 | 首页 3 分钟轻量入口 | 紧跟「今天练这个」卡之后的一枚通栏 `SecondaryButton`（`Icons.bolt_rounded`），间距 12；上方 `AppText.caption` 一行说明「本周 N 次有效练习 · 轻量 M 次（轻量计入今日分钟，不计入每周 3 次）」；不新增 Tab、不新增第二个主色实心 CTA |
 | 3 分钟轻量练习页 | `PageScaffold` + `ListView`；顶部 3 段进度条同热身页；步骤说明用 `AppText.caption`，当前句 `AppText.body`，`AppTextField` + 通栏 `PrimaryButton`；完成态用 28 `success` 图标 + `AppText.cardTitle` + 一句带走的表达 + 通栏 `PrimaryButton`；全程无分数、无星级、无进度环 |
 | 进步轨迹卡 | `SectionTitle`「进步轨迹」下每张 `AppCard`（16 内边距）；首行 `AppText.cardTitle` 标题 + 右侧 `AppText.caption`「本周 N%」或「本周样本不足」；中部 88 高 `CustomPaint` 折线（2px `primary` 线 + 3.5 半径实心点 + 1px `line` 基线，样本不足的点断开不补 0）；下方 4 个 `M/D` 周标签 `AppText.caption`；底部 `ExpansionTile`「怎么算的」展开 `AppText.caption` 口径说明；连不出两个周点时整区给 `EmptyState`（文案说明「每周至少 2 次、积累两周后」），不显示单点假趋势；不画目标线、不给等级、不放排名或勋章 |
+| 对话页目标表达入口 | 头部「结束」左侧一枚小 `IconButton`（`Icons.menu_book_outlined` 18 `inkMuted`，34 触达区，tooltip「目标表达」），点击弹 `showAppSheet`「目标表达」；弹层内容为场景 `targetPhrases` 列表，单条复用场景详情页表达卡样式（`primaryWash` 底、`AppRadius.sm` 圆角、`AppText.body` 13）；无目标表达时不渲染入口，弹层内不放任何主色 CTA |
 | 一键加压行 | 对话页输入区模式 Chip 行（语音输入 / 提示 / 我想说）之下一行 `Row`：两枚复用 `_ModeChip`（`Icons.alt_route_rounded`「换个角度追问」、`Icons.trending_up_rounded`「提高难度」），后接 `Expanded` 单行 `AppText.caption`（10 号、`inkMuted`）说明「只影响下一回合，不会自动发送」；选中后文案改为「下一回合：X（可取消）」并出现 `TextButton`「取消」（10 号 `primaryDeep`）；开关关闭时整行不渲染；不加新色值、不做选中态色块 |
 | 学习者档案设置开关 | 「设置 → 练习」分组内新增一行 `SettingRow`（`Icons.psychology_alt_outlined`），标题「学习者档案」，`subtitle` 说明用途与「关闭后回到原始对话」，`trailing` 用原生 `Switch`（`activeTrackColor = primary`）；沿用既有 `Divider` 与 4/8 网格间距 |
 

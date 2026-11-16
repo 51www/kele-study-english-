@@ -336,6 +336,37 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
+  /// 目标表达随时可查：小图标 → 底部弹层，不打断对话。
+  void _showTargetPhrases() {
+    final phrases = _controller.scenario?.targetPhrases ?? const <String>[];
+    if (phrases.isEmpty) return;
+    showAppSheet<void>(
+      context: context,
+      title: '目标表达',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final phrase in phrases)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryWash,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Text(phrase, style: AppText.body.copyWith(fontSize: 13, height: 1.5)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _back() async {
     // 结束流程中不要再弹「保存并退出」，否则会覆盖已完成状态或删除会话。
     if (!mounted || _ending) return;
@@ -388,6 +419,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 ending: _ending,
                 onBack: _back,
                 onEnd: _end,
+                onShowPhrases: (c.scenario?.targetPhrases.isNotEmpty ?? false)
+                    ? _showTargetPhrases
+                    : null,
               ),
               Expanded(
                 child: Container(
@@ -831,6 +865,7 @@ class _ChatHeader extends StatelessWidget {
     required this.ending,
     required this.onBack,
     required this.onEnd,
+    this.onShowPhrases,
   });
 
   final String title;
@@ -840,6 +875,7 @@ class _ChatHeader extends StatelessWidget {
   final bool ending;
   final VoidCallback onBack;
   final VoidCallback onEnd;
+  final VoidCallback? onShowPhrases;
 
   @override
   Widget build(BuildContext context) {
@@ -883,6 +919,15 @@ class _ChatHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onShowPhrases != null)
+            IconButton(
+              onPressed: onShowPhrases,
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              color: AppColors.inkMuted,
+              tooltip: '目标表达',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            ),
           TextButton(
             onPressed: ending ? null : onEnd,
             style: TextButton.styleFrom(
