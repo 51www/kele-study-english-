@@ -164,6 +164,52 @@ class AppCard extends StatelessWidget {
   }
 }
 
+/// 按钮内容：图标 + 文案。可用宽度不足时整体等比缩小，保证文字始终单行完整。
+class _ButtonContent extends StatelessWidget {
+  const _ButtonContent({
+    required this.label,
+    required this.color,
+    this.icon,
+    this.loading = false,
+  });
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppLayout.buttonHorizontalPadding),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading)
+              SizedBox(
+                width: AppLayout.buttonIconSize,
+                height: AppLayout.buttonIconSize,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            else if (icon != null) ...[
+              Icon(icon, size: AppLayout.buttonIconSize, color: color),
+              const SizedBox(width: AppLayout.buttonIconGap),
+            ],
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.button.copyWith(color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
@@ -185,24 +231,6 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
-    final child = Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (loading)
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-          )
-        else if (icon != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Icon(icon, size: 18, color: Colors.white),
-          ),
-        Text(label, style: AppText.button.copyWith(color: Colors.white)),
-      ],
-    );
     return SizedBox(
       width: expanded ? double.infinity : null,
       height: height,
@@ -220,7 +248,14 @@ class PrimaryButton extends StatelessWidget {
           child: InkWell(
             onTap: enabled ? onPressed : null,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            child: Center(child: child),
+            child: Center(
+              child: _ButtonContent(
+                label: label,
+                icon: icon,
+                loading: loading,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
       ),
@@ -246,21 +281,75 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null;
     return SizedBox(
       width: expanded ? double.infinity : null,
       height: height,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: icon == null ? null : Icon(icon, size: 18),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryDeep,
-          side: const BorderSide(color: AppColors.primaryTint, width: 1.4),
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-          textStyle: AppText.button,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: enabled ? AppColors.primaryTint : AppColors.divider,
+            width: 1.4,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? onPressed : null,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Center(
+              child: _ButtonContent(
+                label: label,
+                icon: icon,
+                color: enabled ? AppColors.primaryDeep : AppColors.inkMuted,
+              ),
+            ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// 并排按钮行：宽屏左右等宽，窄屏（可用宽度 < 300）改为上下堆叠。
+///
+/// 只负责排版，不改动传入按钮的文案、回调与状态。
+class AppButtonRow extends StatelessWidget {
+  const AppButtonRow({
+    super.key,
+    required this.children,
+    this.gap = AppSpacing.buttonGap,
+  });
+
+  final List<Widget> children;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < AppLayout.buttonRowMinWidth) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) SizedBox(height: gap),
+                children[i],
+              ],
+            ],
+          );
+        }
+        return Row(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) SizedBox(width: gap),
+              Expanded(child: children[i]),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -272,30 +361,45 @@ class AppTag extends StatelessWidget {
     this.color = AppColors.primary,
     this.background = AppColors.primaryWash,
     this.icon,
+    this.maxWidth = AppLayout.tagMaxWidth,
   });
 
   final String label;
   final Color color;
   final Color background;
   final IconData? icon;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.element,
+          vertical: AppSpacing.tight,
+        ),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: AppSpacing.tight),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.tag.copyWith(color: color),
+              ),
+            ),
           ],
-          Text(label, style: AppText.tag.copyWith(color: color)),
-        ],
+        ),
       ),
     );
   }
@@ -370,7 +474,7 @@ class AppTextField extends StatelessWidget {
       children: [
         if (label != null) ...[
           Text(label!, style: AppText.caption.copyWith(color: AppColors.inkSecondary)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.element),
         ],
         TextField(
           controller: controller,
@@ -386,11 +490,15 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: AppText.bodySecondary.copyWith(color: AppColors.inkMuted),
+            constraints: const BoxConstraints(minHeight: AppLayout.inputHeight),
             filled: true,
             fillColor: enabled ? AppColors.surfaceTint : AppColors.divider,
             prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: 18, color: AppColors.inkMuted),
             suffixIcon: suffix,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.cardInner,
+              vertical: AppSpacing.buttonGap,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.sm),
               borderSide: const BorderSide(color: AppColors.line),
@@ -536,7 +644,12 @@ class ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.cardInner,
+        AppSpacing.buttonGap,
+        AppSpacing.element,
+        AppSpacing.buttonGap,
+      ),
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -603,8 +716,8 @@ class FloatingNav extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        margin: const EdgeInsets.fromLTRB(AppSpacing.cardInner, 0, AppSpacing.cardInner, AppSpacing.buttonGap),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.element, vertical: AppSpacing.element),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -639,7 +752,7 @@ class FloatingNav extends StatelessWidget {
                           color: selected ? AppColors.primaryDeep : AppColors.inkMuted,
                         ),
                         if (selected) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: AppSpacing.element),
                           Text(
                             item.$3,
                             style: AppText.caption.copyWith(
@@ -735,7 +848,7 @@ class SettingRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.cardInner, horizontal: AppSpacing.tight),
         child: Row(
           children: [
             if (icon != null) ...[
@@ -762,7 +875,7 @@ class SettingRow extends StatelessWidget {
                     ),
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.tight),
                     Text(subtitle!, style: AppText.caption),
                   ],
                 ],
@@ -860,7 +973,12 @@ class InlineNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = ok ? AppColors.success : AppColors.error;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.buttonGap,
+        AppSpacing.element,
+        AppSpacing.element,
+        AppSpacing.element,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -920,9 +1038,9 @@ Future<T?> showAppSheet<T>({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.buttonGap),
             const _SheetHandle(),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.cardInner),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
               child: Row(

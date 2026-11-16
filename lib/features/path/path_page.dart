@@ -396,25 +396,20 @@ class _ReturnCard extends StatelessWidget {
                 : '今天状态一般？先来一轮 3 分钟轻量，也算保持手感。',
             style: AppText.bodySecondary,
           ),
-          const SizedBox(height: 10),
-          Row(
+          const SizedBox(height: AppSpacing.buttonGap),
+          AppButtonRow(
             children: [
-              Expanded(
-                child: SecondaryButton(
-                  label: '接着上次',
-                  onPressed: () => context.push('/history'),
-                ),
+              SecondaryButton(
+                label: '接着上次',
+                onPressed: () => context.push('/history'),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SecondaryButton(
-                  label: '3 分钟轻量',
-                  onPressed: () => context.push('/quick'),
-                ),
+              SecondaryButton(
+                label: '3 分钟轻量',
+                onPressed: () => context.push('/quick'),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.tight),
           Text(
             '轻量练习计入今日分钟，不计入每周 3 次有效练习。',
             style: AppText.caption,

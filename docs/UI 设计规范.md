@@ -366,7 +366,14 @@ class AppSpacing {
   static const xxl = 32.0;
   static const page = 24.0;      // 左右页边距
   static const section = 28.0;   // 分区间距
-  static const scrollBottom = 96.0;
+  static const scrollBottom = 112.0;
+
+  // 语义别名（复用上面的网格值，页面与组件优先使用这些名字）
+  static const tight = xxs;      // 紧邻元素 4
+  static const element = xs;     // 组件内元素 8
+  static const buttonGap = sm;   // 按钮 / 列表卡之间 12
+  static const cardInner = md;   // 卡内边距 16
+  static const block = lg;       // 卡内大块之间 20
 }
 
 class AppRadius {
@@ -395,14 +402,15 @@ class AppShadows {
 
 #### 主按钮
 
-- 高度 50；`BorderRadius.circular(999)`；背景 `AppColors.primary`；文字 `AppText.button.copyWith(color: Colors.white)`。
-- 阴影 `AppShadows.primary`；禁用态背景 `AppColors.primaryTint`，文字 `AppColors.inkMuted`，无阴影。
+- 高度 50（`AppLayout.buttonHeight`，主 / 次统一）；`BorderRadius.circular(AppRadius.md)`；主色渐变底；文字 `AppText.button.copyWith(color: Colors.white)`。
+- 阴影 `AppShadows.primary`；禁用态灰底，文字 `AppColors.inkMuted`，无阴影。
 - 通栏时左右各 24，距底部安全区 16。
+- 图标 18、图标与文字间距 8、左右内边距 16；图标与文字由 `FittedBox(BoxFit.scaleDown)` 包裹，`Text(maxLines: 1)`，长文案等比缩小、不换行、不溢出。
 
 #### 次按钮
 
-- 高度 48；白底；1 px `AppColors.line` 描边；文字 `#46527A` 600 14；圆角 999。
-- 与主按钮并排时等宽，间距 12。
+- 高度 50（与主按钮统一）；白底；1.4 px `AppColors.primaryTint` 描边；文字 `AppColors.primaryDeep` 600 14；圆角 `AppRadius.md`。
+- 与主按钮并排时等宽，间距 12；内部防溢出规格与主按钮一致。
 
 #### 卡片
 
@@ -508,7 +516,7 @@ Container(
 
 | 组件 | 规格 |
 |---|---|
-| 首页「今日」主卡 `CheckinCard` | 主色→主色深渐变底、24 圆角、`AppShadows.card`；顶部「今日打卡」标题 + 右侧「连续 N 天」pill（半透明白底 + `local_fire_department` 14 白）；中部状态大字（已打卡 / 待打卡，白字 `AppText.h2`）；学习构成 Wrap Chip（口语 / 轻量 / 听写 / 背单词 / 影子跟读 / 其它，已做的白底主色字、未做的白 12% 底 + 白色描边；手动类型点按切换补记）；底部今日分钟/目标进度条（白底 25% 轨 + 白填充）+ 入口（未打卡 `SecondaryButton`「开始今日学习」；已打卡 `TextButton` 白字「查看打卡日历」→ `/checkin`）；一屏只有一个主色实心 CTA（归「下一步」卡） |
+| 首页「今日」主卡 `CheckinCard` | 主色→主色深渐变底、24 圆角、`AppShadows.card`；顶部「今日打卡」标题 + 右侧「连续 N 天」pill（半透明白底 + `local_fire_department` 14 白）；中部状态大字（已打卡 / 待打卡，白字 `AppText.h2`）；学习构成 Wrap Chip（仅口语 / 背单词 / 影子跟读，间距 8；按内容自然排列，宽度够时同一行、不足时换行，不压缩文字；已做的白底主色字、未做的白 12% 底 + 白色描边；手动类型点按切换补记）；底部今日分钟/目标进度条（白底 25% 轨 + 白填充）+ 入口（未打卡 `SecondaryButton`「开始今日学习」；已打卡 `TextButton` 白字「查看打卡日历」→ `/checkin`）；一屏只有一个主色实心 CTA（归「下一步」卡） |
 | 打卡日历页 `/checkin` | `PageScaffold` 标题「打卡日历」；顶部三块 `AppCard` 统计（本月打卡 / 当前连续 / 最长连续，值 `AppText.h2` 主色深）；7 列月历 `GridView.count`（`NeverScrollableScrollPhysics` 嵌 `ListView`），已打卡天主色圆底白字、今天加 2px 主色深描边、其余灰字；点击某天 `showAppSheet`（标题=该天日期）展示明细 |
 | 日历单日明细 `_DaySheet` | 顶部右对齐 `AppTag`（已打卡 / 未打卡，主色深 / `inkSecondary`）；自动活动（口语 / 轻量 / 听写）只读 `Chip`（图标 14 主色深）；手动补记 `FilterChip`（背单词 / 影子跟读 / 其它，选中主色）即时 `toggleType`；备注 `TextField`（`AppRadius.md` 圆角）+ `SecondaryButton`「保存备注」；不出现第二个主色实心 CTA |
 
@@ -591,12 +599,34 @@ class AppLayout {
   static const headerHeight = 56.0;
   static const navHeight = 58.0;
   static const buttonHeight = 50.0;
+  static const buttonHorizontalPadding = 16.0;
+  static const buttonIconSize = 18.0;
+  static const buttonIconGap = 8.0;
+  static const buttonRowMinWidth = 300.0; // 并排按钮低于此宽度改竖排
+  static const tagMaxWidth = 160.0;       // AppTag 文案最长显示宽度
   static const inputHeight = 48.0;
   static const listItemHeight = 60.0;
   static const cardGap = 12.0;
   static const sectionGap = 28.0;
 }
 ```
+
+#### 统一布局规范（按钮防溢出 / 间距 / 响应式，先改规范再落代码）
+
+本次只调整排版与间距，不改变任何按钮的文案、跳转与回调；所有数值仍来自既有色值 Token、字号 Token 与 4/8 网格，不引入新色值、新字号、新圆角或新阴影。
+
+| 项 | 规格 |
+|---|---|
+| 按钮高度 | 主 / 次按钮统一 50（`AppLayout.buttonHeight`），不再出现 40 / 44 / 48 等零散高度；图标按钮仍 40–44 |
+| 按钮宽度 | 通栏按钮 `expanded: true` 占满父容器宽度；非通栏由调用方给定宽度；两枚并排时等宽 |
+| 按钮文字 | 单行完整显示：`FittedBox(scaleDown)` 包住「图标 + 文字」，`Text(maxLines: 1)` 不换行；可用宽度不足时文字与图标等比缩小，不使用省略号截断 |
+| 并排按钮行 | 统一用 `AppButtonRow`：间距 12；可用宽度 ≥ 300 时左右等宽，< 300 时上下堆叠、每枚通栏，保证窄屏文字仍完整 |
+| 标签 AppTag | 最大宽 160，左右 8 / 上下 4，`Text(maxLines: 1, overflow: ellipsis)`；与标题同行时标题 `Expanded` + 省略，标签不再撑破所在行 |
+| 间距语义 | `tight` 4（紧邻元素）、`element` 8（组件内元素）、`buttonGap` 12（按钮 / 卡片之间）、`cardInner` 16（卡内边距）、`block` 20（卡内大块之间）、`page` 24（页边距）、`section` 28（页面分区） |
+| 页面区块 | 主区块之间 20（打卡卡 → 下一步卡 → 入口卡 → 技巧卡）；分区标题 → 内容 12；卡片之间 12；卡内元素之间 8 |
+| 响应式 | 内容区 `ConstrainedBox(maxWidth: 440)` + 左右页边距 24；窄屏时并排按钮改竖排；首页入口卡用 `IntrinsicHeight` 等高、标题最多 2 行省略，避免底部溢出 |
+
+页面内不再手写 5 / 6 / 7 / 10 / 13 / 14 / 15 / 18 / 22 / 26 / 30 这类零散间距，一律使用 `AppSpacing` 语义 Token；组件内部间距由共享组件统一承担，减少各页面自行拼装造成的视觉漂移。
 
 ### 3.6 使用约束（Do / Don't）
 

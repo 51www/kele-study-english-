@@ -304,7 +304,7 @@ class _DaySheet extends ConsumerWidget {
   }
 }
 
-const List<String> _manualTypes = ['vocab', 'shadow', 'other'];
+const List<String> _manualTypes = ['vocab', 'shadow'];
 
 /// 仅用于日历明细页的图标/标签查找（与 checkin_card 的元数据保持一致）。
 _TypeMeta typeMetaLookup(String type) {

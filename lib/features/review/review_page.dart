@@ -392,27 +392,27 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
           ? null
           : Container(
               color: AppColors.surface,
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                AppSpacing.buttonGap,
+                AppSpacing.page,
+                AppSpacing.cardInner,
+              ),
               child: SafeArea(
                 top: false,
                 child: Center(
                   heightFactor: 1,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
-                    child: Row(
+                    child: AppButtonRow(
                       children: [
-                        Expanded(
-                          child: SecondaryButton(
-                            label: '返回首页',
-                            onPressed: () => context.go('/home'),
-                          ),
+                        SecondaryButton(
+                          label: '返回首页',
+                          onPressed: () => context.go('/home'),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: PrimaryButton(
-                            label: '再练一次',
-                            onPressed: _practiceAgain,
-                          ),
+                        PrimaryButton(
+                          label: '再练一次',
+                          onPressed: _practiceAgain,
                         ),
                       ],
                     ),

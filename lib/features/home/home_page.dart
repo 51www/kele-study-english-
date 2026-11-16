@@ -32,7 +32,7 @@ class HomePage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _TopBar(),
-                const SizedBox(height: 22),
+                const SizedBox(height: AppSpacing.block),
                 async.when(
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: 80),
@@ -72,7 +72,7 @@ class _TopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${greetingForNow()}，', style: AppText.bodySecondary.copyWith(fontSize: 14)),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpacing.tight),
               Text('今天想开口说点什么？', style: AppText.h1.copyWith(fontSize: 22)),
             ],
           ),
@@ -103,11 +103,11 @@ class _Body extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const CheckinCard(),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.block),
         const TodayPracticeCard(),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.block),
         const _PracticeGrid(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.cardInner),
         const _TipsEntry(),
       ],
     );
@@ -121,38 +121,41 @@ class _PracticeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _entryCard(
-            context,
-            icon: Icons.chat_bubble_outline_rounded,
-            tint: AppColors.primaryDeep,
-            title: '场景练习',
-            route: '/scenarios',
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _entryCard(
+              context,
+              icon: Icons.chat_bubble_outline_rounded,
+              tint: AppColors.primaryDeep,
+              title: '场景练习',
+              route: '/scenarios',
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _entryCard(
-            context,
-            icon: Icons.refresh_rounded,
-            tint: AppColors.mint,
-            title: '复盘复练',
-            route: '/retention',
+          const SizedBox(width: AppSpacing.buttonGap),
+          Expanded(
+            child: _entryCard(
+              context,
+              icon: Icons.refresh_rounded,
+              tint: AppColors.mint,
+              title: '复盘复练',
+              route: '/retention',
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _entryCard(
-            context,
-            icon: Icons.bolt_rounded,
-            tint: AppColors.orange,
-            title: '3 分钟轻量',
-            route: '/quick',
+          const SizedBox(width: AppSpacing.buttonGap),
+          Expanded(
+            child: _entryCard(
+              context,
+              icon: Icons.bolt_rounded,
+              tint: AppColors.orange,
+              title: '3 分钟轻量',
+              route: '/quick',
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -165,21 +168,22 @@ class _PracticeGrid extends StatelessWidget {
   }) {
     return AppCard(
       onTap: () => context.push(route),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.cardInner),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
               color: tint.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppSpacing.element),
             ),
             child: Icon(icon, color: tint, size: 18),
           ),
-          const SizedBox(height: 8),
-          Text(title, style: AppText.cardTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: AppSpacing.element),
+          Text(title, style: AppText.cardTitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -196,10 +200,10 @@ class _TipsEntry extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionTitle(title: '方法 / 技巧'),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.buttonGap),
         AppCard(
           onTap: () => context.push('/tips'),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.cardInner),
           child: Row(
             children: [
               Container(
@@ -217,7 +221,7 @@ class _TipsEntry extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('练口语的实用方法', style: AppText.cardTitle),
-                    SizedBox(height: 3),
+                    SizedBox(height: AppSpacing.tight),
                     Text(
                       '第三方文章全文 · 保留出处与原文链接',
                       style: AppText.caption,
@@ -243,13 +247,13 @@ class _SetupHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.cardInner),
       color: AppColors.warning.withValues(alpha: 0.10),
       shadow: false,
       child: Row(
         children: [
           const Icon(Icons.key_rounded, color: AppColors.warning, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.buttonGap),
           Expanded(
             child: Text(
               '还没填写模型密钥，配置后才能开始对话。',

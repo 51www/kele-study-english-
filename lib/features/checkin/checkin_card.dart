@@ -19,15 +19,13 @@ class _TypeMeta {
 
 const Map<String, _TypeMeta> _typeMeta = {
   'spoken': _TypeMeta('口语', Icons.chat_bubble_outline_rounded, false),
-  'quick': _TypeMeta('轻量', Icons.flash_on_rounded, false),
-  'dictation': _TypeMeta('听写', Icons.graphic_eq_rounded, false),
   'vocab': _TypeMeta('背单词', Icons.menu_book_rounded, true),
   'shadow': _TypeMeta('影子跟读', Icons.record_voice_over_rounded, true),
-  'other': _TypeMeta('其它', Icons.more_horiz_rounded, true),
 };
 
 /// 首页「今日」主卡：打卡状态 + 连续天数 + 学习构成 + 目标进度 + 入口。
-/// 自动类型（口语/轻量/听写）由会话/听写表聚合；手动类型（背单词/影子跟读/其它）可点按补记。
+/// 自动类型（口语）由会话表聚合；手动类型（背单词 / 影子跟读）可点按补记。
+/// 学习构成按内容自然排列：空间够时同一行，不足时换行，不压缩文字。
 class CheckinCard extends ConsumerWidget {
   const CheckinCard({super.key});
 
@@ -96,42 +94,13 @@ class CheckinCard extends ConsumerWidget {
             checked ? '今天已经打卡' : '今天还没打卡',
             style: AppText.h2.copyWith(color: Colors.white),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.buttonGap),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _typeMeta.entries.map((e) {
-              final meta = e.value;
-              final active = checkin.allTypes.contains(e.key);
-              final chip = Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: active ? Colors.white : Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: active
-                      ? null
-                      : Border.all(color: Colors.white.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(meta.icon,
-                        size: 14,
-                        color: active ? AppColors.primaryDeep : Colors.white),
-                    const SizedBox(width: 4),
-                    Text(meta.label,
-                        style: AppText.caption.copyWith(
-                          color: active ? AppColors.primaryDeep : Colors.white,
-                        )),
-                  ],
-                ),
-              );
-              if (!meta.manual) return chip;
-              return GestureDetector(
-                onTap: () => _toggleManual(ref, checkin.date, e.key),
-                child: chip,
-              );
-            }).toList(),
+            spacing: AppSpacing.element,
+            runSpacing: AppSpacing.element,
+            children: _typeMeta.entries
+                .map((e) => _chip(e, checkin, ref))
+                .toList(),
           ),
           const SizedBox(height: 16),
           Row(
@@ -182,6 +151,44 @@ class CheckinCard extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _chip(
+    MapEntry<String, _TypeMeta> entry,
+    TodayCheckin checkin,
+    WidgetRef ref,
+  ) {
+    final meta = entry.value;
+    final active = checkin.allTypes.contains(entry.key);
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.element,
+        vertical: AppSpacing.tight,
+      ),
+      decoration: BoxDecoration(
+        color: active ? Colors.white : Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: active ? null : Border.all(color: Colors.white.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(meta.icon, size: 14, color: active ? AppColors.primaryDeep : Colors.white),
+          const SizedBox(width: AppSpacing.tight),
+          Text(
+            meta.label,
+            style: AppText.caption.copyWith(
+              color: active ? AppColors.primaryDeep : Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!meta.manual) return chip;
+    return GestureDetector(
+      onTap: () => _toggleManual(ref, checkin.date, entry.key),
+      child: chip,
     );
   }
 

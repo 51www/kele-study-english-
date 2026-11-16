@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme/app_colors.dart';
+import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
@@ -124,34 +125,34 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
             children: [
               const Icon(Icons.auto_awesome_rounded,
                   size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.element),
               const Text('今日一条 · 90 秒', style: AppText.cardTitle),
               const Spacer(),
               Text('待复练', style: AppText.caption),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.buttonGap),
           Text('把这句更自然的说法，开口说一遍：', style: AppText.bodySecondary),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.element),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.cardInner),
             decoration: BoxDecoration(
               color: AppColors.primaryWash,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Text(item.textEn, style: AppText.body),
           ),
           if (item.textZh != null && item.textZh!.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.element),
             Text(item.textZh!, style: AppText.bodySecondary),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.buttonGap),
           Text(
             '判分规则：忽略大小写与标点，漏词会标出来；答对进入下一档复练，答错明天再来。',
             style: AppText.caption,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.buttonGap),
           if (_keyboard || _listening)
             TextField(
               controller: _input,
@@ -163,27 +164,22 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
                 isDense: true,
               ),
             ),
-          if (_keyboard || _listening) const SizedBox(height: 10),
-          Row(
+          if (_keyboard || _listening) const SizedBox(height: AppSpacing.buttonGap),
+          AppButtonRow(
             children: [
-              Expanded(
-                child: SecondaryButton(
-                  label: _listening ? '说完了' : '按麦说话',
-                  icon: _listening ? Icons.stop_rounded : Icons.mic_rounded,
-                  onPressed: _toggleMic,
-                ),
+              SecondaryButton(
+                label: _listening ? '说完了' : '按麦说话',
+                icon: _listening ? Icons.stop_rounded : Icons.mic_rounded,
+                onPressed: _toggleMic,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: SecondaryButton(
-                  label: _keyboard ? '隐藏键盘' : '改用键盘',
-                  icon: Icons.keyboard_rounded,
-                  onPressed: () => setState(() => _keyboard = !_keyboard),
-                ),
+              SecondaryButton(
+                label: _keyboard ? '隐藏键盘' : '改用键盘',
+                icon: Icons.keyboard_rounded,
+                onPressed: () => setState(() => _keyboard = !_keyboard),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.buttonGap),
           SizedBox(
             width: double.infinity,
             child: PrimaryButton(
@@ -201,15 +197,15 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
             ),
           ),
           if (result != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.buttonGap),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.buttonGap),
               decoration: BoxDecoration(
                 color: result.passed
                     ? AppColors.success.withValues(alpha: 0.12)
                     : AppColors.warning.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

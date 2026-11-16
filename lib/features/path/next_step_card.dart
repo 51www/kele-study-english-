@@ -28,24 +28,31 @@ class NextStepCard extends ConsumerWidget {
           Row(
             children: [
               const Icon(Icons.today_rounded, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(compact ? '下一次练这个' : '下一步', style: AppText.cardTitle),
-              const Spacer(),
+              const SizedBox(width: AppSpacing.element),
+              Expanded(
+                child: Text(
+                  compact ? '下一次练这个' : '下一步',
+                  style: AppText.cardTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.element),
               AppTag(
                 label: '第 ${plan.stage.index} 阶段 · ${plan.stage.name}',
                 color: AppColors.primaryDeep,
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.buttonGap),
           Text(plan.nextTitle, style: AppText.section),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.tight),
           Text(plan.nextReason, style: AppText.bodySecondary),
           if (!compact) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.tight),
             Text(_progressLine(plan), style: AppText.caption),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.cardInner),
           if (compact)
             SecondaryButton(
               label: '开始下一步',
@@ -58,7 +65,7 @@ class NextStepCard extends ConsumerWidget {
               icon: Icons.arrow_forward_rounded,
               onPressed: () => context.push(plan.nextRoute),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.tight),
             Row(
               children: [
                 _action(
@@ -93,7 +100,7 @@ class NextStepCard extends ConsumerWidget {
             minimumSize: const Size(0, 32),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: Text(label),
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       );
 }

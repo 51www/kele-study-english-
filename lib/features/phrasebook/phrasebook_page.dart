@@ -269,24 +269,17 @@ class _PhrasebookPageState extends ConsumerState<PhrasebookPage> {
               hint: '例如：能再说一遍吗？',
               maxLines: 2,
             ),
-            const SizedBox(height: 12),
-            Row(
+            const SizedBox(height: AppSpacing.buttonGap),
+            AppButtonRow(
               children: [
-                Expanded(
-                  child: SecondaryButton(
-                    label: '取消',
-                    height: 40,
-                    onPressed: _closeForm,
-                  ),
+                SecondaryButton(
+                  label: '取消',
+                  onPressed: _closeForm,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: PrimaryButton(
-                    label: '保存',
-                    icon: Icons.check_rounded,
-                    height: 40,
-                    onPressed: _save,
-                  ),
+                PrimaryButton(
+                  label: '保存',
+                  icon: Icons.check_rounded,
+                  onPressed: _save,
                 ),
               ],
             ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme/app_colors.dart';
+import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
@@ -178,16 +179,21 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                AppSpacing.buttonGap,
+                AppSpacing.page,
+                AppSpacing.page,
+              ),
                   children: [
                     Text('先过 3 句核心表达，进对话就不容易卡在第一句。',
                         style: AppText.bodySecondary),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.buttonGap),
                     Row(
                       children: [
                         for (var i = 0; i < _sentences.length; i++) ...[
                           Container(
-                            width: 26,
+                            width: 24,
                             height: 4,
                             decoration: BoxDecoration(
                               color: _checked[i]
@@ -196,42 +202,38 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                          if (i < _sentences.length - 1) const SizedBox(width: 6),
+                          if (i < _sentences.length - 1)
+                            const SizedBox(width: AppSpacing.tight),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.cardInner),
                     AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('第 ${_index + 1} / ${_sentences.length} 句',
                               style: AppText.caption),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.element),
                           Text(_sentences[_index], style: AppText.body),
-                          const SizedBox(height: 12),
-                          Row(
+                          const SizedBox(height: AppSpacing.buttonGap),
+                          AppButtonRow(
                             children: [
-                              Expanded(
-                                child: SecondaryButton(
-                                  label: _speaking ? '播放中…' : '听一遍',
-                                  icon: Icons.volume_up_rounded,
-                                  onPressed: _speak,
-                                ),
+                              SecondaryButton(
+                                label: _speaking ? '播放中…' : '听一遍',
+                                icon: Icons.volume_up_rounded,
+                                onPressed: _speak,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: SecondaryButton(
-                                  label: _listening ? '说完了' : '按麦说一遍',
-                                  icon: _listening
-                                      ? Icons.stop_rounded
-                                      : Icons.mic_rounded,
-                                  onPressed: _toggleMic,
-                                ),
+                              SecondaryButton(
+                                label: _listening ? '说完了' : '按麦说一遍',
+                                icon: _listening
+                                    ? Icons.stop_rounded
+                                    : Icons.mic_rounded,
+                                onPressed: _toggleMic,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.buttonGap),
                           AppTextField(
                             controller: _input,
                             hint: '跟着说一遍，或把句子写出来',
@@ -240,7 +242,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                           ),
                           if (_lastOk != true ||
                               _index < _sentences.length - 1) ...[
-                            const SizedBox(height: 10),
+                            const SizedBox(height: AppSpacing.buttonGap),
                             SizedBox(
                               width: double.infinity,
                               child: PrimaryButton(
@@ -256,7 +258,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                             ),
                           ],
                           if (_lastOk != null) ...[
-                            const SizedBox(height: 10),
+                            const SizedBox(height: AppSpacing.buttonGap),
                             Text(
                               _lastOk!
                                   ? (_index >= _sentences.length - 1
@@ -269,7 +271,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.cardInner),
                     if (_checked.every((done) => done))
                       SecondaryButton(
                         label: '3 句都过了 · 去开练',

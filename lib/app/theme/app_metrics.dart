@@ -15,6 +15,13 @@ class AppSpacing {
   static const page = 24.0;
   static const section = 28.0;
   static const scrollBottom = 112.0;
+
+  // 语义别名：只复用上面的 4/8 网格值，页面优先使用这些名字。
+  static const tight = xxs;        // 紧邻元素
+  static const element = xs;       // 组件内元素
+  static const buttonGap = sm;     // 按钮 / 列表卡之间
+  static const cardInner = md;     // 卡内边距
+  static const block = lg;         // 卡内大块之间
 }
 
 class AppRadius {
@@ -57,6 +64,16 @@ class AppLayout {
   static const headerHeight = 56.0;
   static const navHeight = 58.0;
   static const buttonHeight = 50.0;
+  static const buttonHorizontalPadding = 16.0;
+  static const buttonIconSize = 18.0;
+  static const buttonIconGap = 8.0;
+
+  /// 并排按钮低于该可用宽度时改为上下堆叠，保证文字单行完整。
+  static const buttonRowMinWidth = 300.0;
+
+  /// AppTag 文案最长显示宽度，超出省略，避免撑破所在行。
+  static const tagMaxWidth = 160.0;
+
   static const inputHeight = 48.0;
   static const listItemHeight = 60.0;
   static const cardGap = 12.0;
