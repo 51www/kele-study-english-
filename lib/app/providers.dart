@@ -12,6 +12,7 @@ import '../data/repositories/repositories.dart';
 import '../data/secure/key_store.dart';
 import '../domain/models/models.dart';
 import '../domain/models/checkin_models.dart';
+import '../services/asr/asr_router.dart';
 import '../services/asr/system_asr_engine.dart';
 import '../services/audio/audio_player.dart';
 import '../services/audio/audio_recorder.dart';
@@ -46,7 +47,17 @@ final llmProfileRepositoryProvider = Provider<LlmProfileRepository>(
 
 final llmClientProvider = Provider<LlmClient>((ref) => LlmClient());
 
+/// 聊天页语音输入的系统识别兜底引擎（接口配置与降级链路由会话自己管）。
 final asrEngineProvider = Provider<SystemAsrEngine>((ref) => SystemAsrEngine());
+
+/// 轻量页（今日复练 / 热身 / 听写）共用的识别路由：
+/// 已配置识别接口时优先走接口，未配置才退回系统识别。
+final asrRouterProvider = Provider<AsrRouter>((ref) => AsrRouter(
+      settings: ref.watch(localStoreProvider),
+      keyStore: ref.watch(keyStoreProvider),
+      profiles: ref.watch(llmProfileRepositoryProvider),
+      recorder: ref.watch(audioRecorderProvider),
+    ));
 
 final audioRecorderProvider = Provider<AudioRecorderService>((ref) => AudioRecorderService());
 

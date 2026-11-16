@@ -56,7 +56,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   @override
   void dispose() {
     _player?.dispose();
-    if (_listening) ref.read(asrEngineProvider).cancel();
+    if (_listening) ref.read(asrRouterProvider).cancel();
     _input.dispose();
     _savePosition();
     super.dispose();
@@ -204,7 +204,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   }
 
   Future<void> _toggleVoice() async {
-    final engine = ref.read(asrEngineProvider);
+    final engine = ref.read(asrRouterProvider);
     if (_listening) {
       try {
         final text = await engine.stop();

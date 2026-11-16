@@ -39,7 +39,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
 
   @override
   void dispose() {
-    if (_listening) ref.read(asrEngineProvider).cancel();
+    if (_listening) ref.read(asrRouterProvider).cancel();
     _input.dispose();
     super.dispose();
   }
@@ -83,7 +83,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
 
   /// 按麦说一遍：识别文本追加进输入框；识别不可用 / 失败时降级为键盘输入。
   Future<void> _toggleMic() async {
-    final engine = ref.read(asrEngineProvider);
+    final engine = ref.read(asrRouterProvider);
     if (_listening) {
       try {
         final text = await engine.stop();

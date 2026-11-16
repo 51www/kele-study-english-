@@ -14,7 +14,7 @@ import 'asr_engine.dart';
 /// 系统识别内部自己占用麦克风，因此识别可用时不再额外用 `record` 采集，
 /// 避免两个插件争抢麦克风。
 class SystemAsrEngine implements AsrEngine {
-  final SpeechToText _speech = SpeechToText();
+  SpeechToText _speech = SpeechToText();
   bool _available = false;
   bool _initialized = false;
   bool _listening = false;
@@ -36,7 +36,9 @@ class SystemAsrEngine implements AsrEngine {
 
   @override
   Future<bool> initialize() async {
-    if (_initialized) return _available;
+    if (_initialized && _available) return _available;
+    // 上次初始化失败：换新实例重试，避开插件「只能初始化一次」的限制。
+    if (_initialized) _speech = SpeechToText();
     _initialized = true;
     try {
       _available = await _speech.initialize(

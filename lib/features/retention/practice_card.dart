@@ -36,7 +36,7 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
   @override
   void dispose() {
     _input.dispose();
-    if (_listening) ref.read(asrEngineProvider).cancel();
+    if (_listening) ref.read(asrRouterProvider).cancel();
     super.dispose();
   }
 
@@ -49,7 +49,7 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
   }
 
   Future<void> _toggleMic() async {
-    final engine = ref.read(asrEngineProvider);
+    final engine = ref.read(asrRouterProvider);
     if (_listening) {
       try {
         final text = await engine.stop();
