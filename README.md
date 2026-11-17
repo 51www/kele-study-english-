@@ -80,6 +80,8 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```bash
 # Android：分 ABI 打包（推荐，单个包更小）；CI 已不再产出 universal 胖包
 flutter build apk --release --split-per-abi
+# 按 pubspec 版本号重命名产物（跨平台通用：Windows / macOS / Linux，需装 Flutter） 
+dart run tool/rename_release_apk.dart
 ```
 
 > `saylo-release.jks` 与 `key.properties` 必须一起离线备份：丢失后无法再为已安装的 App 提供可升级的包。旧的测试包 `com.kele.kele_speak` 与正式包是两个独立应用，数据不互通，可自行卸载。

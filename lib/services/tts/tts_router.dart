@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -39,6 +40,11 @@ class TtsRouter {
   DateTime? _disabledAt;
   String lastEngine = '';
 
+  /// 每次 [stop] 自增。speak() 在每个 await 后校验，避免已被取消的旧朗读
+  /// 在合成完成后又出声（典型场景：Edge 被 cancel 后错误地回退系统 TTS），
+  /// 造成用户按下录音后仍有两段声音叠加。
+  int _stopGeneration = 0;
+
   static const Duration _probeInterval = Duration(minutes: 2);
 
   bool get edgeDisabled => _edgeDisabled;
@@ -66,6 +72,8 @@ class TtsRouter {
   }) async {
     final clean = text.trim();
     if (clean.isEmpty || !autoPlay) return lastEngine;
+    final generation = _stopGeneration;
+    bool cancelled() => generation != _stopGeneration;
     AppLogger.debug(
       'tts speak len=${clean.length} preferEdge=$preferEdge edgeDisabled=$_edgeDisabled voice=$voice rate=$rate style=${style.value}',
     );
@@ -82,10 +90,12 @@ class TtsRouter {
     if (preferEdge && !_edgeDisabled) {
       final cacheKey = _cacheKey(clean, voice, rate, style);
       final cached = TtsCache.instance.get(cacheKey) ?? await disk?.read(cacheKey);
+      if (cancelled()) return lastEngine;
       if (cached != null) {
         try {
           onPlaybackStart?.call();
           await player.playBytes(cached, speed: playbackSpeed);
+          if (cancelled()) return lastEngine;
           _consecutiveFailures = 0;
           lastEngine = 'edge';
           AppLogger.debug(
@@ -93,17 +103,26 @@ class TtsRouter {
           );
           return 'edge';
         } on Object catch (e) {
+          if (cancelled()) return lastEngine;
           AppLogger.warn('tts cached play failed: $e');
         }
       }
       try {
         final result = await edge.synthesize(clean, voice: voice, rate: rate, style: style);
+        if (cancelled()) return lastEngine;
         final bytes = result.bytes;
         if (bytes != null && bytes.isNotEmpty) {
           TtsCache.instance.put(cacheKey, bytes);
-          await disk?.write(cacheKey, bytes, voice: voice, rate: rate);
           onPlaybackStart?.call();
-          await player.playBytes(bytes, mimeType: result.mimeType, speed: playbackSpeed);
+          // 落盘缓存不挡首音：与播放并行，避免每句都多一次磁盘写入等待。
+          final playback = player.playBytes(
+            bytes,
+            mimeType: result.mimeType,
+            speed: playbackSpeed,
+          );
+          unawaited(disk?.write(cacheKey, bytes, voice: voice, rate: rate));
+          await playback;
+          if (cancelled()) return lastEngine;
           _consecutiveFailures = 0;
           lastEngine = 'edge';
           AppLogger.debug(
@@ -115,6 +134,8 @@ class TtsRouter {
           AppError(kind: AppErrorKind.audio, detail: 'Edge 朗读返回空音频'),
         );
       } on TtsException catch (e) {
+        // Edge 被 cancel() 打断也会抛 TtsException，此时绝不能走系统兜底出声。
+        if (cancelled()) return lastEngine;
         _consecutiveFailures++;
         AppLogger.warn('edge tts failed ($_consecutiveFailures): ${e.error.detail}');
         if (_consecutiveFailures >= 2) {
@@ -122,6 +143,7 @@ class TtsRouter {
           _disabledAt = DateTime.now();
         }
       } catch (e) {
+        if (cancelled()) return lastEngine;
         _consecutiveFailures++;
         AppLogger.warn('edge tts unexpected error: $e');
         if (_consecutiveFailures >= 2) {
@@ -131,13 +153,17 @@ class TtsRouter {
       }
     }
 
+    // 走到系统兜底前再校验一次：期间被 stop() 取消就不再出声。
+    if (cancelled()) return lastEngine;
     try {
       final result = await system.synthesize(clean, voice: voice, rate: rate);
+      if (cancelled()) return lastEngine;
       if (result.spoken) {
         lastEngine = 'system';
         return 'system';
       }
     } on TtsException catch (e) {
+      if (cancelled()) return lastEngine;
       throw TtsException(
         AppError(kind: AppErrorKind.audio, detail: '朗读失败：${e.error.detail}'),
       );
@@ -162,6 +188,7 @@ class TtsRouter {
   }
 
   Future<void> stop() async {
+    _stopGeneration++;
     await system.stop();
     await edge.cancel();
     await player.stop();

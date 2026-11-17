@@ -174,6 +174,11 @@ class ConversationController extends ChangeNotifier {
   Future<void> _speakQueue = Future.value();
   int _ttsToken = 0;
 
+  /// 等待合成的已切分句子。逐句单独「合成 + 写缓存 + 装载音源」会在句间
+  /// 留下 1~2 秒空白，这里把播放期间陆续到达的句子合并成一批再合成。
+  final List<String> _pendingSentences = [];
+  static const int _speechBatchMaxChars = 300;
+
   bool get hasMissingKey => _missingKeyMessage != null;
   bool get sending => state == TurnState.thinking || state == TurnState.speaking;
   String get asrProviderLabel {
@@ -877,6 +882,7 @@ class ConversationController extends ChangeNotifier {
     _slowTimer?.cancel();
     slowReply = false;
     _ttsToken++;
+    _pendingSentences.clear();
     try {
       await tts.stop();
     } catch (_) {}
@@ -987,18 +993,22 @@ class ConversationController extends ChangeNotifier {
 
   void _enqueueSpeech(String sentence) {
     if (!_autoPlay) return;
+    _pendingSentences.add(sentence);
     final token = _ttsToken;
     _speakQueue = _speakQueue.then((_) async {
       if (_disposed || token != _ttsToken) return;
-      _currentSpokenText = sentence;
+      final batch = _takeSpeechBatch();
+      if (batch.isEmpty) return;
+      _currentSpokenText = batch;
       if (state == TurnState.thinking) {
         state = TurnState.speaking;
         if (!_disposed) notifyListeners();
       }
       try {
         await audioSession.preparePlayback();
+        if (_disposed || token != _ttsToken) return;
         await tts.speak(
-          sentence,
+          batch,
           voice: _voice,
           rate: _rate,
           style: _ttsStyle,
@@ -1016,6 +1026,24 @@ class ConversationController extends ChangeNotifier {
     }).catchError((Object e) {
       AppLogger.warn('tts queue error: $e');
     });
+  }
+
+  /// 取走当前已到达的句子合并成一次合成；上限 300 字符，避免长文本被 Edge 截断。
+  /// 首句通常单独合成以保住首音延迟，播放期间陆续到达的后续句子攒成一批，
+  /// 句间停顿便只由标点产生，而不是每句重新握手 + 写盘。
+  String _takeSpeechBatch() {
+    final buffer = StringBuffer();
+    while (_pendingSentences.isNotEmpty) {
+      final next = _pendingSentences.first;
+      if (buffer.isNotEmpty &&
+          buffer.length + next.length + 1 > _speechBatchMaxChars) {
+        break;
+      }
+      _pendingSentences.removeAt(0);
+      if (buffer.isNotEmpty) buffer.write(' ');
+      buffer.write(next);
+    }
+    return buffer.toString();
   }
 
   Future<void> _failTurn(AppError e) async {
@@ -1539,6 +1567,7 @@ class ConversationController extends ChangeNotifier {
 
   Future<void> stopPlayback() async {
     _ttsToken++;
+    _pendingSentences.clear();
     playingMessageId = null;
     playingOriginalId = null;
     hintPlaying = false;

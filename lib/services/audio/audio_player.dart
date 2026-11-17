@@ -48,6 +48,9 @@ class AudioPlayerService {
     try {
       final source = await _buildSource(bytes, mimeType);
       await _player.setAudioSource(source).timeout(Timeouts.playerLoad);
+      // stop() 可能发生在装载音源的等待中；此处不再播放，否则用户按下
+      // 录音后旧朗读又会从扬声器冒出来。
+      if (generation != _generation) return;
       AppLogger.debug(
         'player source ready duration=${_player.duration} '
         'elapsed=${DateTime.now().difference(started).inMilliseconds}ms',
@@ -88,6 +91,7 @@ class AudioPlayerService {
     try {
       final uri = kIsWeb ? Uri.parse(path) : Uri.file(path);
       await _player.setAudioSource(AudioSource.uri(uri)).timeout(Timeouts.playerLoad);
+      if (generation != _generation) return;
       _playing = true;
       await _player.setSpeed(1.0);
       await _player.play();
