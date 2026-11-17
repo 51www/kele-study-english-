@@ -508,6 +508,7 @@ class SettingsKeys {
 
   static const ttsEngine = 'tts.engine';
   static const ttsVoice = 'tts.voice';
+  static const ttsStyle = 'tts.style';
   static const ttsRate = 'tts.rate';
   static const ttsAutoPlay = 'tts.autoPlay';
   static const level = 'practice.level';

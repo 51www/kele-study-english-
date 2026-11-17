@@ -25,6 +25,7 @@ import '../../services/llm/cost_estimator.dart';
 import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
 import '../../services/tts/tts_engine.dart';
+import '../../services/tts/tts_speech.dart';
 
 class ReviewPage extends ConsumerStatefulWidget {
   const ReviewPage({super.key, required this.sessionId});
@@ -330,6 +331,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
             correction.improved,
             voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
             rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            style: ttsSpeechStyleFrom(settings.getString(SettingsKeys.ttsStyle, 'none')),
             preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
           );
     } on TtsException {

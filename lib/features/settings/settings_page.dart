@@ -8,6 +8,8 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import '../../services/tts/tts_speech.dart';
+import '../../services/tts/tts_voices.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -16,7 +18,8 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider);
     final engine = settings[SettingsKeys.ttsEngine] ?? 'edge';
-    final voice = settings[SettingsKeys.ttsVoice] ?? 'en-US-AriaNeural';
+    final voice = settings[SettingsKeys.ttsVoice] ?? defaultTtsVoiceId;
+    final style = ttsSpeechStyleFrom(settings[SettingsKeys.ttsStyle]);
     final rate = double.tryParse(settings[SettingsKeys.ttsRate] ?? '1.0') ?? 1.0;
     final level = settings[SettingsKeys.level] ?? 'B1';
     final correction = settings[SettingsKeys.correctionMode] ?? 'gentle';
@@ -74,15 +77,32 @@ class SettingsPage extends ConsumerWidget {
                 SettingRow(
                   icon: Icons.graphic_eq_rounded,
                   title: '音色',
-                  value: _voiceLabel(voice),
+                  value: ttsVoiceLabel(voice),
                   onTap: () => _pick(
                     context,
                     title: '选择音色',
-                    options: _voices.values.toList(),
-                    current: _voiceLabel(voice),
+                    options: [for (final spec in ttsVoiceCatalog) spec.label],
+                    current: ttsVoiceLabel(voice),
                     onPick: (value) {
-                      final entry = _voices.entries.where((e) => e.value == value).firstOrNull;
-                      if (entry != null) set(SettingsKeys.ttsVoice, entry.key);
+                      final spec = ttsVoiceCatalog.where((s) => s.label == value).firstOrNull;
+                      if (spec != null) set(SettingsKeys.ttsVoice, spec.id);
+                    },
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.sentiment_satisfied_alt_rounded,
+                  title: '朗读语气',
+                  value: style.label,
+                  subtitle: style == TtsSpeechStyle.none ? null : '部分音色不支持时自动用默认语调',
+                  onTap: () => _pick(
+                    context,
+                    title: '朗读语气',
+                    options: [for (final option in TtsSpeechStyle.values) option.label],
+                    current: style.label,
+                    onPick: (value) {
+                      final picked = TtsSpeechStyle.values.where((s) => s.label == value).firstOrNull;
+                      if (picked != null) set(SettingsKeys.ttsStyle, picked.value);
                     },
                   ),
                 ),
@@ -374,15 +394,6 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
-
-  static const _voices = <String, String>{
-    'en-US-AriaNeural': 'Aria（女声·美音）',
-    'en-US-GuyNeural': 'Guy（男声·美音）',
-    'en-GB-SoniaNeural': 'Sonia（女声·英音）',
-    'en-GB-RyanNeural': 'Ryan（男声·英音）',
-  };
-
-  String _voiceLabel(String voice) => _voices[voice] ?? voice;
 
   Future<String?> _pick(
     BuildContext context, {

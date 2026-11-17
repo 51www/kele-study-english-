@@ -10,6 +10,7 @@ import 'system_tts_engine.dart';
 import 'tts_cache.dart';
 import 'tts_disk_cache.dart';
 import 'tts_engine.dart';
+import 'tts_speech.dart';
 
 /// 朗读路由：优先 Edge TTS，失败切系统 TTS。
 ///
@@ -43,8 +44,12 @@ class TtsRouter {
   bool get edgeDisabled => _edgeDisabled;
 
   /// 这句话是否已有 Edge 音频缓存（内存或磁盘）；断网重听时用它决定能否立即播放。
-  bool hasCached(String text, {String voice = EdgeTtsEngine.defaultVoice, double rate = 1.0}) {
-    final key = _cacheKey(text.trim(), voice, rate);
+  bool hasCached(String text, {
+    String voice = EdgeTtsEngine.defaultVoice,
+    double rate = 1.0,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
+  }) {
+    final key = _cacheKey(text.trim(), voice, rate, style);
     if (TtsCache.instance.contains(key)) return true;
     return disk?.has(key) ?? false;
   }
@@ -54,6 +59,7 @@ class TtsRouter {
     String text, {
     String voice = EdgeTtsEngine.defaultVoice,
     double rate = 1.0,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
     bool preferEdge = true,
     bool autoPlay = true,
     double playbackSpeed = 1.0,
@@ -61,7 +67,7 @@ class TtsRouter {
     final clean = text.trim();
     if (clean.isEmpty || !autoPlay) return lastEngine;
     AppLogger.debug(
-      'tts speak len=${clean.length} preferEdge=$preferEdge edgeDisabled=$_edgeDisabled voice=$voice rate=$rate',
+      'tts speak len=${clean.length} preferEdge=$preferEdge edgeDisabled=$_edgeDisabled voice=$voice rate=$rate style=${style.value}',
     );
 
     // 熔断后每 2 分钟放行一次探活，避免整场一直用系统 TTS。
@@ -74,7 +80,7 @@ class TtsRouter {
     }
 
     if (preferEdge && !_edgeDisabled) {
-      final cacheKey = _cacheKey(clean, voice, rate);
+      final cacheKey = _cacheKey(clean, voice, rate, style);
       final cached = TtsCache.instance.get(cacheKey) ?? await disk?.read(cacheKey);
       if (cached != null) {
         try {
@@ -91,7 +97,7 @@ class TtsRouter {
         }
       }
       try {
-        final result = await edge.synthesize(clean, voice: voice, rate: rate);
+        final result = await edge.synthesize(clean, voice: voice, rate: rate, style: style);
         final bytes = result.bytes;
         if (bytes != null && bytes.isNotEmpty) {
           TtsCache.instance.put(cacheKey, bytes);
@@ -149,8 +155,9 @@ class TtsRouter {
     _disabledAt = null;
   }
 
-  String _cacheKey(String text, String voice, double rate) {
-    final raw = 'edge|$voice|${rate.toStringAsFixed(2)}|$text';
+  String _cacheKey(String text, String voice, double rate, TtsSpeechStyle style) {
+    // v2：SSML 加入停顿与语气后，旧键缓存的音频必须失效，避免用户改设置后仍听到旧音。
+    final raw = 'edge|v2|$voice|${rate.toStringAsFixed(2)}|${style.value}|$text';
     return sha1.convert(utf8.encode(raw)).toString();
   }
 

@@ -4,6 +4,7 @@ import '../../domain/models/models.dart';
 const defaultSettings = <String, String>{
   SettingsKeys.ttsEngine: 'edge',
   SettingsKeys.ttsVoice: 'en-US-AriaNeural',
+  SettingsKeys.ttsStyle: 'none',
   SettingsKeys.ttsRate: '1.0',
   SettingsKeys.ttsAutoPlay: 'true',
   SettingsKeys.level: 'B1',

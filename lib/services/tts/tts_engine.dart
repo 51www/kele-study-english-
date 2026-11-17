@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../core/errors.dart';
+import 'tts_speech.dart';
 
 class TtsVoice {
   const TtsVoice({required this.id, required this.label});
@@ -37,7 +38,7 @@ class TtsException implements Exception {
   String toString() => 'TtsException(${error.debugLabel}: ${error.detail})';
 }
 
-/// 朗读能力抽象：文本 + 音色 + 语速 → 可播放音频 / 已直接朗读。
+/// 朗读能力抽象：文本 + 音色 + 语气 + 语速 → 可播放音频 / 已直接朗读。
 abstract class TtsEngine {
   String get id;
 
@@ -47,6 +48,7 @@ abstract class TtsEngine {
     String text, {
     required String voice,
     required double rate,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
   });
 
   Future<void> cancel();

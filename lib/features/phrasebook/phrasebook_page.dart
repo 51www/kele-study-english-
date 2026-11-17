@@ -11,6 +11,7 @@ import '../../app/widgets/common.dart';
 import '../../core/formatters.dart';
 import '../../domain/models/models.dart';
 import '../../services/tts/tts_engine.dart';
+import '../../services/tts/tts_speech.dart';
 
 /// 表达本：既收纳复盘里收藏的句子，也可以自己新建、编辑、试听和管理。
 ///
@@ -56,6 +57,7 @@ class _PhrasebookPageState extends ConsumerState<PhrasebookPage> {
             phrase.textEn,
             voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
             rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            style: ttsSpeechStyleFrom(settings.getString(SettingsKeys.ttsStyle, 'none')),
             preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
           );
     } on TtsException {

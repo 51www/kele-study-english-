@@ -11,6 +11,8 @@ import '../../core/logger.dart';
 import '../../core/timeouts.dart';
 import 'edge_socket.dart';
 import 'tts_engine.dart';
+import 'tts_speech.dart';
+import 'tts_voices.dart';
 
 /// 微软 Edge 在线朗读（非官方接口）。
 ///
@@ -21,7 +23,7 @@ class EdgeTtsEngine implements TtsEngine {
       'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
   static const _trustedToken = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
   static const _gecVersion = '1-130.0.2849.68';
-  static const defaultVoice = 'en-US-AriaNeural';
+  static const defaultVoice = defaultTtsVoiceId;
 
   final _uuid = const Uuid();
   WebSocketChannel? _channel;
@@ -31,10 +33,9 @@ class EdgeTtsEngine implements TtsEngine {
   String get id => 'edge';
 
   @override
-  Future<List<TtsVoice>> voices() async => const [
-        TtsVoice(id: 'en-US-AriaNeural', label: 'Aria · 美式女声'),
-        TtsVoice(id: 'en-US-GuyNeural', label: 'Guy · 美式男声'),
-        TtsVoice(id: 'en-GB-SoniaNeural', label: 'Sonia · 英式女声'),
+  Future<List<TtsVoice>> voices() async => [
+        for (final spec in ttsVoiceCatalog)
+          TtsVoice(id: spec.id, label: spec.label),
       ];
 
   @override
@@ -42,11 +43,29 @@ class EdgeTtsEngine implements TtsEngine {
     String text, {
     required String voice,
     required double rate,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
   }) async {
     final clean = text.trim();
     if (clean.isEmpty) {
       return const TtsResult(engine: 'edge', bytes: null);
     }
+    try {
+      return await _synthesizeOnce(clean, voice, rate, style);
+    } on TtsException catch (e) {
+      if (style == TtsSpeechStyle.none) rethrow;
+      // express-as 只对部分音色生效；失败时退回无风格 SSML 再试一次，
+      // 避免一个不支持的语气把整句降级成系统 TTS。
+      AppLogger.warn('Express-as(${style.value}) failed, retry plain: ${e.error.detail}');
+      return _synthesizeOnce(clean, voice, rate, TtsSpeechStyle.none);
+    }
+  }
+
+  Future<TtsResult> _synthesizeOnce(
+    String clean,
+    String voice,
+    double rate,
+    TtsSpeechStyle style,
+  ) async {
     final connectionId = _uuid.v4().replaceAll('-', '');
     final uri = Uri.parse(
       '$_endpoint?TrustedClientToken=$_trustedToken'
@@ -118,7 +137,7 @@ class EdgeTtsEngine implements TtsEngine {
       );
 
       channel.sink.add(_configMessage());
-      channel.sink.add(_ssmlMessage(clean, voice, rate));
+      channel.sink.add(_ssmlMessage(clean, voice, rate, style));
       timeout = Timer(Timeouts.ttsSynthesize, () {
         completeError('Edge 朗读超时');
       });
@@ -149,22 +168,14 @@ class EdgeTtsEngine implements TtsEngine {
         '$payload';
   }
 
-  String _ssmlMessage(String text, String voice, double rate) {
-    final percent = ((rate - 1) * 100).round();
-    final rateText = percent >= 0 ? '+$percent%' : '$percent%';
-    final escaped = const HtmlEscape(HtmlEscapeMode.element).convert(text);
-    final ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "
-        "xml:lang='en-US'><voice name='${_escapeAttr(voice)}'>"
-        "<prosody rate='$rateText' pitch='+0Hz' volume='+0%'>$escaped</prosody>"
-        '</voice></speak>';
+  String _ssmlMessage(String text, String voice, double rate, TtsSpeechStyle style) {
+    final ssml = buildEdgeSsml(text: text, voice: voice, rate: rate, style: style);
     return 'X-RequestId:${_uuid.v4().replaceAll('-', '')}\r\n'
         'Content-Type:application/ssml+xml\r\n'
         'X-Timestamp:${_timestamp()}\r\n'
         'Path:ssml\r\n\r\n'
         '$ssml';
   }
-
-  String _escapeAttr(String value) => value.replaceAll("'", '').replaceAll('"', '');
 
   String _timestamp() {
     return '${DateTime.now().toUtc().toIso8601String().split('.').first}Z';

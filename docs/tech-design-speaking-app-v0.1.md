@@ -199,7 +199,7 @@
 |---|---|---|
 | `LlmClient` | 组装消息、发请求、解析流、错误归一、取消 | 提示词内容、场景逻辑 |
 | `AsrEngine` | 音频 → 文本（+ 置信度/是否结束） | 断句策略、纠错 |
-| `TtsEngine` | 文本 + 音色 + 语速 → 可播放音频/句柄 | 播放队列编排 |
+| `TtsEngine` | 文本 + 音色 + 语气 + 语速 → 可播放音频/句柄 | 播放队列编排 |
 | `TtsCache` | 缓存命中/写入/淘汰 | 合成本身 |
 | `ConversationController` | 回合状态机、超时、取消、降级 | 具体网络细节 |
 | `PromptBuilder` | 场景 + 水平 + 历史 → 消息数组 | 请求发送 |
@@ -454,13 +454,15 @@ lib/
 
 1. **配置帧**（`Path:speech.config`）：声明输出格式与元数据选项，例如
    `audio-24khz-48kbitrate-mono-mp3`、开启 `wordBoundary`（用于 P1 逐词高亮）。
-2. **SSML 帧**（`Path:ssml`）：`<speak>` 内包含 `<voice name="en-US-AriaNeural">`、`<prosody rate="+0%">` 与文本。
+2. **SSML 帧**（`Path:ssml`）：`<speak>` 内包含 `<voice>`（音色 id）、`<prosody rate>` 与文本；选了语气时文本外层再包 `<mstts:express-as style>`。
 
 要点：
-- 文本必须做 XML 转义（`&`、`<`、`>`），否则整段合成失败。
+- 文本必须做 XML 转义（`&`、`<`、`>`），否则整段合成失败；转义后再按标点插入 `<break time>`（逗号/分号/冒号 150ms，句末标点 300ms），小数点和千分位不受影响。
+- 朗读前做纯文本归一化：折叠空白、统一弯引号/破折号/省略号、展开影响读音的缩写（`Mr.`/`Dr.`/`e.g.`/`etc.` 等）、独立 `&` 读作 and；保留原句子结构与大小写。
+- 语气风格由 `tts.style` 决定：默认 `none` 不加 express-as；可选 `friendly`/`cheerful`/`empathetic`/`excited`/`gentle`。因 express-as 只对部分音色生效，注入失败时引擎自动用同一段文本重试无风格版本，不直接降级系统 TTS。
 - 语速用 `rate` 百分比；0.8x ≈ `-20%`，1.2x ≈ `+20%`（映射关系需实测微调）。
 - 单次文本建议 ≤300 字符；超长时按句切分多次合成，避免被截断。
-- 音色名以 Edge 当前可用列表为准；文档不硬编码"最新"音色，用可配置清单 + 内置默认值。
+- 音色清单以 Edge 当前可用列表为准：内置清单见 `lib/services/tts/tts_voices.dart`（美音/英音/澳音共 9 个，含 locale 映射），设置页与引擎共用该清单，不再各自硬编码；`xml:lang` 与系统 TTS 降级语言均取自音色 locale（ROM 无该语言时回退 en-US）。
 
 ### 5.4 流式播放
 
@@ -494,7 +496,7 @@ lib/
 | 项 | 设计 |
 |---|---|
 | 存储位置 | 应用私有目录 `tts/` |
-| 缓存键 | `sha256(engineVersion + voice + rate + 归一化文本)` |
+| 缓存键 | `sha1("edge\|v2\|voice\|rate\|style\|text")`，v2 为 SSML 结构版本；语气风格入键，切风格即重新合成 |
 | 归一化 | 去首尾空白、合并连续空格、统一引号；不做大小写转换（影响发音） |
 | 元数据 | 存数据库表 `tts_cache`（键、路径、字节数、创建时间、最后使用时间） |
 | 命中条件 | 文件存在且大小 > 0 |
@@ -515,6 +517,7 @@ abstract class TtsEngine {
     String text, {
     required String voice,
     required double rate,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
     bool allowCache = true,
   });
   Future<void> cancel();
@@ -672,7 +675,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 | value | TEXT |
 | updated_at | INTEGER |
 
-建议键：`tts.engine`、`tts.voice`、`tts.rate`、`tts.auto_play`、`level`、`correction.mode`、`translate.default`、`input.mode`、`session.target_minutes`。
+建议键：`tts.engine`、`tts.voice`、`tts.style`（默认 `none`；`friendly`/`cheerful`/`empathetic`/`excited`/`gentle`）、`tts.rate`、`tts.autoPlay`、`level`、`correction.mode`、`translate.default`、`input.mode`、`session.target_minutes`。
 
 #### `tts_cache` 缓存索引
 
@@ -761,7 +764,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 | P5 | 记录列表 History | P0 | 历史会话与统计 |
 | P6 | 记录详情 Session Detail | P0 | 回看转写与纠错 |
 | P7 | 表达本 Phrasebook | P0 | 收藏的表达 + 试听 |
-| P8 | 设置 Settings | P0 | 模型配置、引擎/音色、练习偏好 |
+| P8 | 设置 Settings | P0 | 模型配置、引擎/音色/语气、练习偏好 |
 | P9 | 模型配置 Model Profile | P0 | base_url / key / model + 测试连接 |
 | P10 | 表达本复习 Review Drill | P1 | 随机 5 条听音复述 |
 | P11 | 自定义场景编辑 | P1 | 新建/编辑场景 |
@@ -926,7 +929,7 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 ```text
 设置
 ├ 模型接口          [已连接 · 主力模型 →]
-├ 语音朗读           Edge 语音 · Aria · 1.0x →
+├ 语音朗读           Edge 语音 · Aria · 自然 · 1.0x →
 ├ 练习偏好           水平 B1 · 10 分钟 →
 ├ 翻译默认           关闭 →
 └ 数据              清理语音缓存 · 清空所有数据 →

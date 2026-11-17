@@ -14,6 +14,7 @@ import '../../core/formatters.dart';
 import '../../core/logger.dart';
 import '../../domain/models/models.dart';
 import '../../services/tts/tts_engine.dart';
+import '../../services/tts/tts_speech.dart';
 import 'answer_actions.dart';
 import 'chat_widgets.dart';
 import 'conversation_controller.dart';
@@ -261,6 +262,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             text,
             voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
             rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            style: ttsSpeechStyleFrom(settings.getString(SettingsKeys.ttsStyle, 'none')),
             preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
           );
     } on TtsException catch (e) {
@@ -290,6 +292,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             correction.improved,
             voice: settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural'),
             rate: settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0),
+            style: ttsSpeechStyleFrom(settings.getString(SettingsKeys.ttsStyle, 'none')),
             preferEdge: settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system',
           );
     } on TtsException catch (e) {

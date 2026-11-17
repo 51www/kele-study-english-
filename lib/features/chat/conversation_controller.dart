@@ -24,6 +24,7 @@ import '../../services/llm/llm_models.dart';
 import '../../services/llm/prompt_builder.dart';
 import '../../services/tts/tts_engine.dart';
 import '../../services/tts/tts_router.dart';
+import '../../services/tts/tts_speech.dart';
 import 'learner_profile.dart';
 
 /// 回合状态机：空闲 / 录音 / 识别 / 思考 / 朗读 / 错误。
@@ -163,6 +164,7 @@ class ConversationController extends ChangeNotifier {
   bool _deleted = false;
   String? _missingKeyMessage;
   String _voice = 'en-US-AriaNeural';
+  TtsSpeechStyle _ttsStyle = TtsSpeechStyle.none;
   double _rate = 1.0;
   bool _autoPlay = true;
   bool _preferEdge = true;
@@ -290,6 +292,7 @@ class ConversationController extends ChangeNotifier {
       _inFlightPressure = null;
     }
     _voice = settings.getString(SettingsKeys.ttsVoice, 'en-US-AriaNeural');
+    _ttsStyle = ttsSpeechStyleFrom(settings.getString(SettingsKeys.ttsStyle, 'none'));
     _rate = settings.getDouble(SettingsKeys.ttsRate, fallback: 1.0).clamp(0.7, 1.3).toDouble();
     _autoPlay = settings.getBool(SettingsKeys.ttsAutoPlay, fallback: true);
     _preferEdge = settings.getString(SettingsKeys.ttsEngine, 'edge') != 'system';
@@ -982,6 +985,7 @@ class ConversationController extends ChangeNotifier {
           sentence,
           voice: _voice,
           rate: _rate,
+          style: _ttsStyle,
           preferEdge: _preferEdge,
         );
       } on TtsException catch (e) {
@@ -1191,6 +1195,7 @@ class ConversationController extends ChangeNotifier {
         lastAi.textEn,
         voice: _voice,
         rate: _rate,
+        style: _ttsStyle,
         preferEdge: _preferEdge,
         playbackSpeed: 0.8,
       );
@@ -1473,7 +1478,7 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     try {
       await audioSession.preparePlayback();
-      await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
+      await tts.speak(text, voice: _voice, rate: _rate, style: _ttsStyle, preferEdge: _preferEdge);
     } on TtsException catch (e) {
       AppLogger.warn('hint tts failed: ${e.error.detail}');
       ttsWarning = '朗读暂不可用，已显示文字';
@@ -1494,7 +1499,7 @@ class ConversationController extends ChangeNotifier {
     }
     await stopPlayback();
     _currentSpokenText = text;
-    ttsWarning = offline && !tts.hasCached(text, voice: _voice, rate: _rate)
+    ttsWarning = offline && !tts.hasCached(text, voice: _voice, rate: _rate, style: _ttsStyle)
         ? '网络不可用：这句没有缓存，将尝试系统语音；文字仍可读'
         : null;
     playingMessageId = message.id;
@@ -1502,7 +1507,7 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     try {
       await audioSession.preparePlayback();
-      await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
+      await tts.speak(text, voice: _voice, rate: _rate, style: _ttsStyle, preferEdge: _preferEdge);
     } on TtsException catch (e) {
       AppLogger.warn('replay failed: ${e.error.detail}');
       ttsWarning = '朗读暂不可用，已显示文字';
@@ -1552,7 +1557,7 @@ class ConversationController extends ChangeNotifier {
     notifyListeners();
     try {
       await audioSession.preparePlayback();
-      await tts.speak(text, voice: _voice, rate: _rate, preferEdge: _preferEdge);
+      await tts.speak(text, voice: _voice, rate: _rate, style: _ttsStyle, preferEdge: _preferEdge);
     } on TtsException catch (e) {
       AppLogger.warn('resume playback failed: ${e.error.detail}');
       ttsWarning = '朗读暂不可用，已保留文字';

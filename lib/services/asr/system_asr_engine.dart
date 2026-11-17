@@ -54,7 +54,9 @@ class SystemAsrEngine implements AsrEngine {
       if (_available) {
         try {
           final locales = await _speech.locales();
-          final hasEnglish = locales.any((l) => l.localeId.toLowerCase().startsWith('en'));
+          final hasEnglish = locales.any(
+            (l) => l.localeId.toLowerCase().startsWith('en'),
+          );
           if (!hasEnglish) {
             AppLogger.warn('asr has no English locale, keep default');
           }
@@ -90,8 +92,10 @@ class SystemAsrEngine implements AsrEngine {
         onResult: _handleResult,
         listenOptions: SpeechListenOptions(
           localeId: kIsWeb ? 'en-US' : 'en_US',
-          listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 60),
+          // 停顿不自动定稿：结束完全由调用方的 stop()（松手）决定。
+          // 3 秒静默就 finalize 会把一句带停顿的话切成多段，只剩最后一段。
+          pauseFor: const Duration(seconds: 60),
           partialResults: true,
           cancelOnError: true,
           listenMode: ListenMode.dictation,
@@ -107,11 +111,23 @@ class SystemAsrEngine implements AsrEngine {
   }
 
   void _handleResult(SpeechRecognitionResult result) {
-    _partialText = result.recognizedWords;
+    final words = result.recognizedWords.trim();
     if (result.finalResult) {
-      _finalText = result.recognizedWords;
-      _listening = false;
+      // 部分 ROM 会把一句话切出多个 final：recognizedWords 有时只含当前段，
+      // 有时是整段累积。能接在上次结果后面就替换，否则按新段追加，
+      // 避免「说了一整句却只剩最后一句」。这里不提前置 _listening=false，
+      // 结束时机只由 stop() 或状态回调决定。
+      final previous = _finalText;
+      if (previous.isEmpty ||
+          words.toLowerCase().startsWith(previous.toLowerCase())) {
+        _finalText = words;
+      } else {
+        _finalText = '$previous $words'.trim();
+      }
+      _partialText = _finalText;
       _completeIfNeeded();
+    } else {
+      _partialText = words;
     }
     onPartial?.call(_partialText);
   }

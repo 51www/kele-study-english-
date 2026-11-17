@@ -7,28 +7,38 @@ import '../../core/errors.dart';
 import '../../core/logger.dart';
 import '../../core/timeouts.dart';
 import 'tts_engine.dart';
+import 'tts_speech.dart';
+import 'tts_voices.dart';
 
 /// 系统 TTS 兜底：直接朗读，不产生可缓存的音频文件。
 class SystemTtsEngine implements TtsEngine {
   final FlutterTts _tts = FlutterTts();
   bool _ready = false;
   bool _speaking = false;
+  String _language = 'en-US';
 
   @override
   String get id => 'system';
 
   bool get speaking => _speaking;
 
-  Future<void> _ensureReady() async {
-    if (_ready) return;
+  Future<void> _ensureReady({String locale = 'en-US'}) async {
     try {
-      final lang = await _tts.setLanguage('en-US');
-      final available = await _tts.isLanguageAvailable('en-US');
-      await _tts.setSpeechRate(0.5);
-      await _tts.setPitch(1.0);
-      await _tts.setVolume(1.0);
-      await _tts.awaitSpeakCompletion(true);
-      AppLogger.debug('system tts init setLanguage=$lang available=$available');
+      if (!_ready) {
+        await _tts.setSpeechRate(0.5);
+        await _tts.setPitch(1.0);
+        await _tts.setVolume(1.0);
+        await _tts.awaitSpeakCompletion(true);
+      }
+      if (_language != locale) {
+        // 部分 ROM 没有 en-GB / en-AU 语音，回退 en-US，不打断朗读。
+        final available = await _tts.isLanguageAvailable(locale) == true;
+        final target = available ? locale : 'en-US';
+        await _tts.setLanguage(target);
+        _language = target;
+      } else if (!_ready) {
+        await _tts.setLanguage(_language);
+      }
       _ready = true;
     } catch (e) {
       AppLogger.warn('system tts init failed: $e');
@@ -44,8 +54,9 @@ class SystemTtsEngine implements TtsEngine {
     String text, {
     required String voice,
     required double rate,
+    TtsSpeechStyle style = TtsSpeechStyle.none,
   }) async {
-    await _ensureReady();
+    await _ensureReady(locale: ttsVoiceLocale(voice));
     if (!_ready) {
       throw const TtsException(
         AppError(kind: AppErrorKind.audio, detail: '系统朗读不可用'),
