@@ -6,18 +6,22 @@ import '../audio/audio_recorder.dart';
 import 'asr_audio_io.dart' if (dart.library.js_interop) 'asr_audio_web.dart';
 import 'asr_engine.dart';
 
+enum AsrApiMode { openai, deepseek, mimoAsr }
+
 class AsrConfig {
   const AsrConfig({
     required this.baseUrl,
     required this.apiKey,
     required this.model,
     this.language = 'en',
+    this.apiMode = AsrApiMode.openai,
   });
 
   final String baseUrl;
   final String apiKey;
   final String model;
   final String language;
+  final AsrApiMode apiMode;
 
   bool get isComplete => baseUrl.trim().isNotEmpty && apiKey.trim().isNotEmpty && model.trim().isNotEmpty;
 }
@@ -43,6 +47,11 @@ class HttpAsrEngine implements AsrEngine {
   @override
   void Function(String partial)? onPartial;
 
+  String? _lastCapturePath;
+
+  @override
+  String? get lastAudioPath => _lastCapturePath;
+
   @override
   Future<bool> initialize() async {
     _available = config.isComplete;
@@ -67,13 +76,17 @@ class HttpAsrEngine implements AsrEngine {
 
   @override
   Future<String> stop() async {
-    final path = await recorder.stop();
+    final path = await stopCapture();
     if (path == null || path.isEmpty) return '';
     return transcribe(path);
   }
 
-  /// 停止录音并返回文件路径，便于识别失败时换引擎复用同一段音频。
-  Future<String?> stopCapture() => recorder.stop();
+  /// 停止录音并返回文件路径，便于识别失败时换引擎复用同一段音频、以及回听原声。
+  Future<String?> stopCapture() async {
+    final path = await recorder.stop();
+    _lastCapturePath = path;
+    return path;
+  }
 
   Future<String> transcribe(String path) async {
     final bytes = await readAudioBytes(path);
@@ -88,17 +101,22 @@ class HttpAsrEngine implements AsrEngine {
       receiveTimeout: const Duration(seconds: 30),
     ));
     try {
-      final form = FormData.fromMap({
+      // DeepSeek 的 /v1/tools/asr 只接收 file，没有 model / language 参数，
+      // 语种由服务端自动识别；其余厂商沿用 OpenAI 兼容的 /audio/transcriptions。
+      final deepseek = config.apiMode == AsrApiMode.deepseek;
+      final form = FormData.fromMap(<String, dynamic>{
         'file': MultipartFile.fromBytes(
           bytes,
           filename: path.split('/').last,
         ),
-        'model': config.model,
-        'language': config.language,
-        'response_format': 'json',
+        if (!deepseek) ...{
+          'model': config.model,
+          'language': config.language,
+          'response_format': 'json',
+        },
       });
       final response = await dio.post<Map<String, dynamic>>(
-        '/audio/transcriptions',
+        deepseek ? '/tools/asr' : '/audio/transcriptions',
         data: form,
         options: Options(headers: {'Authorization': 'Bearer ${config.apiKey}'}),
       );

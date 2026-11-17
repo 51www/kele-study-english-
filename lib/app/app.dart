@@ -25,7 +25,6 @@ import '../features/scenario/scenario_editor_page.dart';
 import '../features/scenario/scenario_library_page.dart';
 import '../features/scenario/scenario_page.dart';
 import '../features/scenario/warmup_page.dart';
-import '../features/settings/asr_config_page.dart';
 import '../features/settings/data_settings_page.dart';
 import '../features/settings/model_config_page.dart';
 import '../features/settings/settings_page.dart';
@@ -96,11 +95,6 @@ final router = GoRouter(
       path: '/settings/model',
       parentNavigatorKey: rootNavigatorKey,
       pageBuilder: (_, __) => _slide(const ModelConfigPage()),
-    ),
-    GoRoute(
-      path: '/settings/asr',
-      parentNavigatorKey: rootNavigatorKey,
-      pageBuilder: (_, __) => _slide(const AsrConfigPage()),
     ),
     GoRoute(
       path: '/settings/data',

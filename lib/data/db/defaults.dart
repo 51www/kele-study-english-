@@ -1,7 +1,11 @@
 import '../../domain/models/models.dart';
+import '../../domain/models/provider_presets.dart';
 
 /// 设置项默认值（与《开发文档》§5 一致）。
 const defaultSettings = <String, String>{
+  // 旧用户沿用自定义方案，不改变既有对话 / 识别链路
+  SettingsKeys.configScheme: 'custom',
+  SettingsKeys.asrMode: AsrModes.openai,
   SettingsKeys.ttsEngine: 'edge',
   SettingsKeys.ttsVoice: 'en-US-AriaNeural',
   SettingsKeys.ttsStyle: 'none',

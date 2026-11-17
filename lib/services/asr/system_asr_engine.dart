@@ -34,6 +34,10 @@ class SystemAsrEngine implements AsrEngine {
   @override
   void Function(String partial)? onPartial;
 
+  /// 系统识别独占麦克风，拿不到可回放的录音文件。
+  @override
+  String? get lastAudioPath => null;
+
   @override
   Future<bool> initialize() async {
     if (_initialized && _available) return _available;

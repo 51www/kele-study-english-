@@ -96,14 +96,15 @@
 ### 2.4.1 语音识别（ASR）引擎
 
 识别与对话模型**配置完全分离**（`asr.*` 与 `llm_profile.*` 各自保存），互不覆盖。
+模型配置页提供三种方案：**DeepSeek / MiMo 简化方案**（一个 Key 同时驱动对话与识别，地址、模型名、识别协议由预设决定）与**自定义方案**（分别配置 AI 模型与 ASR 模型）。方案值存于 `config.scheme`，识别协议存于 `asr.mode`（`openai` / `deepseek` / `mimo`，默认 `openai`），由 `AsrConfigResolver` 统一解析出主识别通道。
 
 | 引擎 | 协议 | 默认/开启 | 说明 |
 |---|---|---|---|
-| `HttpAsrEngine` | OpenAI 兼容 `POST /audio/transcriptions`（multipart） | 默认链路 | 默认硅基流动 `FunAudioLLM/SenseVoiceSmall`；可切 `Qwen/Qwen3-ASR-1.7B` 或 Groq `whisper-large-v3-turbo`，只改配置 |
+| `HttpAsrEngine` | OpenAI 兼容 `POST /audio/transcriptions`（multipart）；DeepSeek 方案改为官方 `POST /v1/tools/asr`（只传 `file`，语种自动识别） | 默认链路 | 自定义方案默认硅基流动 `FunAudioLLM/SenseVoiceSmall`；可切 `Qwen/Qwen3-ASR-1.7B` 或 Groq `whisper-large-v3-turbo`，只改配置 |
 | `SystemAsrEngine` | `speech_to_text` 系统识别 | 未配置 ASR 时兜底 | 部分国产 ROM 无识别服务，失败即降级文字 |
-| `ChatAudioAsrEngine` | `POST /chat/completions` + `input_audio`(base64) | 设置内实验开关，**默认关闭** | 模型 `MiMo-V2.6-Flash`；固定 JSON 契约 `{"text":"..."}`；已知延迟 4–6 秒、无词级时间戳、依赖提示词 |
+| `ChatAudioAsrEngine` | `POST /chat/completions` + `input_audio`(base64) | MiMo 方案走官方 `mimo-v2.5-asr` 协议（纯音频输入 + `asr_options.language`）；自定义方案内实验开关（**默认关闭**）走提示词 JSON 契约 `{"text":"..."}`（模型 `MiMo-V2.6-Flash`），已知延迟 4–6 秒、无词级时间戳、依赖提示词 | — |
 
-顺序与降级：已配置的 `HttpAsrEngine` → 系统识别 → 实验引擎。`HttpAsrEngine` 运行时失败（402/429/超时/格式）且实验开关开启时，用**同一段录音**交给实验引擎重试，并在界面提示已降级。
+顺序与降级：已配置的主识别通道（HTTP 或 Chat Audio，按 `asr.mode`）→ 系统识别 → 实验引擎。HTTP 识别运行时失败（402/429/超时/格式）且实验开关开启时，用**同一段录音**交给实验引擎重试，并在界面提示已降级。
 
 录音格式统一为 16 kHz 单声道 WAV（Web 端由 `record_web` 编码），避免各识别服务对 webm/opus 兼容性不一致。
 
@@ -938,15 +939,25 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 ```text
 模型配置
 ┌─────────────────────────────────────┐
-│ 接口地址  https://.../v1             │
-│ API Key   sk-••••••••1234            │
-│ 模型      gpt-4o-mini        [拉取]  │
+│ 方案      [DeepSeek | MiMo | 自定义] │
+│                                     │
+│ DeepSeek / MiMo（简化方案）：        │
+│   对话模型  deepseek-v4-flash        │
+│   语音识别  官方 ASR                 │
+│   API Key   sk-••••••••1234          │
+│                                     │
+│ 自定义方案：                         │
+│   AI 模型   接口地址 / 模型 / Key     │
+│   ASR 模型  接口地址 / 模型 / Key     │
 │                                     │
 │ [测试连接]   状态：可用（0.8s）       │
 └─────────────────────────────────────┘
 ```
+- 简化方案（DeepSeek / MiMo）只填一个 Key，保存时同一 Key 同时写入对话与识别的 Key 引用，地址与模型按预设覆盖。
+- 自定义方案分别保存 AI 模型与 ASR 模型；ASR 保留快速预设胶囊与实验识别开关。
 - 测试连接三态：未测试 / 测试中 / 可用或失败（附原因）。
 - 保存前做 URL 规范化（去尾部 `/`，缺 `/v1` 时提示但不强制）。
+- 设置页只保留「模型配置」一个入口，语音识别不再单独设页。
 - Key 输入框可切换显示，失焦后立即遮蔽。
 
 ### 7.4 从选场景到复盘的完整流程
@@ -1199,3 +1210,17 @@ review_item（三期独立表，schemaVersion = 3 时新增；以 source_type + 
 | §9.1 技术风险 | 计划状态集中在单一 KV，需防旧值 / 坏值导致页面崩溃 | 解码全部可空兜底 + try/catch；Provider 失效清单补齐；无新表因此无迁移风险 |
 
 **不做**：CEFR 测评与分数、能力雷达、课程大纲、解锁式关卡、每日推送、AI Agent 生成训练计划、账号 / 云同步。水平口径统一为「设置里的水平 + 场景难度标签 + 最近几次练习表现」，不引入新的定级体系。
+
+---
+
+## 13. 五期补充（2026-11-17）：模型配置方案化
+
+> 本节只登记本次「简化设置 + 简化配置方案」的**增量**，§1–§12 的既有结论全部保持不变。
+
+| 本文条目 | 增量 | 结论 |
+|---|---|---|
+| §2.4.1 语音识别 | 新增识别协议维度 `asr.mode`（`openai` / `deepseek` / `mimo`，默认 `openai`），由 `AsrConfigResolver` 统一解析主识别通道，聊天页与轻量页共用 | DeepSeek 方案走官方 `POST /v1/tools/asr`（只传 `file`，无 model / language 参数）；MiMo 方案走官方 `mimo-v2.5-asr`（Chat Completions + `input_audio` + `asr_options.language`）；提示词 JSON 契约仍保留给自定义方案的实验识别 |
+| §6 数据模型 | **零改表**：新增设置键 `config.scheme`（`deepseek` / `mimo` / `custom`，默认 `custom`）与 `asr.mode`，均为 `setting` 表普通键；预设常量在 `domain/models/provider_presets.dart` | 老用户默认 `custom` + `openai`，行为与旧版完全一致；简化方案保存时把同一个 Key 写入 `llm_active_key` 与 `asr_api_key` 两个 Key 引用，不新增 Key 引用命名 |
+| §7 UI 结构 | 删除 `/settings/asr` 路由与独立语音识别页；模型配置页改为「DeepSeek / MiMo / 自定义」三选一；设置页新增「模型与识别」分组、移除原「练习 → 语音识别配置」行 | 简化方案只显示一个 Key 输入框；自定义方案保留 AI 模型与 ASR 模型两段配置、ASR 快速预设胶囊与实验识别开关；测试连接对所有方案可用 |
+
+**不做**：多套方案并行保存与一键切换历史 Key（切换方案即覆盖当前生效配置）；方案预设的模型名不做界面编辑（要换模型走自定义方案）。

@@ -506,6 +506,10 @@ class TtsCacheEntry {
 class SettingsKeys {
   SettingsKeys._();
 
+  // 模型 / 语音识别简化方案：deepseek / mimo / custom
+  static const configScheme = 'config.scheme';
+  // 语音识别请求协议：openai / deepseek / mimo
+  static const asrMode = 'asr.mode';
   static const ttsEngine = 'tts.engine';
   static const ttsVoice = 'tts.voice';
   static const ttsStyle = 'tts.style';

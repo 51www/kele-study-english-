@@ -9,6 +9,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
+import '../../app/widgets/hold_to_talk_button.dart';
 import '../../domain/models/models.dart';
 import '../../services/tts/tts_speech.dart';
 
@@ -333,7 +334,7 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                             icon: Icons.volume_up_rounded,
                             onPressed: _speak,
                           ),
-                          _HoldToTalkButton(
+                          HoldToTalkButton(
                             label: _stopping
                                 ? '识别中…'
                                 : (_listening
@@ -399,80 +400,6 @@ class _WarmupPageState extends ConsumerState<WarmupPage> {
                   ),
               ],
             ),
-    );
-  }
-}
-
-/// 外观沿用 `SecondaryButton`，交互改为「按住起录、松手定稿」。
-class _HoldToTalkButton extends StatelessWidget {
-  const _HoldToTalkButton({
-    required this.label,
-    required this.active,
-    required this.onDown,
-    required this.onUp,
-    required this.onCancel,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onDown;
-  final Future<void> Function() onUp;
-  final Future<void> Function() onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: Listener(
-        behavior: HitTestBehavior.opaque,
-        onPointerDown: (_) => onDown(),
-        onPointerUp: (_) => unawaited(onUp()),
-        onPointerCancel: (_) => unawaited(onCancel()),
-        child: SizedBox(
-          width: double.infinity,
-          height: AppLayout.buttonHeight,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: active ? AppColors.primaryWash : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: active ? AppColors.primary : AppColors.primaryTint,
-                width: 1.4,
-              ),
-            ),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppLayout.buttonHorizontalPadding,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        active ? Icons.stop_rounded : Icons.mic_rounded,
-                        size: AppLayout.buttonIconSize,
-                        color: AppColors.primaryDeep,
-                      ),
-                      const SizedBox(width: AppLayout.buttonIconGap),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.button.copyWith(
-                          color: AppColors.primaryDeep,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

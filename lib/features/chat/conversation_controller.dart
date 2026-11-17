@@ -11,6 +11,7 @@ import '../../core/timeouts.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/secure/key_store.dart';
 import '../../domain/models/models.dart';
+import '../../services/asr/asr_config_resolver.dart';
 import '../../services/asr/asr_engine.dart';
 import '../../services/asr/chat_audio_asr_engine.dart';
 import '../../services/asr/http_asr_engine.dart';
@@ -313,12 +314,9 @@ class ConversationController extends ChangeNotifier {
   Future<void> _checkAsr() async {
     asrChecking = true;
     notifyListeners();
-    final base = settings.getString(SettingsKeys.asrBaseUrl, 'https://api.siliconflow.cn/v1');
-    final model = settings.getString(SettingsKeys.asrModel, 'FunAudioLLM/SenseVoiceSmall');
-    final key = await keyStore.read(SettingsKeys.asrKeyRef);
     final language = settings.getString(SettingsKeys.asrLanguage, 'en');
 
-    // 实验引擎（默认关闭）：用对话模型做识别，作为最后兜底。
+    // 实验引擎（默认关闭）：用对话模型做识别，作为 HTTP 识别失败时的兜底。
     _chatAudioAsr = null;
     final experimentalOn =
         settings.getString(SettingsKeys.asrExperimentalEnabled, 'false') == 'true';
@@ -343,14 +341,32 @@ class ConversationController extends ChangeNotifier {
       }
     }
 
-    if (base.isNotEmpty && model.isNotEmpty && key != null && key.isNotEmpty) {
-      // 已配置独立识别接口：优先走 HTTP 识别。
-      _httpAsr = HttpAsrEngine(
-        config: AsrConfig(baseUrl: base, apiKey: key, model: model, language: language),
-        recorder: recorder,
-      );
-      asrAvailable = await _httpAsr!.initialize();
-      _asrMode = 'http';
+    // 主识别通道按 asr.mode 解析（openai / deepseek / mimo），未配置完整则降级。
+    final resolved = await AsrConfigResolver(
+      getSetting: (key) async => settings.getString(key),
+      readKey: keyStore.read,
+    ).resolve();
+    if (resolved != null) {
+      switch (resolved.transport) {
+        case AsrTransport.http:
+          // 已配置独立识别接口：优先走 HTTP 识别。
+          _httpAsr = HttpAsrEngine(
+            config: resolved.config,
+            recorder: recorder,
+          );
+          asrAvailable = await _httpAsr!.initialize();
+          _asrMode = 'http';
+        case AsrTransport.chatAudio:
+          // 官方 ASR 走 Chat Audio（如 mimo-v2.5-asr）。
+          _httpAsr = null;
+          _chatAudioAsr = ChatAudioAsrEngine(
+            config: resolved.config,
+            recorder: recorder,
+          );
+          await _chatAudioAsr!.initialize();
+          _asrMode = 'chatAudio';
+          asrAvailable = _chatAudioAsr!.available;
+      }
     } else if (_chatAudioAsr != null) {
       // 未配置识别接口但显式开启了实验开关：用对话模型识别。
       _httpAsr = null;

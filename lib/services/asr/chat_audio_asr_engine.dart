@@ -34,6 +34,11 @@ class ChatAudioAsrEngine implements AsrEngine {
   @override
   void Function(String partial)? onPartial;
 
+  String? _lastCapturePath;
+
+  @override
+  String? get lastAudioPath => _lastCapturePath;
+
   @override
   Future<bool> initialize() async {
     _available = config.isComplete;
@@ -58,8 +63,12 @@ class ChatAudioAsrEngine implements AsrEngine {
     return transcribe(path);
   }
 
-  /// 停止录音并返回文件路径，便于识别失败时换引擎复用同一段音频。
-  Future<String?> stopCapture() => recorder.stop();
+  /// 停止录音并返回文件路径，便于识别失败时换引擎复用同一段音频、以及回听原声。
+  Future<String?> stopCapture() async {
+    final path = await recorder.stop();
+    _lastCapturePath = path;
+    return path;
+  }
 
   Future<String> transcribe(String path) async {
     final bytes = await readAudioBytes(path);
@@ -78,28 +87,49 @@ class ChatAudioAsrEngine implements AsrEngine {
     try {
       final response = await dio.post<Map<String, dynamic>>(
         '/chat/completions',
-        data: {
-          'model': config.model,
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'You are an English speech transcriber. Listen to the user audio and output ONLY one JSON object: '
-                  '{"text":"<exact English words>"}. Do not translate, do not explain, do not use markdown.',
-            },
-            {
-              'role': 'user',
-              'content': [
-                {'type': 'text', 'text': 'Transcribe this audio exactly.'},
-                {
-                  'type': 'input_audio',
-                  'input_audio': {'data': base64Encode(bytes), 'format': format},
-                },
-              ],
-            },
-          ],
-          'max_tokens': 300,
-          'temperature': 0,
-        },
+        data: config.apiMode == AsrApiMode.mimoAsr
+            ? {
+                // MiMo 官方 ASR（mimo-v2.5-asr）：纯音频输入，
+                // 直接返回转写文本，不走提示词 JSON 契约。
+                'model': config.model,
+                'messages': [
+                  {
+                    'role': 'user',
+                    'content': [
+                      {
+                        'type': 'input_audio',
+                        'input_audio': {
+                          'data': base64Encode(bytes),
+                          'format': format,
+                        },
+                      },
+                    ],
+                  },
+                ],
+                'asr_options': {'language': config.language},
+              }
+            : {
+                'model': config.model,
+                'messages': [
+                  {
+                    'role': 'system',
+                    'content': 'You are an English speech transcriber. Listen to the user audio and output ONLY one JSON object: '
+                        '{"text":"<exact English words>"}. Do not translate, do not explain, do not use markdown.',
+                  },
+                  {
+                    'role': 'user',
+                    'content': [
+                      {'type': 'text', 'text': 'Transcribe this audio exactly.'},
+                      {
+                        'type': 'input_audio',
+                        'input_audio': {'data': base64Encode(bytes), 'format': format},
+                      },
+                    ],
+                  },
+                ],
+                'max_tokens': 300,
+                'temperature': 0,
+              },
         options: Options(headers: {'Authorization': 'Bearer ${config.apiKey}'}),
       );
       final choices = response.data?['choices'];
@@ -108,8 +138,10 @@ class ChatAudioAsrEngine implements AsrEngine {
           : null;
       final content = (message?['content'] ?? '').toString().trim();
       final reasoning = (message?['reasoning_content'] ?? '').toString().trim();
-      // content 为主；有些推理模型把结果落在 reasoning_content。
-      final text = _parse(content) ?? _parse(reasoning) ?? '';
+      // 官方 ASR 协议的 content 就是转写文本；提示词模式仍走 JSON 契约解析。
+      final text = config.apiMode == AsrApiMode.mimoAsr
+          ? content
+          : _parse(content) ?? _parse(reasoning) ?? '';
       AppLogger.debug('chat-audio asr content=${content.length} reasoning=${reasoning.length} text=${text.length}');
       return text;
     } on DioException catch (e) {

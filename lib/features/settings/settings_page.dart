@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,14 +10,80 @@ import '../../app/theme/app_metrics.dart';
 import '../../app/theme/app_text.dart';
 import '../../app/widgets/common.dart';
 import '../../domain/models/models.dart';
+import '../../domain/models/provider_presets.dart';
 import '../../services/tts/tts_speech.dart';
 import '../../services/tts/tts_voices.dart';
 
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  static const _previewText = 'Nice to meet you. How are you today?';
+
+  bool _previewing = false;
+  int _previewToken = 0;
+
+  @override
+  void dispose() {
+    _previewToken++;
+    if (_previewing) unawaited(ref.read(ttsRouterProvider).stop());
+    super.dispose();
+  }
+
+  Future<void> _set(String key, String value) async {
+    if (_previewing) await _stopPreview();
+    await ref.read(settingsControllerProvider.notifier).set(key, value);
+  }
+
+  Future<void> _stopPreview() async {
+    _previewToken++;
+    await ref.read(ttsRouterProvider).stop();
+    if (mounted) setState(() => _previewing = false);
+  }
+
+  Future<void> _togglePreview() async {
+    if (_previewing) {
+      await _stopPreview();
+      return;
+    }
+
+    final settings = ref.read(settingsControllerProvider);
+    final engine = settings[SettingsKeys.ttsEngine] ?? 'edge';
+    final voice = settings[SettingsKeys.ttsVoice] ?? defaultTtsVoiceId;
+    final style = ttsSpeechStyleFrom(settings[SettingsKeys.ttsStyle]);
+    final rate = double.tryParse(settings[SettingsKeys.ttsRate] ?? '1.0') ?? 1.0;
+    final token = ++_previewToken;
+    setState(() => _previewing = true);
+
+    try {
+      final engineUsed = await ref.read(ttsRouterProvider).speak(
+            _previewText,
+            voice: voice,
+            rate: rate,
+            style: style,
+            preferEdge: engine != 'system',
+          );
+      if (!mounted || token != _previewToken) return;
+      if (engineUsed == 'system' && engine != 'system') {
+        showAppToast(context, 'Edge 朗读暂不可用，已用系统音色试听');
+      }
+    } on Object {
+      if (mounted && token == _previewToken) {
+        showAppToast(context, '试听暂不可用，请检查网络或切换朗读引擎', error: true);
+      }
+    } finally {
+      if (mounted && token == _previewToken) {
+        setState(() => _previewing = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
     final engine = settings[SettingsKeys.ttsEngine] ?? 'edge';
     final voice = settings[SettingsKeys.ttsVoice] ?? defaultTtsVoiceId;
@@ -32,7 +100,7 @@ class SettingsPage extends ConsumerWidget {
     final autoPlay = settings[SettingsKeys.ttsAutoPlay] != 'false';
     final targetMinutes = int.tryParse(settings[SettingsKeys.targetMinutes] ?? '10') ?? 10;
     final budget = int.tryParse(settings[SettingsKeys.monthlyBudget] ?? '50') ?? 50;
-    final asrModel = settings[SettingsKeys.asrModel] ?? 'FunAudioLLM/SenseVoiceSmall';
+    final scheme = ConfigScheme.from(settings[SettingsKeys.configScheme]);
     final passThreshold =
         int.tryParse(settings[SettingsKeys.dictationPassThreshold] ?? '90') ?? 90;
     final contractionEquivalent =
@@ -48,14 +116,25 @@ class SettingsPage extends ConsumerWidget {
     final dailyLimit =
         int.tryParse(settings[SettingsKeys.reviewDailyLimit] ?? '5') ?? 5;
 
-    Future<void> set(String key, String value) =>
-        ref.read(settingsControllerProvider.notifier).set(key, value);
+    Future<void> set(String key, String value) => _set(key, value);
 
     return PageScaffold(
       title: '设置',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         children: [
+          const SectionTitle(title: '模型与识别'),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            child: SettingRow(
+              icon: Icons.hub_rounded,
+              title: '模型配置',
+              value: scheme.label,
+              subtitle: 'DeepSeek / MiMo 只需一个 Key；自定义可分别配置对话与识别',
+              onTap: () => context.push('/settings/model'),
+            ),
+          ),
+          const SizedBox(height: 24),
           const SectionTitle(title: '语音'),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -129,6 +208,14 @@ class SettingsPage extends ConsumerWidget {
                     onChanged: (value) => set(SettingsKeys.ttsAutoPlay, value ? 'true' : 'false'),
                   ),
                 ),
+                const Divider(height: 1, color: AppColors.divider),
+                SettingRow(
+                  icon: Icons.volume_up_rounded,
+                  title: '试听语音设置',
+                  subtitle: '按当前设置朗读示例句：$_previewText',
+                  value: _previewing ? '停止' : '试听',
+                  onTap: _togglePreview,
+                ),
               ],
             ),
           ),
@@ -138,14 +225,6 @@ class SettingsPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             child: Column(
               children: [
-                SettingRow(
-                  icon: Icons.mic_external_on_rounded,
-                  title: '语音识别配置',
-                  value: asrModel.split('/').last,
-                  subtitle: '与对话模型独立保存；未配置时用系统识别',
-                  onTap: () => context.push('/settings/asr'),
-                ),
-                const Divider(height: 1, color: AppColors.divider),
                 SettingRow(
                   icon: Icons.signal_cellular_alt_rounded,
                   title: '难度等级',

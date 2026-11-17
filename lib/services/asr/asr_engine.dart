@@ -21,6 +21,9 @@ abstract class AsrEngine {
   /// 实时中间结果（用于 UI 展示）。
   void Function(String partial)? onPartial;
 
+  /// 最近一次 [stop] 录到的音频路径；系统识别没有可回放文件，返回 null。
+  String? get lastAudioPath => null;
+
   Future<void> dispose();
 }
 
