@@ -52,6 +52,21 @@ final _abbreviationPattern = RegExp(
   caseSensitive: false,
 );
 
+/// 全角标点在英文音色里会被当成生僻符号，产生远长于半角标点的停顿。
+/// 朗读前统一折成半角等价写法；逗号/分号/冒号后补空格，便于分词。
+const _fullWidthPunctuation = <String, String>{
+  '\uFF01': '!', // ！
+  '\uFF1F': '?', // ？
+  '\u3002': '. ', // 。
+  '\uFF0C': ', ', // ，
+  '\u3001': ', ', // 、
+  '\uFF1B': '; ', // ；
+  '\uFF1A': ': ', // ：
+  '\uFF08': '(', // （
+  '\uFF09': ')', // ）
+  '\u3000': ' ', // 全角空格
+};
+
 /// 朗读前的纯文本归一化：只改写会影响读音的写法，保留句子结构与标点。
 String normalizeForSpeech(String raw) {
   var text = raw.trim();
@@ -60,6 +75,9 @@ String normalizeForSpeech(String raw) {
   text = text.replaceAll('\u201c', '"').replaceAll('\u201d', '"');
   text = text.replaceAll('\u2013', ', ').replaceAll('\u2014', ', ');
   text = text.replaceAll('\u2026', '...');
+  for (final entry in _fullWidthPunctuation.entries) {
+    text = text.replaceAll(entry.key, entry.value);
+  }
   text = text.replaceAll(RegExp(r'\s+'), ' ');
   final beforeAbbrev = text;
   text = text.replaceAllMapped(
@@ -73,6 +91,25 @@ String normalizeForSpeech(String raw) {
   // 独立的 & 读作 and；&amp; 之类不会命中（两侧需是空白）。
   text = text.replaceAll(RegExp(r'\s+&\s+'), ' and ');
   return text.trim();
+}
+
+/// 流式朗读的切句下限：标点太靠前时不切，避免 "Hi." 这类碎片单独合成。
+const int speechSentenceMinChars = 8;
+
+/// 没有任何句末标点时的兜底切句长度，避免一次性合成过长文本被截断。
+const int speechSentenceMaxChars = 120;
+
+/// 返回下一次朗读应切出的位置（不含该位置本身），-1 表示继续累积。
+///
+/// 只把 `.` / `?` 当句末，`!` 不切：感叹号常出现在句中
+/// （"Sure! Let's start."），切成多句会各自触发一次合成，句间出现
+/// 1~2 秒空白；整段交给 Edge，由标点产生自然停顿即可。
+int speechSentenceCut(String text) {
+  for (var i = speechSentenceMinChars - 1; i < text.length; i++) {
+    final unit = text.codeUnitAt(i);
+    if (unit == 0x2E || unit == 0x3F) return i + 1; // '.' / '?'
+  }
+  return text.length >= speechSentenceMaxChars ? text.length : -1;
 }
 
 /// 朗读正文：归一化后的文本整体做 XML 转义。

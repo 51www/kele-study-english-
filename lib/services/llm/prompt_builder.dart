@@ -55,8 +55,9 @@ $transcript''';
 class PromptBuilder {
   PromptBuilder._();
 
-  /// 主对话系统提示词。`profile` / `pressure` 都为空时，返回值与 M8 结束时逐字一致
-  /// （需求 §0.3 第 8 条：关闭学习者档案后对话行为不变）。
+  /// 主对话系统提示词。`profile` / `pressure` 都为空时返回固定基线；调整 Rules 须
+  /// 同步 test/milestone12_test.dart 的 m8ChatSystemBaseline，以满足
+  /// 需求 §0.3 第 8 条：关闭学习者档案后对话行为不变。
   static String chatSystem(
     Scenario scenario,
     String level, {
@@ -75,6 +76,7 @@ ${scenario.targetPhrases.isEmpty ? '' : 'Target phrases: ${scenario.targetPhrase
 
 Rules:
 - Reply in natural English only. Never use Chinese unless the user explicitly asks.
+- Output only your own character's words. Treat the learner's lines as input, never as material for your reply: answer without restating the question, never quote, repeat, echo or paraphrase what the learner said, and never use "you asked", "your question" or "as you said".
 - Play only your own role. Never speak for the user: never write, suggest or complete the learner's line, never answer your own question, never continue both sides of the dialogue, and never add hints like "you could say".
 - The target phrases are for the learner to say, not for you: elicit them with natural questions, never say them yourself, never list them, quiz the user, or force them in.
 - Keep every reply to 1-2 short sentences, then ask exactly one question and stop.

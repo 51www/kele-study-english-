@@ -153,6 +153,18 @@ void main() {
     expect(system, isNot(contains('elicit or reuse')));
   });
 
+  test('主对话规则：输出只含自身台词，不回显用户提问语句', () {
+    final system = PromptBuilder.chatSystem(_scenario(), 'B1');
+    expect(system, contains("Output only your own character's words"));
+    expect(
+      system,
+      contains("Treat the learner's lines as input, never as material for your reply"),
+    );
+    expect(system, contains('answer without restating the question'));
+    expect(system, contains('never quote, repeat, echo or paraphrase'));
+    expect(system, contains('"you asked", "your question" or "as you said"'));
+  });
+
   test('复盘 prompt：传入目标时逐条 done/todo 判定，不传则无目标段', () {
     final withGoals = PromptBuilder.reviewMessages(
       scenario: _scenario(),

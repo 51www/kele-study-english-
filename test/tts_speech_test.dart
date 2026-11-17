@@ -20,6 +20,31 @@ void main() {
     test('独立的 & 读作 and', () {
       expect(normalizeForSpeech('tea & coffee'), 'tea and coffee');
     });
+
+    test('全角标点折成半角，避免英文音色在 ！ 处插入超长停顿', () {
+      expect(normalizeForSpeech('Really！ Great？ Yes。'), 'Really! Great? Yes.');
+      expect(
+        normalizeForSpeech('Hi，there；ok：go、now（please）'),
+        'Hi, there; ok: go, now(please)',
+      );
+    });
+  });
+
+  group('speechSentenceCut', () {
+    test('! 不作为切句边界，避免句中感叹号拆成多批合成', () {
+      expect(speechSentenceCut('Wow! Amazing! Incredible!'), -1);
+    });
+
+    test('. 与 ? 在达到最小长度后切句', () {
+      expect(speechSentenceCut('How are you today? Fine.'), 18);
+      expect(speechSentenceCut('Sure! Let us start.'), 19);
+    });
+
+    test('过短的文本不切，超长文本按长度兜底切', () {
+      expect(speechSentenceCut('Hi.'), -1);
+      expect(speechSentenceCut('a' * 119), -1);
+      expect(speechSentenceCut('a' * 120), 120);
+    });
   });
 
   group('buildEdgeSsml', () {
@@ -54,6 +79,16 @@ void main() {
       // 新版 Edge 端点拒绝 <break>（1007 SSML is invalid），停顿交给标点。
       expect(ssml, isNot(contains('<break')));
       expect(ssml, contains('Well, it costs \$3.50. Really? Yes, 1,000 people came.'));
+    });
+
+    test('全角感叹号在 SSML 里已折成半角', () {
+      final ssml = buildEdgeSsml(
+        text: 'Wow！ Amazing！',
+        voice: 'en-US-AriaNeural',
+        rate: 1.0,
+      );
+      expect(ssml, contains('Wow! Amazing!'));
+      expect(ssml, isNot(contains('！')));
     });
 
     test('XML 特殊字符被转义', () {

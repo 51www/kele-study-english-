@@ -72,6 +72,9 @@ class TtsRouter {
   }) async {
     final clean = text.trim();
     if (clean.isEmpty || !autoPlay) return lastEngine;
+    // Edge 路径在 buildEdgeSsml 内部归一化；系统兜底没有 SSML，需在这里
+    // 做同样的全角标点折叠，否则部分 ROM 会在 ！/？ 处插入超长停顿。
+    final spoken = normalizeForSpeech(clean);
     final generation = _stopGeneration;
     bool cancelled() => generation != _stopGeneration;
     AppLogger.debug(
@@ -156,7 +159,7 @@ class TtsRouter {
     // 走到系统兜底前再校验一次：期间被 stop() 取消就不再出声。
     if (cancelled()) return lastEngine;
     try {
-      final result = await system.synthesize(clean, voice: voice, rate: rate);
+      final result = await system.synthesize(spoken, voice: voice, rate: rate);
       if (cancelled()) return lastEngine;
       if (result.spoken) {
         lastEngine = 'system';
@@ -182,8 +185,9 @@ class TtsRouter {
   }
 
   String _cacheKey(String text, String voice, double rate, TtsSpeechStyle style) {
-    // v3：SSML 移除 break 注入后旧键缓存的音频必须失效，避免听到旧停顿版本。
-    final raw = 'edge|v3|$voice|${rate.toStringAsFixed(2)}|${style.value}|$text';
+    // v4：全角标点归一后旧键缓存的音频仍带超长停顿，必须失效。
+    // v3 曾用于作废旧 break 版本音频。
+    final raw = 'edge|v4|$voice|${rate.toStringAsFixed(2)}|${style.value}|$text';
     return sha1.convert(utf8.encode(raw)).toString();
   }
 

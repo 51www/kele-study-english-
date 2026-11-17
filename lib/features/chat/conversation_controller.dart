@@ -965,18 +965,12 @@ class ConversationController extends ChangeNotifier {
     }
   }
 
-  /// 句末切分：遇 . ? ! 且长度 ≥8，或累计 ≥120 字符，切句送朗读。
+  /// 句末切分：遇 . ? 且长度 ≥8，或累计 ≥120 字符，切句送朗读。
+  /// `!` 不作为边界，避免句中感叹号把一段话拆成多次合成，产生句间空白。
   void _drainSentences(StringBuffer buffer, {bool flush = false}) {
     var text = buffer.toString();
     while (text.isNotEmpty) {
-      var cut = -1;
-      for (var i = 0; i < text.length; i++) {
-        if ('.!?'.contains(text[i]) && i + 1 >= 8) {
-          cut = i + 1;
-          break;
-        }
-      }
-      if (cut < 0 && text.length >= 120) cut = text.length;
+      final cut = speechSentenceCut(text);
       if (cut < 0) break;
       final sentence = text.substring(0, cut).trim();
       text = text.substring(cut);

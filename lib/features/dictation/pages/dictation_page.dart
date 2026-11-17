@@ -239,8 +239,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
       try {
         final text = await engine.stop();
         if (text.isNotEmpty) {
-          final current = _input.text.trim();
-          _input.text = current.isEmpty ? text : '$current $text';
+          _input.text = text;
         } else if (mounted) {
           showAppToast(context, '没听清，直接用键盘接着写就行', error: true);
         }

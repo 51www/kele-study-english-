@@ -161,6 +161,7 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
   }
 
   /// 松手即完成：停止录音，一次性取回整段识别结果，并留下可回放的原声。
+  /// 识别文字直接覆盖输入框（不追加），多次重录只保留最新一次结果；识别为空或失败时保留原内容。
   Future<void> _finishListening() async {
     if (_stopping) return;
     _stopping = true;
@@ -174,8 +175,7 @@ class _TakeawayPracticeCardState extends ConsumerState<TakeawayPracticeCard> {
       final text = await engine.stop();
       if (!mounted) return;
       if (text.isNotEmpty) {
-        final current = _input.text.trim();
-        _input.text = current.isEmpty ? text : '$current $text';
+        _input.text = text;
         final path = engine.lastAudioPath;
         if (path != null && path.isNotEmpty) _audioPath = path;
         _result = null;
