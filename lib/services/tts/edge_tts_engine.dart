@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../core/errors.dart';
 import '../../core/logger.dart';
 import '../../core/timeouts.dart';
+import 'edge_gec.dart';
 import 'edge_socket.dart';
 import 'tts_engine.dart';
 import 'tts_speech.dart';
@@ -16,13 +16,14 @@ import 'tts_voices.dart';
 
 /// 微软 Edge 在线朗读（非官方接口）。
 ///
-/// 握手依赖 TrustedClientToken + Sec-MS-GEC 签名；接口可能随时变更，
+/// 握手依赖 TrustedClientToken + Sec-MS-GEC v2 签名（微软 2025-11 起强制，
+/// 算法见 [generateSecMsGecV2]）；接口可能随时变更，
 /// 失败时由 [TtsRouter] 切系统 TTS，不阻塞对话。
 class EdgeTtsEngine implements TtsEngine {
   static const _endpoint =
       'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
   static const _trustedToken = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-  static const _gecVersion = '1-130.0.2849.68';
+  static const _gecVersion = '2-143.0.3650.75';
   static const defaultVoice = defaultTtsVoiceId;
 
   final _uuid = const Uuid();
@@ -69,7 +70,7 @@ class EdgeTtsEngine implements TtsEngine {
     final connectionId = _uuid.v4().replaceAll('-', '');
     final uri = Uri.parse(
       '$_endpoint?TrustedClientToken=$_trustedToken'
-      '&Sec-MS-GEC=${_secMsGec()}'
+      '&Sec-MS-GEC=${generateSecMsGecV2()}'
       '&Sec-MS-GEC-Version=$_gecVersion'
       '&ConnectionId=$connectionId',
     );
@@ -131,6 +132,12 @@ class EdgeTtsEngine implements TtsEngine {
           completeError('Edge 朗读连接中断');
         },
         onDone: () {
+          final code = _channel?.closeCode;
+          final reason = _channel?.closeReason;
+          AppLogger.warn(
+            'edge tts closed early code=$code reason=$reason '
+            'audioBytes=${audio.length}',
+          );
           if (!finished) completeError('Edge 朗读连接提前关闭');
         },
         cancelOnError: true,
@@ -179,17 +186,6 @@ class EdgeTtsEngine implements TtsEngine {
 
   String _timestamp() {
     return '${DateTime.now().toUtc().toIso8601String().split('.').first}Z';
-  }
-
-  /// Sec-MS-GEC：Windows epoch 100ns tick 向下取整到 5 分钟 + Token 的 SHA-256。
-  String _secMsGec() {
-    const winEpochOffsetSeconds = 11644473600;
-    final seconds = DateTime.now().toUtc().millisecondsSinceEpoch / 1000 +
-        winEpochOffsetSeconds;
-    var ticks = (seconds * 10000000).floor();
-    ticks -= ticks % 3000000000;
-    final raw = '$ticks$_trustedToken';
-    return sha256.convert(utf8.encode(raw)).toString().toUpperCase();
   }
 
   void _close() {

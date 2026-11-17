@@ -156,8 +156,8 @@ class TtsRouter {
   }
 
   String _cacheKey(String text, String voice, double rate, TtsSpeechStyle style) {
-    // v2：SSML 加入停顿与语气后，旧键缓存的音频必须失效，避免用户改设置后仍听到旧音。
-    final raw = 'edge|v2|$voice|${rate.toStringAsFixed(2)}|${style.value}|$text';
+    // v3：SSML 移除 break 注入后旧键缓存的音频必须失效，避免听到旧停顿版本。
+    final raw = 'edge|v3|$voice|${rate.toStringAsFixed(2)}|${style.value}|$text';
     return sha1.convert(utf8.encode(raw)).toString();
   }
 

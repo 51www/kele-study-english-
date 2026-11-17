@@ -45,29 +45,24 @@ void main() {
       expect(ssml, contains("rate='+20%'"));
     });
 
-    test('标点后插入停顿，小数点与千分位不受影响', () {
+    test('不再注入 break 标签，标点与小数千分位保持原样', () {
       final ssml = buildEdgeSsml(
         text: 'Well, it costs \$3.50. Really? Yes, 1,000 people came.',
         voice: 'en-US-AriaNeural',
         rate: 1.0,
       );
-      expect(ssml, contains('Well,<break time="150ms"/>'));
-      expect(ssml, contains('3.50.<break time="300ms"/>'));
-      expect(ssml, contains('3.50'));
-      expect(ssml, contains('1,000 people'));
-      expect(ssml, contains('Really?<break time="300ms"/>'));
-      expect(ssml, isNot(contains('3<break')));
-      expect(ssml, isNot(contains('1<break')));
+      // 新版 Edge 端点拒绝 <break>（1007 SSML is invalid），停顿交给标点。
+      expect(ssml, isNot(contains('<break')));
+      expect(ssml, contains('Well, it costs \$3.50. Really? Yes, 1,000 people came.'));
     });
 
-    test('XML 特殊字符被转义，break 标签本身保持原样', () {
+    test('XML 特殊字符被转义', () {
       final ssml = buildEdgeSsml(
         text: 'A < B & C > D, ok.',
         voice: 'en-US-AriaNeural',
         rate: 1.0,
       );
       expect(ssml, contains('A &lt; B and C &gt; D'));
-      expect(ssml, contains('<break time="150ms"/>'));
     });
   });
 

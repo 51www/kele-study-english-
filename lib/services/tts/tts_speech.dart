@@ -52,8 +52,7 @@ final _abbreviationPattern = RegExp(
   caseSensitive: false,
 );
 
-/// 朗读前的纯文本归一化：只改写会影响读音的写法，保留句子结构与标点，
-/// 让停顿标记可以在转义后的文本上安全插入。
+/// 朗读前的纯文本归一化：只改写会影响读音的写法，保留句子结构与标点。
 String normalizeForSpeech(String raw) {
   var text = raw.trim();
   text = text.replaceAll('\r', ' ').replaceAll('\n', ' ');
@@ -76,29 +75,11 @@ String normalizeForSpeech(String raw) {
   return text.trim();
 }
 
-String _breakFor(String punctuation) => switch (punctuation) {
-      ',' || ';' || ':' => '150ms',
-      _ => '300ms',
-    };
-
-final _pausePattern = RegExp(r'([,;:.!?])(\s+)');
-
-/// 在标点后插入短停顿。只处理「标点 + 空白 + 后续正文」，因此小数点、
-/// 千分位和省略号都不会被误切；转义逐段进行，XML 实体不受影响。
-String _withBreaks(String normalized) {
-  final buffer = StringBuffer();
-  var last = 0;
-  for (final match in _pausePattern.allMatches(normalized)) {
-    if (match.end >= normalized.length) continue;
-    if (normalized.substring(match.end).trim().isEmpty) continue;
-    buffer.write(_htmlEscape.convert(normalized.substring(last, match.start + 1)));
-    buffer.write('<break time="${_breakFor(match.group(1)!)}"/>');
-    buffer.write(_htmlEscape.convert(match.group(2)!));
-    last = match.end;
-  }
-  buffer.write(_htmlEscape.convert(normalized.substring(last)));
-  return buffer.toString();
-}
+/// 朗读正文：归一化后的文本整体做 XML 转义。
+///
+/// 此前会在标点后注入 `<break time>` 停顿；微软 2025-11 升级端点后
+/// `<break>` 一律被拒（1007 "SSML is invalid"），停顿改由标点本身产生。
+String _spokenBody(String normalized) => _htmlEscape.convert(normalized);
 
 /// 生成 Edge TTS 的 SSML 帧正文（纯函数，便于单测）。
 String buildEdgeSsml({
@@ -110,7 +91,7 @@ String buildEdgeSsml({
   final percent = ((rate - 1) * 100).round();
   final rateText = percent >= 0 ? '+$percent%' : '$percent%';
   final safeVoice = voice.replaceAll("'", '').replaceAll('"', '');
-  final body = _withBreaks(normalizeForSpeech(text));
+  final body = _spokenBody(normalizeForSpeech(text));
   final useStyle = style != TtsSpeechStyle.none;
   final msttsNamespace = useStyle
       ? " xmlns:mstts='http://www.w3.org/2001/mstts'"
