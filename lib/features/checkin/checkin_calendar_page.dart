@@ -246,7 +246,8 @@ class _DaySheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
               ],
-              Text('补记今天的其它学习（App 外）', style: AppText.caption),
+              Text('补记今天的其它学习（App 外 · 影子跟读由材料练习自动记录）',
+                  style: AppText.caption),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -304,7 +305,9 @@ class _DaySheet extends ConsumerWidget {
   }
 }
 
-const List<String> _manualTypes = ['vocab', 'shadow'];
+const List<String> _manualTypes = ['vocab'];
+
+/// 影子跟读现由材料练习自动记录，不再出现在手动补记项里。
 
 /// 仅用于日历明细页的图标/标签查找（与 checkin_card 的元数据保持一致）。
 _TypeMeta typeMetaLookup(String type) {

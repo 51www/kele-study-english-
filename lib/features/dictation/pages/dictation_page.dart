@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,22 +46,50 @@ class _DictationPageState extends ConsumerState<DictationPage> {
   bool _listening = false;
   String? _fatal;
   String? _error;
+  Timer? _practiceTicker;
+  int _unsavedSec = 0;
+  DateTime? _practiceDay;
 
   @override
   void initState() {
     super.initState();
     // 与 MVP 朗读共用一个音频焦点：进页先停掉全局 TTS，避免两段音频叠加。
     ref.read(audioPlayerProvider).stop();
+    _startPracticeTicker();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
+    _practiceTicker?.cancel();
+    _flushPracticeSeconds();
     _player?.dispose();
     if (_listening) ref.read(asrRouterProvider).cancel();
     _input.dispose();
     _savePosition();
     super.dispose();
+  }
+
+  /// 材料练习的停留时长按「影子跟读」累计：进入练习页即计时，失败页不计。
+  void _startPracticeTicker() {
+    _practiceTicker?.cancel();
+    _practiceTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_fatal != null) return;
+      _unsavedSec++;
+      // 与对话计时一致：每 15 秒落一次盘，进程被杀也保住已练时长。
+      if (_unsavedSec >= 15) _flushPracticeSeconds();
+    });
+  }
+
+  void _flushPracticeSeconds() {
+    final seconds = _unsavedSec;
+    if (seconds <= 0) return;
+    _unsavedSec = 0;
+    final day = _practiceDay ??= DateTime.now();
+    unawaited(ref.read(shadowPracticeRepositoryProvider).addSeconds(day, seconds));
+    ref.invalidate(homeDataProvider);
+    ref.invalidate(todayCheckinProvider);
+    ref.invalidate(checkinMonthProvider('${day.year}-${day.month}'));
   }
 
   /// 跨教材「只练全部错句」用独立的进度键，不与单本教材混在一起。

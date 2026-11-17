@@ -107,7 +107,9 @@ class _Body extends StatelessWidget {
         const TodayPracticeCard(),
         const SizedBox(height: AppSpacing.block),
         const _PracticeGrid(),
-        const SizedBox(height: AppSpacing.cardInner),
+        const SizedBox(height: AppSpacing.block),
+        const _DictationEntry(),
+        const SizedBox(height: AppSpacing.block),
         const _TipsEntry(),
       ],
     );
@@ -186,6 +188,51 @@ class _PracticeGrid extends StatelessWidget {
           Text(title, style: AppText.cardTitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ),
+    );
+  }
+}
+
+/// 听写教材栏目：用自己的音视频素材逐句精听，导入入口在教材库内。
+class _DictationEntry extends StatelessWidget {
+  const _DictationEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionTitle(title: '听写教材'),
+        const SizedBox(height: AppSpacing.buttonGap),
+        AppCard(
+          onTap: () => context.push('/materials'),
+          padding: const EdgeInsets.all(AppSpacing.cardInner),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryWash,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.hearing_outlined, color: AppColors.primaryDeep, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('用自己的素材逐句精听', style: AppText.cardTitle),
+                    SizedBox(height: AppSpacing.tight),
+                    Text('本地音视频 + 字幕 · 逐句听写', style: AppText.caption),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

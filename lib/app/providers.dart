@@ -157,6 +157,7 @@ class HomeData {
 final homeDataProvider = FutureProvider<HomeData>((ref) async {
   final scenarioRepo = ref.watch(scenarioRepositoryProvider);
   final sessionRepo = ref.watch(sessionRepositoryProvider);
+  final shadowByDay = await ref.watch(shadowPracticeRepositoryProvider).all();
   final scenarios = await scenarioRepo.all();
   final sessions = await sessionRepo.list();
   final settingsRepo = ref.watch(settingsRepositoryProvider);
@@ -187,8 +188,11 @@ final homeDataProvider = FutureProvider<HomeData>((ref) async {
       }
     }
   }
-  // 手动补记（背单词 / 影子跟读 / 其它）同样计入连续天数。
+  // 材料练习耗时按「影子跟读」学习时间计入今日分钟。
+  todaySeconds += shadowByDay['${now.year}-${now.month}-${now.day}'] ?? 0;
+  // 手动补记（背单词 / 其它）与材料练习（影子跟读）同样计入连续天数。
   activeDays.addAll(await ref.watch(checkinRepositoryProvider).manualDates());
+  activeDays.addAll(shadowByDay.entries.where((e) => e.value > 0).map((e) => e.key));
   final streak = _computeStreaks(activeDays).$1;
   Correction? lastStuck;
   for (final session in sessions.where((e) => e.status == 'completed').take(3)) {
@@ -250,6 +254,11 @@ final checkinRepositoryProvider = Provider<CheckinRepository>((ref) {
   return CheckinRepository(ref.watch(localStoreProvider));
 });
 
+/// 材料练习耗时仓储：按天累计「影子跟读」学习时间。
+final shadowPracticeRepositoryProvider = Provider<ShadowPracticeRepository>((ref) {
+  return ShadowPracticeRepository(ref.watch(localStoreProvider));
+});
+
 /// 今日打卡聚合：自动活动（口语 / 轻量 / 听写）+ 手动补记。
 final todayCheckinProvider = FutureProvider<TodayCheckin>((ref) async {
   final now = DateTime.now();
@@ -265,6 +274,11 @@ final todayCheckinProvider = FutureProvider<TodayCheckin>((ref) async {
   }
   final attempts = await ref.watch(localStoreProvider).allAttempts();
   if (attempts.any((a) => a.createdAt >= todayStart)) activity.add('dictation');
+  // 材料练习（听写）即影子跟读学习：有练习记录或累计耗时就自动点亮。
+  final shadowSeconds = await ref.watch(shadowPracticeRepositoryProvider).secondsOn(today);
+  if (attempts.any((a) => a.createdAt >= todayStart) || shadowSeconds > 0) {
+    activity.add('shadow');
+  }
   final manual = await ref.watch(checkinRepositoryProvider).get(date);
   return TodayCheckin(date: date, activityTypes: activity, manual: manual);
 });
@@ -284,6 +298,7 @@ final checkinMonthProvider =
   final sessions = await ref.watch(sessionRepositoryProvider).list();
   final attempts = await ref.watch(localStoreProvider).allAttempts();
   final manual = await ref.watch(checkinRepositoryProvider).all();
+  final shadowByDay = await ref.watch(shadowPracticeRepositoryProvider).all();
   final manualByDate = <String, DailyCheckin>{for (final c in manual) c.date: c};
 
   final days = <int, DayCheckin>{};
@@ -297,9 +312,20 @@ final checkinMonthProvider =
   for (final a in attempts) {
     if (a.createdAt >= startMs && a.createdAt <= endMs) {
       final day = DateTime.fromMillisecondsSinceEpoch(a.createdAt).day;
-      days.putIfAbsent(day, () => DayCheckin()).types.add('dictation');
+      final types = days.putIfAbsent(day, () => DayCheckin()).types;
+      types.add('dictation');
+      // 材料练习即影子跟读学习，日历同样点亮影子跟读。
+      types.add('shadow');
     }
   }
+  shadowByDay.forEach((key, seconds) {
+    if (seconds <= 0) return;
+    final p = key.split('-');
+    if (p.length == 3 && p[0] == '$year' && p[1] == '$month') {
+      final day = int.tryParse(p[2]);
+      if (day != null) days.putIfAbsent(day, () => DayCheckin()).types.add('shadow');
+    }
+  });
   manualByDate.forEach((date, c) {
     final p = date.split('-');
     if (p[0] == '$year' && p[1] == '$month') {
@@ -314,6 +340,7 @@ final checkinMonthProvider =
     if (s.durationSec >= 300) activeDays.add(_dayKey(s.startedDate));
   }
   activeDays.addAll(manual.map((e) => e.date));
+  activeDays.addAll(shadowByDay.entries.where((e) => e.value > 0).map((e) => e.key));
   final streaks = _computeStreaks(activeDays);
   return CheckinMonth(
     year: year,

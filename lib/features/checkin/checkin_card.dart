@@ -20,11 +20,12 @@ class _TypeMeta {
 const Map<String, _TypeMeta> _typeMeta = {
   'spoken': _TypeMeta('口语', Icons.chat_bubble_outline_rounded, false),
   'vocab': _TypeMeta('背单词', Icons.menu_book_rounded, true),
-  'shadow': _TypeMeta('影子跟读', Icons.record_voice_over_rounded, true),
+  // 材料练习（听写）即影子跟读学习，由练习耗时自动点亮，不再手动补记。
+  'shadow': _TypeMeta('影子跟读', Icons.record_voice_over_rounded, false),
 };
 
 /// 首页「今日」主卡：打卡状态 + 连续天数 + 学习构成 + 目标进度 + 入口。
-/// 自动类型（口语）由会话表聚合；手动类型（背单词 / 影子跟读）可点按补记。
+/// 自动类型（口语 / 影子跟读）由会话与材料练习聚合；手动类型（背单词）可点按补记。
 /// 学习构成按内容自然排列：空间够时同一行，不足时换行，不压缩文字。
 class CheckinCard extends ConsumerWidget {
   const CheckinCard({super.key});

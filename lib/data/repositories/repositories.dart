@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../domain/models/checkin_models.dart';
 import '../../domain/models/models.dart';
 import '../db/local_store.dart';
@@ -295,6 +297,51 @@ class SessionRepository {
     for (final path in paths) {
       await _store.deleteTtsCache(path);
     }
+  }
+}
+
+/// 材料练习（听写）作为「影子跟读」学习时间的按天累计秒数。
+///
+/// 复用 app_meta 单个 JSON 键，零改表、零 build_runner，Drift / Web 通用；
+/// 与 clearAll 一起清空，不引入新表或迁移。
+class ShadowPracticeRepository {
+  ShadowPracticeRepository(this._store);
+
+  final LocalStore _store;
+
+  static const _key = 'shadow.sec.by_day';
+
+  /// key 形如 '2026-11-17'（与打卡 date 同口径，本地自然日）。
+  Future<Map<String, int>> all() async {
+    final raw = await _store.meta(_key);
+    if (raw == null || raw.isEmpty) return const <String, int>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return decoded.map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        );
+      }
+    } on Object {
+      // 坏数据当空处理，不影响打卡主流程。
+    }
+    return const <String, int>{};
+  }
+
+  Future<int> secondsOn(DateTime day) async {
+    final key = '${day.year}-${day.month}-${day.day}';
+    return (await all())[key] ?? 0;
+  }
+
+  Future<Set<String>> activeDays() async =>
+      (await all()).entries.where((e) => e.value > 0).map((e) => e.key).toSet();
+
+  Future<void> addSeconds(DateTime day, int seconds) async {
+    if (seconds <= 0) return;
+    final key = '${day.year}-${day.month}-${day.day}';
+    final data = Map<String, int>.from(await all());
+    data[key] = (data[key] ?? 0) + seconds;
+    await _store.setMeta(_key, jsonEncode(data));
   }
 }
 
