@@ -116,7 +116,7 @@ class _Body extends StatelessWidget {
   }
 }
 
-/// 练习入口一行三卡：场景练习 / 复盘复练 / 3 分钟轻量。
+/// 练习入口一行三卡：场景练习 / 复盘复练 / 热身练习。
 /// 收纳原首页散落的轻量按钮与听写栏目，统一形态、缩短操作路径。
 class _PracticeGrid extends StatelessWidget {
   const _PracticeGrid();
@@ -152,7 +152,7 @@ class _PracticeGrid extends StatelessWidget {
               context,
               icon: Icons.bolt_rounded,
               tint: AppColors.orange,
-              title: '3 分钟轻量',
+              title: '热身练习',
               route: '/quick',
             ),
           ),
@@ -170,22 +170,22 @@ class _PracticeGrid extends StatelessWidget {
   }) {
     return AppCard(
       onTap: () => context.push(route),
-      padding: const EdgeInsets.all(AppSpacing.cardInner),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(AppSpacing.element),
+          Icon(icon, color: tint, size: 18),
+          const SizedBox(width: AppSpacing.xxs),
+          Expanded(
+            child: Text(
+              title,
+              style: AppText.cardTitle.copyWith(fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Icon(icon, color: tint, size: 18),
           ),
-          const SizedBox(height: AppSpacing.element),
-          Text(title, style: AppText.cardTitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
